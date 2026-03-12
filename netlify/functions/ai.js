@@ -20,6 +20,7 @@ import {
 } from "../../lib/workflow-engine.js";
 import { runMediaTask } from "../../lib/media-engine.js";
 import { processVoiceTurn } from "../../lib/voice-engine.js";
+import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
 import { runTask } from "../../lib/multimodal-engine.js";
 
 const CORS_HEADERS = {
@@ -63,17 +64,22 @@ async function getRecentConversation(supabase, conversation_id) {
 
 async function saveMessage(
   supabase,
-  { conversation_id, user_id, role, content, embedding }
+  { conversation_id, user_id, role, content, embedding, media_url, media_type }
 ) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
-  await supabase.from(table).insert({
+  const row = {
     conversation_id,
     user_id,
     role,
     content,
     embedding,
-  });
+  };
+
+  if (media_url) row.media_url = media_url;
+  if (media_type) row.media_type = media_type;
+
+  await supabase.from(table).insert(row);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -81,7 +87,7 @@ async function saveMessage(
 /* -------------------------------------------------------------------------- */
 
 async function handleChat(data) {
-  const { conversation_id, user_id, message, model, stream } = data;
+  const { conversation_id, user_id, message, model, stream, media_url, media_type } = data;
 
   if (!conversation_id || !user_id || !message) {
     return response(400, {
@@ -92,6 +98,66 @@ async function handleChat(data) {
   const supabase = getSupabase();
 
   try {
+    /* -------------------- VISION ANALYSIS (if media attached) ------------------- */
+
+    let visionAnalysis = null;
+
+    if (media_url) {
+      try {
+        if (media_type === "video") {
+          visionAnalysis = await describeVideo({
+            video_url: media_url,
+            prompt: message,
+            model,
+          });
+        } else {
+          visionAnalysis = await analyzeImage({
+            image_url: media_url,
+            prompt: message,
+            model,
+          });
+        }
+      } catch (visionErr) {
+        console.warn("Vision analysis failed, falling back to text:", visionErr.message);
+      }
+    }
+
+    /* If vision analysis succeeded, use it as the response directly */
+    if (visionAnalysis) {
+      let assistantEmbedding = null;
+      try {
+        assistantEmbedding = await generateEmbedding(visionAnalysis);
+      } catch (err) {
+        console.warn("Embedding generation failed:", err.message);
+      }
+
+      await Promise.all([
+        saveMessage(supabase, {
+          conversation_id,
+          user_id,
+          role: "user",
+          content: message,
+          embedding: null,
+          media_url,
+          media_type,
+        }),
+        saveMessage(supabase, {
+          conversation_id,
+          user_id,
+          role: "assistant",
+          content: visionAnalysis,
+          embedding: assistantEmbedding,
+        }),
+      ]);
+
+      return response(200, {
+        response: visionAnalysis,
+        intent: { intent: "vision_analysis", confidence: 1 },
+      });
+    }
+
+    /* ----------------------- STANDARD ORCHESTRATION FLOW ----------------------- */
+
     const result = await orchestrate({
       message,
       user_id,
