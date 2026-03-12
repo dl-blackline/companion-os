@@ -376,7 +376,7 @@ export function KnowledgeView() {
         <p className="text-sm whitespace-pre-wrap leading-relaxed">{item.content}</p>
       </Card>
 
-      {item.sourceUrl && (
+      {item.sourceUrl && /^https?:\/\//i.test(item.sourceUrl) && (
         <a
           href={item.sourceUrl}
           target="_blank"
