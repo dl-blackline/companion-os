@@ -25,7 +25,7 @@ const defaultSettings: CompanionSettings = {
   },
   modelSettings: {
     defaultModel: 'openai',
-    fallbackModel: 'gemini',
+    fallbackModel: 'openai',
     imageModel: 'flux',
     videoModel: 'runway',
     musicModel: 'suno',

@@ -159,7 +159,6 @@ type ServiceStatus = 'ok' | 'error' | 'checking' | 'idle';
 
 interface DiagnosticsResult {
   openai: ServiceStatus;
-  gemini: ServiceStatus;
   supabase: ServiceStatus;
   vector_search: ServiceStatus;
   media: ServiceStatus;
@@ -168,7 +167,6 @@ interface DiagnosticsResult {
 
 const INITIAL_DIAGNOSTICS: DiagnosticsResult = {
   openai: 'idle',
-  gemini: 'idle',
   supabase: 'idle',
   vector_search: 'idle',
   media: 'idle',
@@ -207,7 +205,6 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
 
 const SERVICE_LABELS: Record<keyof DiagnosticsResult, string> = {
   openai: 'OpenAI',
-  gemini: 'Gemini',
   supabase: 'Supabase',
   vector_search: 'Vector Search',
   media: 'Media APIs',
@@ -253,7 +250,6 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
     setIsRunningTest(true);
     setDiagnostics({
       openai: 'checking',
-      gemini: 'checking',
       supabase: 'checking',
       vector_search: 'checking',
       media: 'checking',
@@ -274,7 +270,6 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
 
       setDiagnostics({
         openai: data.openai === 'ok' ? 'ok' : 'error',
-        gemini: data.gemini === 'ok' ? 'ok' : 'error',
         supabase: data.supabase === 'ok' ? 'ok' : 'error',
         vector_search: data.vector_search === 'ok' ? 'ok' : 'error',
         media: data.media === 'ok' ? 'ok' : 'error',
@@ -283,7 +278,6 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
     } catch {
       setDiagnostics({
         openai: 'error',
-        gemini: 'error',
         supabase: 'error',
         vector_search: 'error',
         media: 'error',

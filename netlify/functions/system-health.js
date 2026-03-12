@@ -46,20 +46,6 @@ async function checkOpenAI() {
   }
 }
 
-async function checkGemini() {
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      return "error";
-    }
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`
-    );
-    return res.ok ? "ok" : "error";
-  } catch {
-    return "error";
-  }
-}
-
 async function checkVectorSearch() {
   try {
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -111,15 +97,14 @@ export async function handler(event) {
   }
 
   try {
-    const [openai, gemini, supabase, vector_search, media] = await Promise.all([
+    const [openai, supabase, vector_search, media] = await Promise.all([
       checkOpenAI(),
-      checkGemini(),
       checkSupabase(),
       checkVectorSearch(),
       checkMedia(),
     ]);
 
-    return result(200, { openai, gemini, supabase, vector_search, media });
+    return result(200, { openai, supabase, vector_search, media });
   } catch (err) {
     console.error("System health check error:", err);
     return result(500, { error: err.message });
