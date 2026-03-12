@@ -42,7 +42,8 @@ export async function handler(event) {
         status: job.status,
         result: job.result,
         created_at: job.created_at,
-        updated_at: job.updated_at,
+        started_at: job.started_at,
+        completed_at: job.completed_at,
       }),
     };
   } catch (error) {

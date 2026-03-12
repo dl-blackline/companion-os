@@ -8,7 +8,8 @@ create table if not exists job_queue (
   status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
   result jsonb,
   created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  started_at timestamp with time zone,
+  completed_at timestamp with time zone
 );
 
 create index if not exists job_queue_status_idx
