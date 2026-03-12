@@ -40,6 +40,7 @@ The following capabilities were absent from the prior product plan and must be t
 | 10 | Dynamic state-based interface (idle / listening / thinking / speaking / generating) | P0 |
 | 11 | Adaptive screen transformation based on AI's active task | P0 |
 | 12 | Premium asset quality — HD icons, cinematic motion, custom visual treatments | P0 |
+| 13 | Prompt Generation Studio — conversational image and video prompt creation | P0 |
 
 ---
 
@@ -150,6 +151,63 @@ The avatar must visually shift its behavior based on the AI's current state:
   - Result gallery with download and delete controls
   - Tabbed switching between Photo and Video modes
 - Generation status must be clearly communicated at all times.
+
+---
+
+## 6.5 Prompt Generation Studio — Chat-Native Image and Video Prompt Creation
+
+The Prompt Generation Studio is a **core product capability** integrated directly into the chat intelligence layer. It enables users to generate high-quality, production-ready image and video prompts through natural conversation — not through a separate tool or interface.
+
+### 6.5.1 Core Capability
+
+- The AI must be able to **generate optimized image prompts and video prompts** directly from the user's chat input.
+- The user must be able to **describe an idea naturally in conversation**, and the AI must convert it into a polished, structured generation prompt automatically.
+- The system must **understand loose, casual, or incomplete user input** and transform it into strong, detailed prompts suitable for generation workflows.
+- The AI must be able to generate prompts for **both images and videos** based on the user's goals, style, subject, mood, scene, camera direction, and output intent.
+- Prompt generation must feel **native to the chat experience** — not like a separate tool or workflow.
+
+### 6.5.2 Required Behavior
+
+- User types a concept or idea in chat.
+- The AI interprets the request and generates a refined **[IMAGE PROMPT]**, **[VIDEO PROMPT]**, or both.
+- The AI can create **multiple prompt variations** when helpful.
+- The AI can **improve, expand, shorten, or restyle** prompts based on follow-up user requests.
+- The AI can turn simple, casual requests into **cinematic, detailed, production-ready prompts**.
+- The workflow must be **fast, intuitive, and conversational** — no context switching required.
+
+### 6.5.3 Prompt Generation Capabilities
+
+The system must support the following prompt generation capabilities within the chat flow:
+
+| Capability | Description |
+|-----------|-------------|
+| Image prompt creation | Generate detailed, structured prompts optimized for image generation tools |
+| Video prompt creation | Generate scene-level prompts with motion, camera, and pacing direction |
+| Style enhancement | Elevate prompt style (cinematic, editorial, minimalist, dramatic, etc.) |
+| Scene expansion | Add environmental detail, atmosphere, secondary elements, and world-building |
+| Mood and atmosphere definition | Specify lighting, color grading, emotional tone, and ambient quality |
+| Camera and composition direction | Define angle, lens, depth of field, framing, and focal points |
+| Motion and action direction | Choreograph movement, camera dynamics, subject actions for video |
+| Prompt rewrite and optimization | Rewrite existing prompts for better generation quality and specificity |
+| Variation generation | Produce multiple versions of the same concept with different angles, moods, or styles |
+| Prompt refinement via follow-up | Iteratively improve prompts through natural conversational follow-up |
+
+### 6.5.4 Chat Integration Requirements
+
+- Prompt generation must be accessible **inside the normal chat flow** without switching interfaces.
+- The AI must **automatically detect** whether the user wants an image prompt, a video prompt, or both.
+- The output must be **clean, labeled, and ready to paste** into generation workflows.
+- Prompt generation awareness must be available in **all conversation modes**, not only in a dedicated prompt mode.
+- A dedicated **Prompt Studio** conversation mode must be available for users who want focused prompt generation sessions.
+- The Prompt Studio mode system prompt must specialize the AI for prompt engineering with comprehensive instructions for image and video prompt structure.
+
+### 6.5.5 Output Format
+
+- Each generated prompt must be clearly labeled as **[IMAGE PROMPT]** or **[VIDEO PROMPT]**.
+- Prompts must use **concise, comma-separated descriptive phrases** — the standard format for generation tools.
+- Prompts should be **30–150 words** for optimal generation quality.
+- When the user asks for refinement, the AI must show the **updated prompt alongside the original** for comparison.
+- The AI may optionally include a brief explanation of its creative choices after the prompt.
 
 ---
 
@@ -475,6 +533,18 @@ A feature is considered **Done** when all of the following are true:
 - [ ] Delete removes item from gallery
 - [ ] Completed count badge in header updates accurately
 
+### Prompt Generation Studio
+- [ ] Prompt Studio mode appears in conversation mode selector
+- [ ] In Prompt Studio mode, AI generates labeled [IMAGE PROMPT] and [VIDEO PROMPT] outputs from casual input
+- [ ] AI auto-detects whether user wants an image prompt, video prompt, or both
+- [ ] AI generates multiple prompt variations when helpful
+- [ ] AI can refine, expand, shorten, or restyle prompts via follow-up messages
+- [ ] Prompts include composition, lighting, mood, style, and camera direction details
+- [ ] Video prompts include motion direction, camera movement, and shot dynamics
+- [ ] Prompt generation awareness works in all conversation modes (not only Prompt Studio)
+- [ ] Output format is clean, labeled, and ready to paste into generation tools
+- [ ] Conversational prompt refinement works across multiple turns
+
 ### AI Orb (All Contexts)
 - [ ] Orb renders correctly at sm, md, lg, xl sizes
 - [ ] Each of the 8 `CompanionState` values produces a distinct visual appearance
@@ -523,6 +593,24 @@ type CompanionState =
 | Workflows | `workflows` | Agent workflow automation |
 | Insights | `insights` | AI-surfaced intelligence cards |
 | Settings | `settings` | All app and model configuration |
+
+---
+
+## Appendix C: Conversation Mode Reference
+
+```typescript
+type ConversationMode =
+  | 'strategist'      // Long-term thinking, strategic planning
+  | 'operator'        // Execution-focused, action-oriented
+  | 'researcher'      // Deep analysis, information gathering
+  | 'coach'           // Personal development, accountability
+  | 'creative'        // Ideation, brainstorming
+  | 'neutral'         // Balanced, general-purpose
+  | 'prompt-studio'   // Image & video prompt generation
+  | 'custom'          // User-defined behavior
+```
+
+The `prompt-studio` mode specializes the AI as a prompt engineer for image and video generation. Prompt generation awareness is also injected into all other modes, enabling prompt creation from any conversation without mode switching.
 
 ---
 

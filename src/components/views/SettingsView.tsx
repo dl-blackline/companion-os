@@ -43,6 +43,7 @@ const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
   { value: 'coach', label: 'Coach' },
   { value: 'creative', label: 'Creative' },
   { value: 'neutral', label: 'Neutral' },
+  { value: 'prompt-studio', label: 'Prompt Studio' },
   { value: 'custom', label: 'Custom' },
 ];
 
