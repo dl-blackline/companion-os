@@ -82,19 +82,23 @@ export function AgentsView() {
   const [taskDescription, setTaskDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // ---- Fetch tasks from API -------------------------------------------------
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/.netlify/functions/agent-task?list=true');
       if (res.ok) {
         const data = await res.json();
         setTasks(Array.isArray(data) ? data : []);
+      } else {
+        setError('Failed to load tasks');
       }
     } catch {
-      // silently ignore network errors in the UI
+      setError('Unable to connect to the server');
     } finally {
       setLoading(false);
     }
@@ -109,6 +113,7 @@ export function AgentsView() {
   const handleCreate = async () => {
     if (!taskDescription.trim()) return;
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch('/.netlify/functions/agent-task', {
         method: 'POST',
@@ -119,9 +124,12 @@ export function AgentsView() {
         setTaskDescription('');
         setShowCreate(false);
         await fetchTasks();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to create task');
       }
     } catch {
-      // silently ignore network errors
+      setError('Unable to connect to the server');
     } finally {
       setSubmitting(false);
     }
@@ -199,6 +207,16 @@ export function AgentsView() {
           </TabsList>
         </Tabs>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mx-6 mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
+          <p className="text-sm text-red-600">{error}</p>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-red-600" onClick={() => setError(null)}>
+            Dismiss
+          </Button>
+        </div>
+      )}
 
       {/* Create task panel */}
       {showCreate && (

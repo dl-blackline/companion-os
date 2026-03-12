@@ -1,4 +1,4 @@
-import { createAgentTask, getAgentTask } from "../../lib/agent-manager.js";
+import { createAgentTask, getAgentTask, getAgentTasksByStatus } from "../../lib/agent-manager.js";
 import { AGENTS } from "../../lib/agent-registry.js";
 
 const CORS_HEADERS = {
@@ -21,11 +21,35 @@ export const handler = async (event) => {
     return response(204, {});
   }
 
-  // GET — fetch a single task by id (query param)
+  // GET — list tasks or fetch a single task by id
   if (event.httpMethod === "GET") {
-    const taskId = event.queryStringParameters?.id;
+    const params = event.queryStringParameters || {};
+
+    // List mode: ?list=true (optionally filter by &status=pending)
+    if (params.list) {
+      const status = params.status;
+      try {
+        if (status) {
+          const tasks = await getAgentTasksByStatus(status);
+          return response(200, tasks);
+        }
+        // Return all tasks (most recent first) – fetch each status bucket
+        const [pending, processing, completed, failed] = await Promise.all([
+          getAgentTasksByStatus("pending", 50),
+          getAgentTasksByStatus("processing", 50),
+          getAgentTasksByStatus("completed", 50),
+          getAgentTasksByStatus("failed", 50),
+        ]);
+        return response(200, [...processing, ...pending, ...completed, ...failed]);
+      } catch (err) {
+        return response(500, { error: err.message });
+      }
+    }
+
+    // Single task by id
+    const taskId = params.id;
     if (!taskId) {
-      return response(400, { error: "Missing query parameter: id" });
+      return response(400, { error: "Missing query parameter: id or list" });
     }
 
     const task = await getAgentTask(taskId);
