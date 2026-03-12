@@ -161,7 +161,7 @@ export function LiveTalkView({
           .map((t) => `${t.role === 'user' ? 'User' : aiName}: ${t.text}`)
           .join('\n');
 
-        const prompt = window.spark.llmPrompt`${modeConfig.systemPrompt}
+        const prompt = `${modeConfig.systemPrompt}
 
 You are ${aiName}, a real-time AI companion. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed. Avoid bullet points or markdown; speak in flowing prose.
 
@@ -172,7 +172,24 @@ User said: "${text.trim()}"
 
 Respond as ${aiName}:`;
 
-        const response = await window.spark.llm(prompt);
+        const res = await fetch('/.netlify/functions/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversation_id: session.id,
+            user_id: 'default-user',
+            message: prompt,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Chat API error:', res.status, errData);
+          throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+        const response = data.response;
 
         const assistantTurn: TalkTurn = {
           id: generateId(),

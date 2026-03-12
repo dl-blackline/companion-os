@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
 import { HomeDashboard } from '@/components/views/HomeDashboard';
@@ -41,7 +41,7 @@ const defaultSettings: CompanionSettings = {
 function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('home');
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
-  const [settings, setSettings] = useKV<CompanionSettings>('companion-settings', defaultSettings);
+  const [settings, setSettings] = useLocalStorage<CompanionSettings>('companion-settings', defaultSettings);
 
   const handleNavigate = (section: string) => {
     setActiveSection(section as NavSection);

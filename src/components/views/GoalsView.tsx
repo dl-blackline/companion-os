@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -613,7 +613,7 @@ function GoalDetail({ goal, onBack, onUpdate, onDelete }: GoalDetailProps) {
 // --- Main View ---
 
 export function GoalsView() {
-  const [goals, setGoals] = useKV<Goal[]>('goals', []);
+  const [goals, setGoals] = useLocalStorage<Goal[]>('goals', []);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [timeframe, setTimeframe] = useState<Timeframe | 'all'>('all');

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +91,7 @@ const EMPTY_FORM: KnowledgeFormState = {
 };
 
 export function KnowledgeView() {
-  const [items, setItems] = useKV<KnowledgeItem[]>('knowledge-items', []);
+  const [items, setItems] = useLocalStorage<KnowledgeItem[]>('knowledge-items', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<ItemType | 'all'>('all');
