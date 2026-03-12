@@ -25,7 +25,7 @@ import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
 
 /** Return the currently selected chat model id. */
 function activeChatModel(): string {
-  return getModelSetting('chat') || 'openai';
+  return getModelSetting('chat') || 'gpt-4.1';
 }
 
 export function ChatView() {
