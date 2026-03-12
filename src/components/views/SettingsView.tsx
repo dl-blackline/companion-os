@@ -242,6 +242,20 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
     localStorage.setItem('voice_mode', mode);
   };
 
+  // Realtime voice selection
+  const [realtimeVoice, setRealtimeVoice] = useState<string>(() => {
+    try {
+      return localStorage.getItem('realtime_voice') || 'alloy';
+    } catch {
+      return 'alloy';
+    }
+  });
+
+  const handleRealtimeVoiceChange = (voice: string) => {
+    setRealtimeVoice(voice);
+    localStorage.setItem('realtime_voice', voice);
+  };
+
   // System diagnostics
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult>(INITIAL_DIAGNOSTICS);
   const [isRunningTest, setIsRunningTest] = useState(false);
@@ -807,6 +821,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
+            className="space-y-4"
           >
             <Card className="p-6">
               <h3 className="font-semibold mb-1">Voice Mode</h3>
@@ -835,6 +850,39 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                   {voiceMode === 'continuous'
                     ? 'Live Talk will automatically start listening and resume after each AI response. Click the mic once to begin.'
                     : 'Live Talk requires clicking the microphone each time you want to speak (default behavior).'}
+                </p>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="font-semibold mb-1">Realtime Voice</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Select the AI voice used for realtime conversations. Live Talk uses OpenAI Realtime API for low-latency speech-to-speech.
+              </p>
+              <Separator />
+
+              <SettingRow
+                label="Voice"
+                description="OpenAI realtime voice for Live Talk."
+              >
+                <Select value={realtimeVoice} onValueChange={handleRealtimeVoiceChange}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alloy">Alloy</SelectItem>
+                    <SelectItem value="aria">Aria</SelectItem>
+                    <SelectItem value="nova">Nova</SelectItem>
+                    <SelectItem value="verse">Verse</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <Separator />
+
+              <div className="py-4">
+                <p className="text-xs text-muted-foreground">
+                  Realtime voice uses WebRTC for true streaming audio. If unavailable, Live Talk falls back to speech-to-text with TTS playback.
                 </p>
               </div>
             </Card>
