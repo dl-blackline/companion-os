@@ -67,6 +67,14 @@ const STATUS_COLORS: Record<GoalStatus, string> = {
   archived: 'bg-muted text-muted-foreground',
 };
 
+function formatDeadline(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 function calculateProgress(goal: Goal): number {
   const items = [...goal.milestones, ...goal.tasks];
   if (items.length === 0) return 0;
@@ -469,9 +477,7 @@ function GoalDetail({ goal, onBack, onUpdate, onDelete }: GoalDetailProps) {
         {goal.deadline && (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Clock size={14} />
-            <span>
-              Deadline: {new Date(goal.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
+            <span>Deadline: {formatDeadline(goal.deadline)}</span>
           </div>
         )}
 
@@ -714,7 +720,7 @@ export function GoalsView() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1">Goals &amp; Planning</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-1">Goals & Planning</h1>
             <p className="text-muted-foreground text-sm">
               Track progress across every timeframe.
             </p>
@@ -851,10 +857,7 @@ export function GoalsView() {
                               {goal.deadline && (
                                 <span className="flex items-center gap-1">
                                   <Clock size={12} />
-                                  {new Date(goal.deadline).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                  })}
+                                  {formatDeadline(goal.deadline)}
                                 </span>
                               )}
                             </div>
