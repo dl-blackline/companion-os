@@ -284,14 +284,16 @@ async function handleWorkflow(data) {
     }
 
     if (steps && Array.isArray(steps)) {
-      for (let i = 0; i < steps.length; i++) {
-        await addWorkflowStep({
-          project_id: project.id,
-          step_order: i + 1,
-          step_type: steps[i].step_type,
-          config: steps[i].config || {},
-        });
-      }
+      await Promise.all(
+        steps.map((step, i) =>
+          addWorkflowStep({
+            project_id: project.id,
+            step_order: i + 1,
+            step_type: step.step_type,
+            config: step.config || {},
+          })
+        )
+      );
     }
 
     return response(200, { project });
