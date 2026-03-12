@@ -124,7 +124,9 @@ export async function handler(event) {
           signals,
           source_message: message,
         })
-      ),
+      ).catch((err) => {
+        console.error("Emotion processing error:", err.message);
+      }),
     ]);
 
     return {
