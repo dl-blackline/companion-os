@@ -39,18 +39,17 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
           top: '10%',
           left: '20%',
           filter: 'blur(80px)',
+          background: `radial-gradient(circle, ${colors.primary} 0%, transparent 70%)`,
         }}
         animate={{
           x: [0, 30, -20, 0],
           y: [0, -20, 15, 0],
           opacity: isActive ? [0.22, 0.32, 0.22] : [0.18, 0.24, 0.18],
-          background: `radial-gradient(circle, ${colors.primary} 0%, transparent 70%)`,
         }}
         transition={{
           duration: isActive ? 8 : 12,
           repeat: Infinity,
           ease: 'easeInOut',
-          background: { duration: 1.2, ease: 'easeOut' },
         }}
       />
 
@@ -63,18 +62,17 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
           bottom: '15%',
           right: '15%',
           filter: 'blur(70px)',
+          background: `radial-gradient(circle, ${colors.secondary} 0%, transparent 70%)`,
         }}
         animate={{
           x: [0, -25, 15, 0],
           y: [0, 20, -10, 0],
           opacity: isActive ? [0.16, 0.26, 0.16] : [0.12, 0.18, 0.12],
-          background: `radial-gradient(circle, ${colors.secondary} 0%, transparent 70%)`,
         }}
         transition={{
           duration: isActive ? 10 : 15,
           repeat: Infinity,
           ease: 'easeInOut',
-          background: { duration: 1.2, ease: 'easeOut' },
         }}
       />
 
@@ -87,18 +85,17 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
           top: '50%',
           left: '60%',
           filter: 'blur(60px)',
+          background: `radial-gradient(circle, ${colors.tertiary} 0%, transparent 70%)`,
         }}
         animate={{
           x: [0, 20, -15, 0],
           y: [0, -15, 20, 0],
           opacity: isActive ? [0.14, 0.22, 0.14] : [0.10, 0.15, 0.10],
-          background: `radial-gradient(circle, ${colors.tertiary} 0%, transparent 70%)`,
         }}
         transition={{
           duration: isActive ? 12 : 18,
           repeat: Infinity,
           ease: 'easeInOut',
-          background: { duration: 1.2, ease: 'easeOut' },
         }}
       />
 
