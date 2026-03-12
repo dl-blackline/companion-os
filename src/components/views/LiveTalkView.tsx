@@ -230,12 +230,14 @@ Respond as ${aiName}:`;
         if (!res.ok) {
           const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
           console.error('Chat API error:', res.status, errData);
+          // Network / server error — allow the catch block to trigger reconnect
           throw new Error(errData.error || `Chat request failed with status ${res.status}`);
         }
 
         const data = await res.json();
-        const response = data.response;
+        const response = data.response || '';
 
+        // Valid response received — display it even if it's a fallback message
         const assistantTurn: TalkTurn = {
           id: generateId(),
           role: 'assistant',
@@ -248,6 +250,9 @@ Respond as ${aiName}:`;
         }));
 
         speak(response);
+
+        isProcessingRef.current = false;
+        setCompanionState('idle');
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Something went wrong. Try again.';
@@ -256,7 +261,7 @@ Respond as ${aiName}:`;
         const errorTurn: TalkTurn = {
           id: generateId(),
           role: 'assistant',
-          text: `⚠️ ${errorMessage}. Reconnecting…`,
+          text: `⚠️ ${errorMessage}`,
           timestamp: Date.now(),
         };
         setSession((prev) => ({
@@ -266,16 +271,17 @@ Respond as ${aiName}:`;
 
         isProcessingRef.current = false;
 
+        // Only reconnect on actual network / request failures.
+        // Do not retry endlessly — limit automatic reconnection attempts.
         if (voiceEnabledRef.current && isContinuousMode()) {
           setCompanionState('idle');
           setStatusText('Voice connection lost. Reconnecting…');
-          // Auto-restart the voice loop after a brief delay
           reconnectTimerRef.current = setTimeout(() => {
             if (voiceEnabledRef.current) {
-              setStatusText('Resuming…');
+              setStatusText('Listening…');
               startListeningInternal();
             }
-          }, 2000);
+          }, 3000);
         } else {
           setCompanionState('idle');
           setStatusText(errorMessage);
