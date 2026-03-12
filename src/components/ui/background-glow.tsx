@@ -7,19 +7,20 @@ interface BackgroundGlowProps {
   className?: string;
 }
 
-const stateAccent: Record<string, string> = {
-  idle: 'oklch(0.45 0.18 290)',
-  listening: 'oklch(0.55 0.18 230)',
-  thinking: 'oklch(0.55 0.18 55)',
-  speaking: 'oklch(0.55 0.18 145)',
-  'generating-image': 'oklch(0.50 0.18 310)',
-  'generating-video': 'oklch(0.50 0.18 310)',
-  writing: 'oklch(0.45 0.16 280)',
-  analyzing: 'oklch(0.45 0.16 280)',
+const stateAccent: Record<string, { primary: string; secondary: string; tertiary: string }> = {
+  idle:               { primary: 'oklch(0.45 0.18 290)', secondary: 'oklch(0.42 0.15 310)', tertiary: 'oklch(0.48 0.14 260)' },
+  listening:          { primary: 'oklch(0.55 0.22 230)', secondary: 'oklch(0.50 0.18 210)', tertiary: 'oklch(0.52 0.16 250)' },
+  thinking:           { primary: 'oklch(0.55 0.22 55)',  secondary: 'oklch(0.50 0.18 40)',  tertiary: 'oklch(0.52 0.16 70)' },
+  speaking:           { primary: 'oklch(0.55 0.22 145)', secondary: 'oklch(0.50 0.18 130)', tertiary: 'oklch(0.52 0.16 160)' },
+  'generating-image': { primary: 'oklch(0.50 0.22 310)', secondary: 'oklch(0.48 0.18 290)', tertiary: 'oklch(0.52 0.16 330)' },
+  'generating-video': { primary: 'oklch(0.50 0.22 310)', secondary: 'oklch(0.48 0.18 290)', tertiary: 'oklch(0.52 0.16 330)' },
+  writing:            { primary: 'oklch(0.45 0.20 280)', secondary: 'oklch(0.42 0.16 265)', tertiary: 'oklch(0.48 0.14 295)' },
+  analyzing:          { primary: 'oklch(0.45 0.20 280)', secondary: 'oklch(0.42 0.16 265)', tertiary: 'oklch(0.48 0.14 295)' },
 };
 
 export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProps) {
-  const accent = stateAccent[state] ?? stateAccent.idle;
+  const colors = stateAccent[state] ?? stateAccent.idle;
+  const isActive = state !== 'idle';
 
   return (
     <div
@@ -29,7 +30,7 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
       )}
       style={{ mixBlendMode: 'screen' }}
     >
-      {/* Primary floating orb */}
+      {/* Primary floating orb — state-reactive color & intensity */}
       <motion.div
         className="absolute rounded-full"
         style={{
@@ -37,22 +38,22 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
           height: '45%',
           top: '10%',
           left: '20%',
-          background: `radial-gradient(circle, ${accent} 0%, transparent 70%)`,
           filter: 'blur(80px)',
-          opacity: 0.18,
+          background: `radial-gradient(circle, ${colors.primary} 0%, transparent 70%)`,
         }}
         animate={{
           x: [0, 30, -20, 0],
           y: [0, -20, 15, 0],
+          opacity: isActive ? [0.22, 0.32, 0.22] : [0.18, 0.24, 0.18],
         }}
         transition={{
-          duration: 12,
+          duration: isActive ? 8 : 12,
           repeat: Infinity,
           ease: 'easeInOut',
         }}
       />
 
-      {/* Secondary floating orb */}
+      {/* Secondary floating orb — independent color channel */}
       <motion.div
         className="absolute rounded-full"
         style={{
@@ -60,22 +61,22 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
           height: '35%',
           bottom: '15%',
           right: '15%',
-          background: `radial-gradient(circle, oklch(0.45 0.15 290) 0%, transparent 70%)`,
           filter: 'blur(70px)',
-          opacity: 0.12,
+          background: `radial-gradient(circle, ${colors.secondary} 0%, transparent 70%)`,
         }}
         animate={{
           x: [0, -25, 15, 0],
           y: [0, 20, -10, 0],
+          opacity: isActive ? [0.16, 0.26, 0.16] : [0.12, 0.18, 0.12],
         }}
         transition={{
-          duration: 15,
+          duration: isActive ? 10 : 15,
           repeat: Infinity,
           ease: 'easeInOut',
         }}
       />
 
-      {/* Tertiary subtle accent */}
+      {/* Tertiary subtle accent — adds depth */}
       <motion.div
         className="absolute rounded-full"
         style={{
@@ -83,16 +84,38 @@ export function BackgroundGlow({ state = 'idle', className }: BackgroundGlowProp
           height: '25%',
           top: '50%',
           left: '60%',
-          background: `radial-gradient(circle, oklch(0.50 0.14 230) 0%, transparent 70%)`,
           filter: 'blur(60px)',
-          opacity: 0.10,
+          background: `radial-gradient(circle, ${colors.tertiary} 0%, transparent 70%)`,
         }}
         animate={{
           x: [0, 20, -15, 0],
           y: [0, -15, 20, 0],
+          opacity: isActive ? [0.14, 0.22, 0.14] : [0.10, 0.15, 0.10],
         }}
         transition={{
-          duration: 18,
+          duration: isActive ? 12 : 18,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
+
+      {/* Active state: extra radiant pulse overlay */}
+      <motion.div
+        className="absolute rounded-full"
+        style={{
+          width: '55%',
+          height: '55%',
+          top: '25%',
+          left: '22%',
+          filter: 'blur(100px)',
+          background: `radial-gradient(circle, ${colors.primary} 0%, transparent 60%)`,
+        }}
+        animate={{
+          opacity: isActive ? [0, 0.12, 0] : 0,
+          scale: isActive ? [0.9, 1.1, 0.9] : 0.9,
+        }}
+        transition={{
+          duration: 4,
           repeat: Infinity,
           ease: 'easeInOut',
         }}

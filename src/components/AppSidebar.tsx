@@ -3,6 +3,8 @@ import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, Mi
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
+import { DynamicIcon } from '@/components/ui/dynamic-icon';
+import { triggerHaptic } from '@/utils/haptics';
 import type { CompanionState } from '@/types';
 
 export type NavSection =
@@ -45,13 +47,16 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
   const sysItems   = navItems.filter((i) => i.group === 'system');
 
   const renderItem = (item: (typeof navItems)[number]) => {
-    const Icon = item.icon;
+    const IconComp = item.icon;
     const isActive = activeSection === item.id;
 
     return (
       <button
         key={item.id}
-        onClick={() => onSectionChange(item.id)}
+        onClick={() => {
+          triggerHaptic('selection');
+          onSectionChange(item.id);
+        }}
         className={cn(
           'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all relative',
           isActive
@@ -67,7 +72,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
         )}
-        <Icon size={20} weight={isActive ? 'fill' : 'regular'} className="relative z-10" />
+        <DynamicIcon icon={IconComp} isActive={isActive} size={20} className="relative z-10" />
         <span className="relative z-10">{item.label}</span>
       </button>
     );
