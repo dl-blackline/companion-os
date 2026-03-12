@@ -37,6 +37,11 @@ import {
 import type { CompanionSettings, ConversationMode } from '@/types';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import {
+  setModelSetting,
+  getCachedModels,
+  preloadModels,
+} from '@/utils/model-cache';
 
 interface SettingsViewProps {
   settings: CompanionSettings;
@@ -233,18 +238,16 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
     }
   });
 
-  // Model registry loaded from backend
-  const [modelRegistry, setModelRegistry] = useState<ModelRegistry | null>(null);
+  // Model registry — start with localStorage cache for instant render, then
+  // refresh from backend in the background.
+  const [modelRegistry, setModelRegistry] = useState<ModelRegistry | null>(
+    () => getCachedModels() as ModelRegistry | null
+  );
 
   useEffect(() => {
-    fetch('/.netlify/functions/models')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) setModelRegistry(data);
-      })
-      .catch((err) => {
-        console.warn('Failed to load model registry:', err);
-      });
+    preloadModels().then((data) => {
+      if (data) setModelRegistry(data as ModelRegistry);
+    });
   }, []);
 
   const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
@@ -309,16 +312,32 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
   };
 
   const updateModel = (patch: Partial<CompanionSettings['modelSettings']>) => {
+    // Optimistic UI — update React state instantly
     onSettingsChange({
       ...settings,
       modelSettings: { ...settings.modelSettings, ...patch },
     });
 
-    // Persist individual model selections to localStorage for easy access
-    // by the chat request layer.
+    // Persist individual model selections to localStorage via model-cache
+    // so the chat request layer can read them synchronously.
+    const CATEGORY_MAP: Record<string, string> = {
+      defaultModel: 'chat',
+      fallbackModel: 'fallback',
+      imageModel: 'image',
+      videoModel: 'video',
+      musicModel: 'music',
+      voiceModel: 'voice',
+    };
+
     for (const [field, storageKey] of Object.entries(MODEL_STORAGE_KEYS)) {
       if (field in patch) {
         localStorage.setItem(storageKey, (patch as Record<string, string>)[field]);
+      }
+    }
+
+    for (const [field, cacheType] of Object.entries(CATEGORY_MAP)) {
+      if (field in patch) {
+        setModelSetting(cacheType, (patch as Record<string, string>)[field]);
       }
     }
   };

@@ -12,7 +12,8 @@ import {
   Robot, 
   Sparkle,
   MagnifyingGlass,
-  Star
+  Star,
+  Lightning
 } from '@phosphor-icons/react';
 import type { Conversation, Message, ConversationMode } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
@@ -20,6 +21,7 @@ import { getModeConfig, getAllModes } from '@/lib/modes';
 import { getPromptGenerationAwareness } from '@/lib/prompt-studio';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
 
 export function ChatView() {
   const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
@@ -110,7 +112,7 @@ Please provide a helpful response.`;
             conversation_id: activeConversation.id,
             user_id: 'default-user',
             message: fullPrompt,
-            model: localStorage.getItem('chat_model') || undefined,
+            model: getModelSetting('chat') || localStorage.getItem('chat_model') || undefined,
           },
         }),
       });
@@ -353,9 +355,15 @@ Please provide a helpful response.`;
                   <PaperPlaneRight size={18} weight="fill" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Press Enter to send, Shift+Enter for new line
-              </p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Press Enter to send, Shift+Enter for new line
+                </p>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                  <Lightning size={12} weight="fill" className="text-primary" />
+                  {getModelDisplayName('chat', getModelSetting('chat') || localStorage.getItem('chat_model') || 'openai')}
+                </span>
+              </div>
             </div>
           </div>
         </div>
