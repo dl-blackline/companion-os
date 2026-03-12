@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
 import { orchestrate } from "../../lib/orchestrator.js";
+import { runAI } from "../../lib/ai-router.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
 import {
@@ -90,77 +91,99 @@ async function handleChat(data) {
     });
   }
 
-  const supabase = getSupabase();
+  // Normalize the incoming message into an OpenAI-style messages array so the
+  // AI router can use it directly if the orchestrator is unavailable.
+  const messages = [{ role: "user", content: message }];
 
-  const result = await orchestrate({
-    message,
-    user_id,
-    conversation_id,
-    getRecentConversation: (convId) =>
-      getRecentConversation(supabase, convId),
-    model,
-  });
+  try {
+    const supabase = getSupabase();
 
-  // For media results, return the media payload directly
-  if (result.isMedia) {
+    const result = await orchestrate({
+      message,
+      user_id,
+      conversation_id,
+      getRecentConversation: (convId) =>
+        getRecentConversation(supabase, convId),
+      model,
+    });
+
+    // For media results, return the media payload directly
+    if (result.isMedia) {
+      return response(200, {
+        response: result.response,
+        intent: result.intent,
+      });
+    }
+
+    // Save both the user message and the assistant response
+    const assistantEmbedding = await generateEmbedding(result.response);
+
+    await Promise.all([
+      saveMessage(supabase, {
+        conversation_id,
+        user_id,
+        role: "user",
+        content: message,
+        embedding: result.embedding,
+      }),
+      saveMessage(supabase, {
+        conversation_id,
+        user_id,
+        role: "assistant",
+        content: result.response,
+        embedding: assistantEmbedding,
+      }),
+    ]);
+
+    // Post-response memory processing (non-blocking)
+    const conversationHistory = (result.context.recentConversation || [])
+      .map((m) => `[${m.role}]: ${m.content}`)
+      .join("\n");
+
+    Promise.allSettled([
+      processMemory({
+        user_id,
+        conversation_id,
+        message,
+        conversationHistory,
+        messageCount: (result.context.recentConversation || []).length,
+      }),
+      processKnowledgeGraph(user_id, message),
+      detectEmotions(message)
+        .then((signals) =>
+          storeEmotionalSignals({
+            user_id,
+            conversation_id,
+            signals,
+            source_message: message,
+          })
+        )
+        .catch((err) => {
+          console.error("Emotion processing error:", err.message);
+        }),
+    ]);
+
     return response(200, {
       response: result.response,
       intent: result.intent,
     });
+  } catch (orchestrateError) {
+    console.error("Orchestration error, falling back to direct AI:", orchestrateError.message);
+
+    // Fallback: call the AI router directly with the normalized messages array
+    try {
+      const aiResponse = await runAI(messages, model);
+      return response(200, {
+        response: aiResponse,
+        intent: { intent: "chat", confidence: 1.0 },
+      });
+    } catch (routerError) {
+      console.error("AI router error:", routerError);
+      return response(200, {
+        response: "I'm having trouble connecting to the AI service. Please try again.",
+      });
+    }
   }
-
-  // Save both the user message and the assistant response
-  const assistantEmbedding = await generateEmbedding(result.response);
-
-  await Promise.all([
-    saveMessage(supabase, {
-      conversation_id,
-      user_id,
-      role: "user",
-      content: message,
-      embedding: result.embedding,
-    }),
-    saveMessage(supabase, {
-      conversation_id,
-      user_id,
-      role: "assistant",
-      content: result.response,
-      embedding: assistantEmbedding,
-    }),
-  ]);
-
-  // Post-response memory processing (non-blocking)
-  const conversationHistory = (result.context.recentConversation || [])
-    .map((m) => `[${m.role}]: ${m.content}`)
-    .join("\n");
-
-  Promise.allSettled([
-    processMemory({
-      user_id,
-      conversation_id,
-      message,
-      conversationHistory,
-      messageCount: (result.context.recentConversation || []).length,
-    }),
-    processKnowledgeGraph(user_id, message),
-    detectEmotions(message)
-      .then((signals) =>
-        storeEmotionalSignals({
-          user_id,
-          conversation_id,
-          signals,
-          source_message: message,
-        })
-      )
-      .catch((err) => {
-        console.error("Emotion processing error:", err.message);
-      }),
-  ]);
-
-  return response(200, {
-    response: result.response,
-    intent: result.intent,
-  });
 }
 
 // ---------------------------------------------------------------------------
