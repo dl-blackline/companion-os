@@ -220,6 +220,15 @@ export class RealtimeVoiceClient {
     );
   }
 
+  /** Enable or disable the microphone track without disconnecting. */
+  setMicEnabled(enabled: boolean): void {
+    if (this.localStream) {
+      for (const track of this.localStream.getAudioTracks()) {
+        track.enabled = enabled;
+      }
+    }
+  }
+
   // ── Private ──
 
   private async fetchEphemeralKey(): Promise<string> {

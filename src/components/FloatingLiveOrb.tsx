@@ -113,7 +113,7 @@ export function FloatingLiveOrb() {
 
             {/* Voice selector */}
             <div className="floating-orb-panel-voice">
-              <SpeakerSimpleHigh size={16} className="text-muted-foreground" />
+              <SpeakerSimpleHigh size={16} className="text-muted-foreground" aria-hidden="true" />
               <select
                 className="floating-orb-panel-select"
                 value={voice}
@@ -165,8 +165,8 @@ export function FloatingLiveOrb() {
       <motion.button
         className={cn('floating-orb-btn', orbStyle)}
         style={{
-          minWidth: isMobile ? 64 : 56,
-          minHeight: isMobile ? 64 : 56,
+          width: isMobile ? 64 : 56,
+          height: isMobile ? 64 : 56,
         }}
         onClick={handleClick}
         onPointerDown={handlePointerDown}

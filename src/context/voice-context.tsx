@@ -157,22 +157,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     const client = clientRef.current;
     if (!client) return;
 
-    // Access the private localStream via the PC senders
     setIsMuted((prev) => {
       const muted = !prev;
-      // Mute/unmute by disabling the audio track on the peer connection
-      try {
-        const pc = (client as unknown as { pc: RTCPeerConnection | null }).pc;
-        if (pc) {
-          const senders = pc.getSenders();
-          const audioSender = senders.find((s) => s.track?.kind === 'audio');
-          if (audioSender?.track) {
-            audioSender.track.enabled = !muted;
-          }
-        }
-      } catch {
-        // Ignore if we can't access the track
-      }
+      client.setMicEnabled(!muted);
       return muted;
     });
   }, []);
