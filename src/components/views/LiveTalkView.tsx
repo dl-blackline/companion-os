@@ -84,6 +84,19 @@ export function LiveTalkView({
   const synthRef = useRef(window.speechSynthesis);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isProcessingRef = useRef(false);
+  const voiceEnabledRef = useRef(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Read voice mode preference from localStorage
+  const getVoiceMode = (): 'continuous' | 'push-to-talk' => {
+    try {
+      return (localStorage.getItem('voice_mode') as 'continuous' | 'push-to-talk') || 'push-to-talk';
+    } catch {
+      return 'push-to-talk';
+    }
+  };
+
+  const isContinuousMode = () => getVoiceMode() === 'continuous';
 
   // Auto-scroll to bottom of transcript
   useEffect(() => {
@@ -101,13 +114,25 @@ export function LiveTalkView({
     setInterimText('');
     if (!isProcessingRef.current) {
       setCompanionState('idle');
-      setStatusText('Tap the mic to start talking');
+      setStatusText(voiceEnabledRef.current ? 'Resuming…' : 'Tap the mic to start talking');
     }
   }, [setCompanionState]);
 
   const speak = useCallback(
     (text: string) => {
-      if (!isSpeakerOn) return;
+      if (!isSpeakerOn) {
+        // Even if speaker is off, handle continuous mode resume
+        isProcessingRef.current = false;
+        if (voiceEnabledRef.current && isContinuousMode()) {
+          setTimeout(() => {
+            if (voiceEnabledRef.current) startListeningInternal();
+          }, 300);
+        } else {
+          setCompanionState('idle');
+          setStatusText('Tap the mic to start talking');
+        }
+        return;
+      }
       synthRef.current.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.05;
@@ -119,17 +144,34 @@ export function LiveTalkView({
       };
       utterance.onend = () => {
         isProcessingRef.current = false;
-        setCompanionState('idle');
-        setStatusText('Tap the mic to start talking');
+        if (voiceEnabledRef.current && isContinuousMode()) {
+          setCompanionState('idle');
+          setStatusText('Resuming…');
+          setTimeout(() => {
+            if (voiceEnabledRef.current) startListeningInternal();
+          }, 300);
+        } else {
+          setCompanionState('idle');
+          setStatusText('Tap the mic to start talking');
+        }
       };
       utterance.onerror = () => {
         isProcessingRef.current = false;
-        setCompanionState('idle');
-        setStatusText('Tap the mic to start talking');
+        if (voiceEnabledRef.current && isContinuousMode()) {
+          setCompanionState('idle');
+          setStatusText('Resuming…');
+          setTimeout(() => {
+            if (voiceEnabledRef.current) startListeningInternal();
+          }, 300);
+        } else {
+          setCompanionState('idle');
+          setStatusText('Tap the mic to start talking');
+        }
       };
 
       synthRef.current.speak(utterance);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [isSpeakerOn, setCompanionState]
   );
 
@@ -213,7 +255,7 @@ Respond as ${aiName}:`;
         const errorTurn: TalkTurn = {
           id: generateId(),
           role: 'assistant',
-          text: `⚠️ ${errorMessage}`,
+          text: '⚠️ Voice connection lost. Reconnecting…',
           timestamp: Date.now(),
         };
         setSession((prev) => ({
@@ -222,14 +264,27 @@ Respond as ${aiName}:`;
         }));
 
         isProcessingRef.current = false;
-        setCompanionState('idle');
-        setStatusText(errorMessage);
+
+        if (voiceEnabledRef.current && isContinuousMode()) {
+          setCompanionState('idle');
+          setStatusText('Voice connection lost. Reconnecting…');
+          // Auto-restart the voice loop after a brief delay
+          reconnectTimerRef.current = setTimeout(() => {
+            if (voiceEnabledRef.current) {
+              setStatusText('Resuming…');
+              startListeningInternal();
+            }
+          }, 2000);
+        } else {
+          setCompanionState('idle');
+          setStatusText(errorMessage);
+        }
       }
     },
     [session.id, session.transcript, aiName, setCompanionState, speak]
   );
 
-  const startListening = useCallback(() => {
+  const startListeningInternal = useCallback(() => {
     const w = window as typeof window & {
       SpeechRecognition?: typeof SpeechRecognition;
       webkitSpeechRecognition?: typeof SpeechRecognition;
@@ -274,24 +329,50 @@ Respond as ${aiName}:`;
       setIsMicOn(false);
       setInterimText('');
       if (!isProcessingRef.current) {
-        setCompanionState('idle');
-        setStatusText('Tap the mic to start talking');
+        // In continuous mode, auto-restart listening if no speech was detected
+        if (voiceEnabledRef.current && isContinuousMode()) {
+          setTimeout(() => {
+            if (voiceEnabledRef.current && !isProcessingRef.current) {
+              startListeningInternal();
+            }
+          }, 300);
+        } else {
+          setCompanionState('idle');
+          setStatusText('Tap the mic to start talking');
+        }
       }
     };
 
-    rec.onerror = () => {
+    rec.onerror = (ev) => {
       setIsMicOn(false);
       setInterimText('');
-      setCompanionState('idle');
-      setStatusText('Tap the mic to start talking');
+      // In continuous mode, auto-restart on recoverable errors
+      if (voiceEnabledRef.current && isContinuousMode() && ev.error !== 'not-allowed') {
+        setTimeout(() => {
+          if (voiceEnabledRef.current) startListeningInternal();
+        }, 1000);
+      } else {
+        setCompanionState('idle');
+        setStatusText('Tap the mic to start talking');
+      }
     };
 
     recognitionRef.current = rec;
     rec.start();
   }, [setCompanionState, processUserMessage]);
 
+  const startListening = useCallback(() => {
+    voiceEnabledRef.current = true;
+    startListeningInternal();
+  }, [startListeningInternal]);
+
   const handleMicToggle = () => {
-    if (isMicOn) {
+    if (isMicOn || voiceEnabledRef.current) {
+      voiceEnabledRef.current = false;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       stopListening();
     } else {
       startListening();
@@ -300,6 +381,11 @@ Respond as ${aiName}:`;
 
   const handleClearSession = () => {
     synthRef.current.cancel();
+    voiceEnabledRef.current = false;
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     stopListening();
     setSession({
       id: generateId(),
@@ -313,6 +399,10 @@ Respond as ${aiName}:`;
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      voiceEnabledRef.current = false;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
       synthRef.current.cancel();
       recognitionRef.current?.stop();
     };
