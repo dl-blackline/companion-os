@@ -18,6 +18,8 @@ import {
   addWorkflowStep,
   runWorkflow,
 } from "../../lib/workflow-engine.js";
+import { generateMedia } from "../../lib/media-engine.js";
+import { processVoiceTurn } from "../../lib/voice-engine.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -78,7 +80,7 @@ async function saveMessage(
 /* -------------------------------------------------------------------------- */
 
 async function handleChat(data) {
-  const { conversation_id, user_id, message, model } = data;
+  const { conversation_id, user_id, message, model, stream } = data;
 
   if (!conversation_id || !user_id || !message) {
     return response(400, {
@@ -158,6 +160,28 @@ async function handleChat(data) {
         )
         .catch(() => {}),
     ]);
+
+    /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
+
+    if (stream) {
+      // Return response as a newline-delimited stream for lower latency
+      const tokens = result.response.split(" ");
+      const chunks = tokens.map(
+        (token, i) =>
+          JSON.stringify({ token: i < tokens.length - 1 ? token + " " : token, done: false }) + "\n"
+      );
+      chunks.push(JSON.stringify({ token: "", done: true }) + "\n");
+
+      return {
+        statusCode: 200,
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "application/x-ndjson",
+          "Transfer-Encoding": "chunked",
+        },
+        body: chunks.join(""),
+      };
+    }
 
     return response(200, {
       response: result.response,
@@ -243,22 +267,19 @@ async function handleMedia(data) {
     return response(400, { error: "Prompt required" });
   }
 
-  const piRes = await fetch("https://api.piapi.ai/api/v1/task", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": process.env.PIAPI_API_KEY,
-    },
-    body: JSON.stringify({
-      model: "flux",
-      task_type: "image_generation",
-      input: { prompt: data.prompt },
-    }),
-  });
+  try {
+    const result = await generateMedia({
+      type: data.type || "image",
+      model: data.model,
+      prompt: data.prompt,
+      options: data.options || {},
+    });
 
-  const result = await piRes.json();
-
-  return response(200, result);
+    return response(200, result);
+  } catch (err) {
+    console.error("Media generation error:", err.message);
+    return response(500, { error: err.message });
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -318,6 +339,31 @@ async function handleRealtime(data) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                   VOICE                                    */
+/* -------------------------------------------------------------------------- */
+
+async function handleVoice(data) {
+  if (!data.text) {
+    return response(400, { error: "Missing required field: text" });
+  }
+
+  try {
+    const result = await processVoiceTurn({
+      text: data.text,
+      systemPrompt: data.systemPrompt || "",
+      model: data.model,
+      voiceId: data.voiceId,
+      useElevenLabs: data.useElevenLabs || false,
+    });
+
+    return response(200, result);
+  } catch (err) {
+    console.error("Voice processing error:", err.message);
+    return response(500, { error: err.message });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                   GATEWAY                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -356,6 +402,9 @@ export async function handler(event) {
 
       case "realtime":
         return await handleRealtime(payload);
+
+      case "voice":
+        return await handleVoice(payload);
 
       default:
         return response(400, { error: "Invalid request type" });

@@ -83,6 +83,17 @@ export function LiveTalkView({
     }
   }, [setCompanionState]);
 
+  // Interrupt AI speech — if user starts speaking while AI is still talking,
+  // stop TTS playback immediately and resume listening (Part 7).
+  const interruptSpeech = useCallback(() => {
+    if (synthRef.current.speaking) {
+      synthRef.current.cancel();
+      isProcessingRef.current = false;
+      setCompanionState('listening');
+      setStatusText('Listening…');
+    }
+  }, [setCompanionState]);
+
   const speak = useCallback(
     (text: string) => {
       if (!isSpeakerOn) {
@@ -105,7 +116,7 @@ export function LiveTalkView({
 
       utterance.onstart = () => {
         setCompanionState('speaking');
-        setStatusText('Speaking…');
+        setStatusText(`${aiName} is speaking…`);
       };
       utterance.onend = () => {
         isProcessingRef.current = false;
@@ -137,7 +148,7 @@ export function LiveTalkView({
       synthRef.current.speak(utterance);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isSpeakerOn, setCompanionState]
+    [isSpeakerOn, setCompanionState, aiName]
   );
 
   const processUserMessage = useCallback(
@@ -291,6 +302,11 @@ Respond as ${aiName}:`;
     };
 
     rec.onresult = (e: SpeechRecognitionEvent) => {
+      // Interrupt AI speech if user starts talking (Part 7 — Interruptible Voice)
+      if (synthRef.current.speaking) {
+        interruptSpeech();
+      }
+
       let interim = '';
       let final = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -339,7 +355,7 @@ Respond as ${aiName}:`;
 
     recognitionRef.current = rec;
     rec.start();
-  }, [setCompanionState, processUserMessage]);
+  }, [setCompanionState, processUserMessage, interruptSpeech]);
 
   const startListening = useCallback(() => {
     voiceEnabledRef.current = true;
@@ -452,7 +468,7 @@ Respond as ${aiName}:`;
           showRipples={true}
         />
 
-        {/* Waveform */}
+        {/* Waveform + state indicator labels */}
         <div className="h-12 flex items-center">
           <AnimatePresence mode="wait">
             {isListening && (
@@ -461,6 +477,7 @@ Respond as ${aiName}:`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-1"
               >
                 <AudioVisualizer active={true} color="oklch(0.65 0.20 230)" colorEnd="oklch(0.55 0.18 260)" height={48} />
               </motion.div>
@@ -471,6 +488,7 @@ Respond as ${aiName}:`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-1"
               >
                 <AudioVisualizer active={true} color="oklch(0.65 0.22 145)" colorEnd="oklch(0.75 0.18 65)" height={48} />
               </motion.div>
@@ -481,17 +499,19 @@ Respond as ${aiName}:`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-1.5"
+                className="flex flex-col items-center gap-2"
               >
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'oklch(0.60 0.22 310)' }}
-                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-                    transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.22 }}
-                  />
-                ))}
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: 'oklch(0.60 0.22 310)' }}
+                      animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+                      transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.22 }}
+                    />
+                  ))}
+                </div>
               </motion.div>
             )}
             {!isActive && (
@@ -506,6 +526,29 @@ Respond as ${aiName}:`;
             )}
           </AnimatePresence>
         </div>
+
+        {/* State indicator badge */}
+        <AnimatePresence mode="wait">
+          {isActive && (
+            <motion.div
+              key={companionState}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                'px-3 py-1 rounded-full text-[11px] font-medium tracking-wide uppercase',
+                isListening && 'bg-[oklch(0.65_0.20_230/0.15)] text-[oklch(0.65_0.20_230)]',
+                isSpeaking && 'bg-[oklch(0.65_0.22_145/0.15)] text-[oklch(0.65_0.22_145)]',
+                isThinking && 'bg-[oklch(0.60_0.22_310/0.15)] text-[oklch(0.60_0.22_310)]',
+              )}
+            >
+              {isListening && '🎙 Listening'}
+              {isSpeaking && '🔊 Speaking'}
+              {isThinking && '💭 Thinking'}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Status text */}
         <motion.p
