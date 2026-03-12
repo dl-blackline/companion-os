@@ -271,22 +271,14 @@ export function AICore({ state, size = 'lg', onClick, className }: AICoreProps) 
                   height: s.waveH,
                   background: isListening ? c.primary : c.secondary,
                 }}
-                animate={
-                  showWave
-                    ? { scaleY: bar.scaleY }
-                    : { scaleY: 0.1 }
-                }
-                transition={
-                  showWave
-                    ? {
-                        duration: bar.duration,
-                        repeat: Infinity,
-                        repeatType: 'loop' as const,
-                        delay: bar.delay,
-                        ease: 'easeInOut',
-                      }
-                    : { duration: 0.3, ease: 'easeOut' }
-                }
+                animate={{ scaleY: bar.scaleY }}
+                transition={{
+                  duration: bar.duration,
+                  repeat: Infinity,
+                  repeatType: 'loop' as const,
+                  delay: bar.delay,
+                  ease: 'easeInOut',
+                }}
               />
             ))}
           </motion.div>
