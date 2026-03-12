@@ -18,7 +18,7 @@ import {
   addWorkflowStep,
   runWorkflow,
 } from "../../lib/workflow-engine.js";
-import { generateMedia } from "../../lib/media-engine.js";
+import { runMediaTask } from "../../lib/media-engine.js";
 import { processVoiceTurn } from "../../lib/voice-engine.js";
 import { runTask } from "../../lib/multimodal-engine.js";
 
@@ -284,11 +284,9 @@ async function handleMedia(data) {
   }
 
   try {
-    const result = await generateMedia({
-      type: data.type || "image",
-      model: data.model,
+    const result = await runMediaTask({
+      type: data.media_type || data.type || "image",
       prompt: data.prompt,
-      options: data.options || {},
     });
 
     return response(200, result);
@@ -463,6 +461,8 @@ export async function handler(event) {
   try {
     const body = JSON.parse(event.body);
 
+    console.log("AI Gateway Request:", body);
+
     const { type, data, action } = body;
 
     const payload = data || body;
@@ -482,6 +482,9 @@ export async function handler(event) {
         return await handleMedia(payload);
 
       case "workflow":
+        return await handleWorkflow(payload);
+
+      case "agent":
         return await handleWorkflow(payload);
 
       case "realtime":
