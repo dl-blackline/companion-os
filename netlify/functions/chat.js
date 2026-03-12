@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
+import { runAI } from "../../lib/ai-router.js";
 import { orchestrate } from "../../lib/orchestrator.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
@@ -137,6 +138,22 @@ export async function handler(event) {
       }),
     };
   } catch (err) {
+    // Orchestration failed — attempt a direct AI response via the resilient
+    // router so the user still receives a meaningful reply.
+    try {
+      const { message } = JSON.parse(event.body);
+      const response = await runAI({
+        system: "You are a helpful assistant.",
+        user: message,
+      });
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ response }),
+      };
+    } catch (fallbackErr) {
+      console.error("Fallback AI call also failed:", fallbackErr.message);
+    }
+
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
