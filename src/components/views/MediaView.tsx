@@ -76,7 +76,21 @@ function GenerationCard({
             </span>
           </div>
         )}
-        {item.status === 'complete' && (
+        {item.status === 'complete' && item.resultUrl && item.type === 'photo' && (
+          <img
+            src={item.resultUrl}
+            alt={item.prompt}
+            className="w-full h-full object-cover"
+          />
+        )}
+        {item.status === 'complete' && item.resultUrl && item.type === 'video' && (
+          <video
+            src={item.resultUrl}
+            controls
+            className="w-full h-full object-cover"
+          />
+        )}
+        {item.status === 'complete' && !item.resultUrl && (
           <div className="flex flex-col items-center gap-2 p-4 text-center">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -169,7 +183,27 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
     setPrompt('');
 
     try {
-      const descriptionPrompt = `You are a ${activeTab === 'photo' ? 'photo' : 'video'} generation AI system named ${aiName}.
+      // Call the media generation endpoint via the multimodal engine
+      const mediaRes = await fetch('/.netlify/functions/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'media',
+          data: {
+            type: activeTab === 'photo' ? 'image' : 'video',
+            prompt: currentPrompt,
+            options: { style: selectedStyle },
+          },
+        }),
+      });
+
+      const mediaData = await mediaRes.json();
+
+      if (!mediaRes.ok || mediaData.error) {
+        // Media generation may not be configured — fall back to description mode
+        console.warn('Media API unavailable, falling back to description mode:', mediaData.error);
+
+        const descriptionPrompt = `You are a ${activeTab === 'photo' ? 'photo' : 'video'} generation AI system named ${aiName}.
 
 A user has requested the following ${activeTab === 'photo' ? 'photorealistic portrait/photo' : 'cinematic video'}:
 
@@ -178,40 +212,55 @@ Style: ${selectedStyle}
 
 Describe in 2-3 vivid, evocative sentences what this ${activeTab === 'photo' ? 'photograph' : 'video'} looks like — as if describing the finished output to someone who cannot see it. Be highly specific about lighting, composition, subject, mood, and visual quality. Write in present tense as if the image/video already exists.`;
 
-      const res = await fetch('/.netlify/functions/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'chat',
-          data: {
-            conversation_id: newItem.id,
-            user_id: 'default-user',
-            message: descriptionPrompt,
-          },
-        }),
-      });
+        const res = await fetch('/.netlify/functions/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'chat',
+            data: {
+              conversation_id: newItem.id,
+              user_id: 'default-user',
+              message: descriptionPrompt,
+            },
+          }),
+        });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Chat API error:', res.status, errData);
-        throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Chat API error:', res.status, errData);
+          throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        setGallery((prev) =>
+          prev.map((item) =>
+            item.id === newItem.id
+              ? {
+                  ...item,
+                  status: 'complete',
+                  resultDescription: data.response,
+                  completedAt: Date.now(),
+                }
+              : item
+          )
+        );
+      } else {
+        // Media generation succeeded — use the returned URL
+        setGallery((prev) =>
+          prev.map((item) =>
+            item.id === newItem.id
+              ? {
+                  ...item,
+                  status: 'complete',
+                  resultUrl: mediaData.url,
+                  resultDescription: mediaData.prompt || currentPrompt,
+                  completedAt: Date.now(),
+                }
+              : item
+          )
+        );
       }
-
-      const data = await res.json();
-      const description = data.response;
-
-      setGallery((prev) =>
-        prev.map((item) =>
-          item.id === newItem.id
-            ? {
-                ...item,
-                status: 'complete',
-                resultDescription: description,
-                completedAt: Date.now(),
-              }
-            : item
-        )
-      );
     } catch {
       setGallery((prev) =>
         prev.map((item) =>

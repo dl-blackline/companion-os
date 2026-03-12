@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
 import { orchestrate } from "../../lib/orchestrator.js";
-import { runAI } from "../../lib/ai-router.js";
+import { runAI, streamAI } from "../../lib/ai-router.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
 import {
@@ -20,6 +20,7 @@ import {
 } from "../../lib/workflow-engine.js";
 import { generateMedia } from "../../lib/media-engine.js";
 import { processVoiceTurn } from "../../lib/voice-engine.js";
+import { runTask } from "../../lib/multimodal-engine.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -164,12 +165,27 @@ async function handleChat(data) {
     /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
 
     if (stream) {
-      // Return response as a newline-delimited stream for lower latency
-      const tokens = result.response.split(" ");
-      const chunks = tokens.map(
-        (token, i) =>
-          JSON.stringify({ token: i < tokens.length - 1 ? token + " " : token, done: false }) + "\n"
-      );
+      // True token streaming via the OpenAI streaming API
+      const chunks = [];
+      try {
+        for await (const token of streamAI(
+          [{ role: "user", content: message }],
+          model
+        )) {
+          chunks.push(
+            JSON.stringify({ token, done: false }) + "\n"
+          );
+        }
+      } catch (streamErr) {
+        // If streaming fails, fall back to word-splitting the already-fetched result
+        console.warn("Streaming fallback: splitting orchestrator response:", streamErr.message);
+        const tokens = result.response.split(" ");
+        for (let i = 0; i < tokens.length; i++) {
+          chunks.push(
+            JSON.stringify({ token: i < tokens.length - 1 ? tokens[i] + " " : tokens[i], done: false }) + "\n"
+          );
+        }
+      }
       chunks.push(JSON.stringify({ token: "", done: true }) + "\n");
 
       return {
@@ -364,6 +380,30 @@ async function handleVoice(data) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                MULTIMODAL                                  */
+/* -------------------------------------------------------------------------- */
+
+async function handleMultimodal(data) {
+  if (!data.taskType) {
+    return response(400, { error: "Missing required field: taskType" });
+  }
+
+  try {
+    const result = await runTask({
+      type: data.taskType,
+      prompt: data.prompt,
+      model: data.model,
+      options: data.options || {},
+    });
+
+    return response(200, result);
+  } catch (err) {
+    console.error("Multimodal engine error:", err.message);
+    return response(500, { error: err.message });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                   GATEWAY                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -405,6 +445,9 @@ export async function handler(event) {
 
       case "voice":
         return await handleVoice(payload);
+
+      case "multimodal":
+        return await handleMultimodal(payload);
 
       default:
         return response(400, { error: "Invalid request type" });
