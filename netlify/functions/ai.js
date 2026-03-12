@@ -38,49 +38,44 @@ function getSupabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Missing Supabase environment configuration");
   }
+
   return createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }
 
-// ---------------------------------------------------------------------------
-// Chat handler – mirrors netlify/functions/chat.js logic
-// ---------------------------------------------------------------------------
-
 async function getRecentConversation(supabase, conversation_id) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from(table)
     .select("role, content")
     .eq("conversation_id", conversation_id)
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (error) {
-    console.error("Recent conversation error:", error.message);
-    return [];
-  }
-
   return (data || []).reverse();
 }
 
-async function saveMessage(supabase, { conversation_id, user_id, role, content, embedding }) {
+async function saveMessage(
+  supabase,
+  { conversation_id, user_id, role, content, embedding }
+) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
-  const { error } = await supabase.from(table).insert({
+  await supabase.from(table).insert({
     conversation_id,
     user_id,
     role,
     content,
     embedding,
   });
-
-  if (error) {
-    console.error("Save message error:", error.message);
-  }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   CHAT                                     */
+/* -------------------------------------------------------------------------- */
 
 async function handleChat(data) {
   const { conversation_id, user_id, message, model } = data;
@@ -91,13 +86,9 @@ async function handleChat(data) {
     });
   }
 
-  // Normalize the incoming message into an OpenAI-style messages array so the
-  // AI router can use it directly if the orchestrator is unavailable.
-  const messages = [{ role: "user", content: message }];
+  const supabase = getSupabase();
 
   try {
-    const supabase = getSupabase();
-
     const result = await orchestrate({
       message,
       user_id,
@@ -107,16 +98,19 @@ async function handleChat(data) {
       model,
     });
 
-    // For media results, return the media payload directly
-    if (result.isMedia) {
-      return response(200, {
-        response: result.response,
-        intent: result.intent,
-      });
+    if (!result || !result.response) {
+      throw new Error("Orchestrator returned empty response");
     }
 
-    // Save both the user message and the assistant response
-    const assistantEmbedding = await generateEmbedding(result.response);
+    /* ----------------------------- SAFE EMBEDDING ---------------------------- */
+
+    let assistantEmbedding = null;
+
+    try {
+      assistantEmbedding = await generateEmbedding(result.response);
+    } catch (err) {
+      console.warn("Embedding generation failed:", err.message);
+    }
 
     await Promise.all([
       saveMessage(supabase, {
@@ -124,8 +118,9 @@ async function handleChat(data) {
         user_id,
         role: "user",
         content: message,
-        embedding: result.embedding,
+        embedding: result.embedding || null,
       }),
+
       saveMessage(supabase, {
         conversation_id,
         user_id,
@@ -135,8 +130,9 @@ async function handleChat(data) {
       }),
     ]);
 
-    // Post-response memory processing (non-blocking)
-    const conversationHistory = (result.context.recentConversation || [])
+    /* ------------------------ NON BLOCKING MEMORY TASKS ---------------------- */
+
+    const conversationHistory = (result.context?.recentConversation || [])
       .map((m) => `[${m.role}]: ${m.content}`)
       .join("\n");
 
@@ -146,9 +142,11 @@ async function handleChat(data) {
         conversation_id,
         message,
         conversationHistory,
-        messageCount: (result.context.recentConversation || []).length,
+        messageCount: result.context?.recentConversation?.length || 0,
       }),
+
       processKnowledgeGraph(user_id, message),
+
       detectEmotions(message)
         .then((signals) =>
           storeEmotionalSignals({
@@ -158,158 +156,122 @@ async function handleChat(data) {
             source_message: message,
           })
         )
-        .catch((err) => {
-          console.error("Emotion processing error:", err.message);
-        }),
+        .catch(() => {}),
     ]);
 
     return response(200, {
       response: result.response,
-      intent: result.intent,
+      intent: result.intent || { intent: "chat", confidence: 1 },
     });
-  } catch (orchestrateError) {
-    console.error("Orchestration error, falling back to direct AI:", orchestrateError.message);
+  } catch (orchestratorError) {
+    console.warn(
+      "Orchestrator failed, falling back to direct AI:",
+      orchestratorError.message
+    );
 
-    // Fallback: call the AI router directly with the normalized messages array
+    /* --------------------------- ROUTER FALLBACK ---------------------------- */
+
     try {
-      const aiResponse = await runAI(messages, model);
+      const aiResponse = await runAI(
+        [{ role: "user", content: message }],
+        model || "openai"
+      );
+
       return response(200, {
         response: aiResponse,
-        intent: { intent: "chat", confidence: 1.0 },
+        intent: { intent: "chat", confidence: 1 },
       });
     } catch (routerError) {
-      console.error("AI router error:", routerError);
+      console.error("Router failed:", routerError);
+
       return response(200, {
-        response: "I'm having trouble connecting to the AI service. Please try again.",
+        response:
+          "I'm having trouble connecting to the AI service right now.",
       });
     }
   }
 }
 
-// ---------------------------------------------------------------------------
-// Memory handler – mirrors search-memory.js and save-message.js
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*                                  MEMORY                                    */
+/* -------------------------------------------------------------------------- */
 
 async function handleMemory(data) {
   const { action } = data;
 
   if (action === "search") {
-    const { content } = data;
-
-    if (!content) {
-      return response(400, { error: "Missing required field: content" });
-    }
-
     const supabase = getSupabase();
-    const embedding = await generateEmbedding(content);
 
-    const { data: results, error } = await supabase.rpc("match_messages", {
+    const embedding = await generateEmbedding(data.content);
+
+    const { data: results } = await supabase.rpc("match_messages", {
       query_embedding: embedding,
       match_count: 5,
     });
-
-    if (error) {
-      return response(500, { error: error.message });
-    }
 
     return response(200, { results });
   }
 
   if (action === "save") {
-    const { conversation_id, user_id, role, content } = data;
-
-    if (!conversation_id || !user_id || !role || !content) {
-      return response(400, {
-        error:
-          "Missing required fields: conversation_id, user_id, role, content",
-      });
-    }
-
     const supabase = getSupabase();
-    const embedding = await generateEmbedding(content);
-    const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
-    const { data: saved, error } = await supabase
-      .from(table)
-      .insert({ conversation_id, user_id, role, content, embedding })
+    const embedding = await generateEmbedding(data.content);
+
+    const { data: saved } = await supabase
+      .from(process.env.CHAT_HISTORY_TABLE || "messages")
+      .insert({
+        conversation_id: data.conversation_id,
+        user_id: data.user_id,
+        role: data.role,
+        content: data.content,
+        embedding,
+      })
       .select();
 
-    if (error) {
-      return response(500, { error: error.message });
-    }
-
-    return response(200, { message: "Message saved", data: saved });
+    return response(200, { data: saved });
   }
 
-  return response(400, {
-    error: "Invalid memory action. Use 'search' or 'save'.",
-  });
+  return response(400, { error: "Invalid memory action" });
 }
 
-// ---------------------------------------------------------------------------
-// Media handler – mirrors generate-media.js
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*                                   MEDIA                                    */
+/* -------------------------------------------------------------------------- */
 
 async function handleMedia(data) {
-  const { prompt, media_type } = data;
-
-  if (!prompt) {
+  if (!data.prompt) {
     return response(400, { error: "Prompt required" });
   }
 
-  const type = media_type || "image";
+  const piRes = await fetch("https://api.piapi.ai/api/v1/task", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.PIAPI_API_KEY,
+    },
+    body: JSON.stringify({
+      model: "flux",
+      task_type: "image_generation",
+      input: { prompt: data.prompt },
+    }),
+  });
 
-  if (type === "image") {
-    const piRes = await fetch("https://api.piapi.ai/api/v1/task", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": process.env.PIAPI_API_KEY,
-      },
-      body: JSON.stringify({
-        model: "flux",
-        task_type: "image_generation",
-        input: { prompt },
-      }),
-    });
+  const result = await piRes.json();
 
-    const result = await piRes.json();
-    return response(200, result);
-  }
-
-  return response(400, { error: "Unsupported media type" });
+  return response(200, result);
 }
 
-// ---------------------------------------------------------------------------
-// Workflow handler – mirrors create-content-project.js + workflow-engine.js
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*                                  WORKFLOW                                  */
+/* -------------------------------------------------------------------------- */
 
 async function handleWorkflow(data) {
-  const { action } = data;
+  if (data.action === "create_project") {
+    const project = await createProject(data);
 
-  if (action === "create_project") {
-    const { user_id, title, description, project_type, steps } = data;
-
-    if (!user_id || !title) {
-      return response(400, {
-        error: "Missing required fields: user_id, title",
-      });
-    }
-
-    const project = await createProject({
-      user_id,
-      title,
-      description,
-      project_type,
-    });
-
-    if (!project) {
-      return response(500, { error: "Failed to create project" });
-    }
-
-    if (steps && Array.isArray(steps)) {
+    if (data.steps) {
       await Promise.all(
-        steps.map((step, i) =>
+        data.steps.map((step, i) =>
           addWorkflowStep({
             project_id: project.id,
             step_order: i + 1,
@@ -323,75 +285,45 @@ async function handleWorkflow(data) {
     return response(200, { project });
   }
 
-  if (action === "run") {
-    const { project_id } = data;
-
-    if (!project_id) {
-      return response(400, { error: "Missing required field: project_id" });
-    }
-
-    const result = await runWorkflow(project_id);
+  if (data.action === "run") {
+    const result = await runWorkflow(data.project_id);
     return response(200, result);
   }
 
-  return response(400, {
-    error: "Invalid workflow action. Use 'create_project' or 'run'.",
-  });
+  return response(400, { error: "Invalid workflow action" });
 }
 
-// ---------------------------------------------------------------------------
-// Realtime handler – mirrors start-session.js and end-session.js
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*                                  REALTIME                                  */
+/* -------------------------------------------------------------------------- */
 
 async function handleRealtime(data) {
-  const { action } = data;
-
-  if (action === "start") {
-    const { user_id, session_type, metadata } = data;
-
-    if (!user_id || !session_type) {
-      return response(400, {
-        error: "Missing required fields: user_id, session_type",
-      });
-    }
-
-    const session = await createSession({ user_id, session_type, metadata });
+  if (data.action === "start") {
+    const session = await createSession(data);
     return response(200, { session });
   }
 
-  if (action === "end") {
-    const { session_id } = data;
-
-    if (!session_id) {
-      return response(400, { error: "Missing required field: session_id" });
-    }
-
-    const existing = await getSession(session_id);
+  if (data.action === "end") {
+    const existing = await getSession(data.session_id);
 
     if (!existing) {
       return response(404, { error: "Session not found" });
     }
 
-    if (existing.status !== "active") {
-      return response(409, { error: "Session is not active" });
-    }
-
-    const session = await endSession(session_id);
+    const session = await endSession(data.session_id);
     return response(200, { session });
   }
 
-  return response(400, {
-    error: "Invalid realtime action. Use 'start' or 'end'.",
-  });
+  return response(400, { error: "Invalid realtime action" });
 }
 
-// ---------------------------------------------------------------------------
-// Main gateway handler
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*                                   GATEWAY                                  */
+/* -------------------------------------------------------------------------- */
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return { statusCode: 204, headers: CORS_HEADERS };
   }
 
   if (event.httpMethod !== "POST") {
@@ -400,13 +332,11 @@ export async function handler(event) {
 
   try {
     const body = JSON.parse(event.body);
-    const { type, data: requestData, action } = body;
 
-    // Support both nested { type, data } and flat payloads where data fields
-    // sit alongside type/action at the top level.
-    const payload = requestData || body;
+    const { type, data, action } = body;
 
-    // Carry action into payload so handlers can read it uniformly.
+    const payload = data || body;
+
     if (action && typeof payload === "object") {
       payload.action = payload.action || action;
     }
@@ -431,7 +361,10 @@ export async function handler(event) {
         return response(400, { error: "Invalid request type" });
     }
   } catch (err) {
-    console.error("AI Gateway error:", err);
-    return response(500, { error: "AI provider temporarily unavailable" });
+    console.error("AI gateway error:", err);
+
+    return response(200, {
+      response: "I'm having trouble connecting to the AI service right now.",
+    });
   }
 }
