@@ -25,8 +25,8 @@ const defaultSettings: CompanionSettings = {
     summarization: true,
   },
   modelSettings: {
-    defaultModel: 'openai',
-    fallbackModel: 'openai',
+    defaultModel: 'gpt-4.1',
+    fallbackModel: 'gpt-4.1-mini',
     imageModel: 'flux',
     videoModel: 'runway',
     musicModel: 'suno',

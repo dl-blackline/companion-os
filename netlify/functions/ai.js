@@ -174,7 +174,7 @@ async function handleChat(data) {
     try {
       const aiResponse = await runAI(
         [{ role: "user", content: message }],
-        model || "openai"
+        model
       );
 
       return response(200, {
