@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectTrigger,
@@ -26,6 +28,11 @@ import {
   ChatCircle,
   Database,
   Export,
+  Heartbeat,
+  Microphone,
+  CheckCircle,
+  XCircle,
+  ArrowsClockwise,
 } from '@phosphor-icons/react';
 import type { CompanionSettings, ConversationMode } from '@/types';
 import { motion } from 'framer-motion';
@@ -134,9 +141,131 @@ function SliderSetting({
   );
 }
 
+type ServiceStatus = 'ok' | 'error' | 'checking' | 'idle';
+
+interface DiagnosticsResult {
+  openai: ServiceStatus;
+  gemini: ServiceStatus;
+  supabase: ServiceStatus;
+  vector_search: ServiceStatus;
+  media: ServiceStatus;
+  realtime_voice: ServiceStatus;
+}
+
+const INITIAL_DIAGNOSTICS: DiagnosticsResult = {
+  openai: 'idle',
+  gemini: 'idle',
+  supabase: 'idle',
+  vector_search: 'idle',
+  media: 'idle',
+  realtime_voice: 'idle',
+};
+
+function StatusBadge({ status }: { status: ServiceStatus }) {
+  if (status === 'checking') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <ArrowsClockwise size={14} className="animate-spin" />
+        Checking…
+      </span>
+    );
+  }
+  if (status === 'ok') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-green-500">
+        <CheckCircle size={14} weight="fill" />
+        Connected
+      </span>
+    );
+  }
+  if (status === 'error') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-red-500">
+        <XCircle size={14} weight="fill" />
+        Error
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs text-muted-foreground/50">—</span>
+  );
+}
+
+const SERVICE_LABELS: Record<keyof DiagnosticsResult, string> = {
+  openai: 'OpenAI',
+  gemini: 'Gemini',
+  supabase: 'Supabase',
+  vector_search: 'Vector Search',
+  media: 'Media APIs',
+  realtime_voice: 'Realtime Voice',
+};
+
 export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) {
   const update = (patch: Partial<CompanionSettings>) => {
     onSettingsChange({ ...settings, ...patch });
+  };
+
+  // Voice mode preference
+  const [voiceMode, setVoiceMode] = useState<'continuous' | 'push-to-talk'>(() => {
+    try {
+      return (localStorage.getItem('voice_mode') as 'continuous' | 'push-to-talk') || 'push-to-talk';
+    } catch {
+      return 'push-to-talk';
+    }
+  });
+
+  const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
+    setVoiceMode(mode);
+    localStorage.setItem('voice_mode', mode);
+  };
+
+  // System diagnostics
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsResult>(INITIAL_DIAGNOSTICS);
+  const [isRunningTest, setIsRunningTest] = useState(false);
+
+  const runSystemTest = async () => {
+    setIsRunningTest(true);
+    setDiagnostics({
+      openai: 'checking',
+      gemini: 'checking',
+      supabase: 'checking',
+      vector_search: 'checking',
+      media: 'checking',
+      realtime_voice: 'checking',
+    });
+
+    try {
+      const res = await fetch('/.netlify/functions/system-health');
+      if (!res.ok) throw new Error('Health check request failed');
+      const data = await res.json();
+
+      // Check realtime voice availability (Web Speech API)
+      const w = window as typeof window & {
+        SpeechRecognition?: typeof SpeechRecognition;
+        webkitSpeechRecognition?: typeof SpeechRecognition;
+      };
+      const hasVoice = !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
+
+      setDiagnostics({
+        openai: data.openai === 'ok' ? 'ok' : 'error',
+        gemini: data.gemini === 'ok' ? 'ok' : 'error',
+        supabase: data.supabase === 'ok' ? 'ok' : 'error',
+        vector_search: data.vector_search === 'ok' ? 'ok' : 'error',
+        media: data.media === 'ok' ? 'ok' : 'error',
+        realtime_voice: hasVoice ? 'ok' : 'error',
+      });
+    } catch {
+      setDiagnostics({
+        openai: 'error',
+        gemini: 'error',
+        supabase: 'error',
+        vector_search: 'error',
+        media: 'error',
+        realtime_voice: 'error',
+      });
+    } finally {
+      setIsRunningTest(false);
+    }
   };
 
   const updateMemory = (patch: Partial<CompanionSettings['memorySettings']>) => {
@@ -189,6 +318,12 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
           </TabsTrigger>
           <TabsTrigger value="privacy" className="gap-1.5">
             <Shield size={16} /> Privacy
+          </TabsTrigger>
+          <TabsTrigger value="voice" className="gap-1.5">
+            <Microphone size={16} /> Voice
+          </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="gap-1.5">
+            <Heartbeat size={16} /> Diagnostics
           </TabsTrigger>
         </TabsList>
 
@@ -531,6 +666,90 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                   }
                 />
               </SettingRow>
+            </Card>
+          </motion.div>
+        </TabsContent>
+
+        {/* Voice Tab */}
+        <TabsContent value="voice">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card className="p-6">
+              <h3 className="font-semibold mb-1">Voice Mode</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Choose how the microphone behaves during Live Talk sessions.
+              </p>
+              <Separator />
+
+              <SettingRow
+                icon={Microphone}
+                label="Continuous Conversation"
+                description="Microphone stays active and automatically resumes listening after the AI responds."
+              >
+                <Switch
+                  checked={voiceMode === 'continuous'}
+                  onCheckedChange={(checked) =>
+                    handleVoiceModeChange(checked ? 'continuous' : 'push-to-talk')
+                  }
+                />
+              </SettingRow>
+
+              <Separator />
+
+              <div className="py-4">
+                <p className="text-xs text-muted-foreground">
+                  {voiceMode === 'continuous'
+                    ? 'Live Talk will automatically start listening and resume after each AI response. Click the mic once to begin.'
+                    : 'Live Talk requires clicking the microphone each time you want to speak (default behavior).'}
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+        </TabsContent>
+
+        {/* Diagnostics Tab */}
+        <TabsContent value="diagnostics">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card className="p-6">
+              <h3 className="font-semibold mb-1">System Diagnostics</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Check the status of all connected services and APIs.
+              </p>
+              <Separator />
+
+              <div className="space-y-0">
+                {(Object.keys(SERVICE_LABELS) as (keyof DiagnosticsResult)[]).map((key) => (
+                  <div key={key}>
+                    <div className="flex items-center justify-between py-3">
+                      <Label className="text-sm font-medium">{SERVICE_LABELS[key]}</Label>
+                      <StatusBadge status={diagnostics[key]} />
+                    </div>
+                    <Separator />
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-5">
+                <Button
+                  onClick={runSystemTest}
+                  disabled={isRunningTest}
+                  className="gap-2"
+                >
+                  {isRunningTest ? (
+                    <ArrowsClockwise size={16} className="animate-spin" />
+                  ) : (
+                    <Heartbeat size={16} />
+                  )}
+                  {isRunningTest ? 'Running…' : 'Run System Test'}
+                </Button>
+              </div>
             </Card>
           </motion.div>
         </TabsContent>
