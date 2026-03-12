@@ -80,16 +80,6 @@ const CITATION_OPTIONS = [
   { value: 'never', label: 'Never' },
 ];
 
-/** Maps modelSettings field names to their localStorage keys. */
-const MODEL_STORAGE_KEYS: Record<string, string> = {
-  defaultModel: 'chat_model',
-  fallbackModel: 'fallback_model',
-  imageModel: 'image_model',
-  videoModel: 'video_model',
-  musicModel: 'music_model',
-  voiceModel: 'voice_model',
-};
-
 function SettingRow({
   icon: Icon,
   label,
@@ -318,9 +308,9 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
       modelSettings: { ...settings.modelSettings, ...patch },
     });
 
-    // Persist individual model selections to localStorage via model-cache
-    // so the chat request layer can read them synchronously.
-    const CATEGORY_MAP: Record<string, string> = {
+    // Persist model selections to localStorage via model-cache so the chat
+    // request layer can read them synchronously.
+    const FIELD_TO_CACHE_TYPE: Record<string, string> = {
       defaultModel: 'chat',
       fallbackModel: 'fallback',
       imageModel: 'image',
@@ -329,13 +319,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
       voiceModel: 'voice',
     };
 
-    for (const [field, storageKey] of Object.entries(MODEL_STORAGE_KEYS)) {
-      if (field in patch) {
-        localStorage.setItem(storageKey, (patch as Record<string, string>)[field]);
-      }
-    }
-
-    for (const [field, cacheType] of Object.entries(CATEGORY_MAP)) {
+    for (const [field, cacheType] of Object.entries(FIELD_TO_CACHE_TYPE)) {
       if (field in patch) {
         setModelSetting(cacheType, (patch as Record<string, string>)[field]);
       }

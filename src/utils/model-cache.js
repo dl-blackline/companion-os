@@ -4,12 +4,29 @@
  */
 
 // ---------------------------------------------------------------------------
+// Storage key mapping — aligns with MODEL_STORAGE_KEYS in SettingsView
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEYS = {
+  chat: 'chat_model',
+  fallback: 'fallback_model',
+  image: 'image_model',
+  video: 'video_model',
+  music: 'music_model',
+  voice: 'voice_model',
+};
+
+function storageKeyFor(type) {
+  return STORAGE_KEYS[type] || `model_${type}`;
+}
+
+// ---------------------------------------------------------------------------
 // Per-type model preference (e.g. "chat", "image", "voice")
 // ---------------------------------------------------------------------------
 
 export function getModelSetting(type) {
   try {
-    return localStorage.getItem(`model_${type}`);
+    return localStorage.getItem(storageKeyFor(type));
   } catch {
     return null;
   }
@@ -17,7 +34,7 @@ export function getModelSetting(type) {
 
 export function setModelSetting(type, value) {
   try {
-    localStorage.setItem(`model_${type}`, value);
+    localStorage.setItem(storageKeyFor(type), value);
   } catch {
     // localStorage may be unavailable (private browsing, quota exceeded, etc.)
   }

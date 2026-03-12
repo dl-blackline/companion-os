@@ -23,6 +23,11 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
 
+/** Return the currently selected chat model id. */
+function activeChatModel(): string {
+  return getModelSetting('chat') || 'openai';
+}
+
 export function ChatView() {
   const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
   const [activeConvId, setActiveConvId] = useState<string | null>(
@@ -112,7 +117,7 @@ Please provide a helpful response.`;
             conversation_id: activeConversation.id,
             user_id: 'default-user',
             message: fullPrompt,
-            model: getModelSetting('chat') || localStorage.getItem('chat_model') || undefined,
+            model: activeChatModel(),
           },
         }),
       });
@@ -361,7 +366,7 @@ Please provide a helpful response.`;
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                   <Lightning size={12} weight="fill" className="text-primary" />
-                  {getModelDisplayName('chat', getModelSetting('chat') || localStorage.getItem('chat_model') || 'openai')}
+                  {getModelDisplayName('chat', activeChatModel())}
                 </span>
               </div>
             </div>
