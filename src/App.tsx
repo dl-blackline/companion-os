@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
 import { HomeDashboard } from '@/components/views/HomeDashboard';
@@ -50,14 +51,7 @@ function App() {
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
   const [settings, setSettings] = useLocalStorage<CompanionSettings>('companion-settings', defaultSettings);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const isMobile = useIsMobile();
 
   const handleNavigate = (section: string) => {
     setActiveSection(section as NavSection);
@@ -132,7 +126,7 @@ function App() {
         <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-card border-b border-border safe-area-top">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {isMobileMenuOpen ? <X size={22} /> : <List size={22} />}

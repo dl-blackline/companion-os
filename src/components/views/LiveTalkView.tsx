@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { BackgroundGlow } from '@/components/ui/background-glow';
 import { AudioVisualizer } from '@/components/voice/audio-visualizer';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Microphone,
   MicrophoneSlash,
@@ -534,14 +535,7 @@ Respond as ${aiName}:`;
   const isSpeaking = companionState === 'speaking';
   const isThinking = companionState === 'thinking';
   const isActive = isListening || isSpeaking || isThinking;
-  const [isSmallScreen, setIsSmallScreen] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsSmallScreen(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  const isSmallScreen = useIsMobile();
 
   return (
     <div className="relative flex flex-col h-full bg-background overflow-hidden safe-area-bottom">

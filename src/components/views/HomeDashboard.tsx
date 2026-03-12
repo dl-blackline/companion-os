@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { CompanionState } from '@/types';
 import {
   Microphone,
@@ -82,14 +82,7 @@ const quickActions = [
 ];
 
 export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashboardProps) {
-  const [isSmallScreen, setIsSmallScreen] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsSmallScreen(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  const isSmallScreen = useIsMobile();
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full w-full overflow-hidden bg-background px-4">

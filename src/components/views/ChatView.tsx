@@ -247,7 +247,7 @@ Please provide a helpful response.`;
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setActiveConvId(null)}
-                  className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted transition-colors"
+                  className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft size={18} />
