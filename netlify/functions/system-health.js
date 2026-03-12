@@ -85,8 +85,17 @@ async function checkMedia() {
     if (!process.env.PIAPI_API_KEY) {
       return "error";
     }
-    // Verify the PiAPI key is present; a lightweight check
-    return "ok";
+    // Lightweight connectivity check against PiAPI
+    const res = await fetch("https://api.piapi.ai/api/v1/task", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": process.env.PIAPI_API_KEY,
+      },
+      body: JSON.stringify({}),
+    });
+    // Any response (even 400 for missing params) confirms connectivity
+    return res.status < 500 ? "ok" : "error";
   } catch {
     return "error";
   }

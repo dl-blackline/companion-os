@@ -255,7 +255,7 @@ Respond as ${aiName}:`;
         const errorTurn: TalkTurn = {
           id: generateId(),
           role: 'assistant',
-          text: '⚠️ Voice connection lost. Reconnecting…',
+          text: `⚠️ ${errorMessage}. Reconnecting…`,
           timestamp: Date.now(),
         };
         setSession((prev) => ({
@@ -367,6 +367,9 @@ Respond as ${aiName}:`;
   }, [startListeningInternal]);
 
   const handleMicToggle = () => {
+    // isMicOn tracks the active SpeechRecognition instance; voiceEnabledRef tracks the
+    // continuous-mode voice loop (which survives between individual recognition sessions).
+    // We stop both when the user explicitly clicks the toggle.
     if (isMicOn || voiceEnabledRef.current) {
       voiceEnabledRef.current = false;
       if (reconnectTimerRef.current) {
