@@ -15,7 +15,8 @@ import { InsightsView } from '@/components/views/InsightsView';
 import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AgentsView } from '@/components/views/AgentsView';
-import { Microphone, List, X } from '@phosphor-icons/react';
+import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
+import { List, X } from '@phosphor-icons/react';
 import type { CompanionSettings, CompanionState } from '@/types';
 
 const defaultSettings: CompanionSettings = {
@@ -183,16 +184,8 @@ function App() {
         </AnimatePresence>
       </main>
 
-      {/* Floating Live Talk button — mobile only, hidden when already on live-talk */}
-      {isMobile && activeSection !== 'live-talk' && (
-        <button
-          onClick={() => handleNavigate('live-talk')}
-          className="fab-live-talk bg-primary text-primary-foreground"
-          aria-label="Open Live Talk"
-        >
-          <Microphone size={24} weight="fill" />
-        </button>
-      )}
+      {/* Global floating Live Talk orb — visible on all pages */}
+      <FloatingLiveOrb />
 
       <Toaster />
     </div>

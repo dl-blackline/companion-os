@@ -477,3 +477,182 @@
     transform: translateY(0);
   }
 }
+/* ─── Floating Live Orb ─── */
+
+.floating-orb-container {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.floating-orb-container > * {
+  pointer-events: auto;
+}
+
+.floating-orb-btn {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: box-shadow 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.floating-orb-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring, oklch(0.65 0.20 230));
+  outline-offset: 3px;
+}
+
+/* Idle — blue glow */
+.floating-orb--idle {
+  background: radial-gradient(circle at 38% 32%, oklch(0.68 0.22 230) 0%, oklch(0.45 0.18 240) 100%);
+  box-shadow: 0 4px 20px oklch(0.50 0.20 230 / 0.40), 0 0 28px oklch(0.55 0.20 230 / 0.25);
+}
+
+/* Connecting / thinking — purple glow */
+.floating-orb--connecting {
+  background: radial-gradient(circle at 38% 32%, oklch(0.72 0.26 310) 0%, oklch(0.48 0.20 300) 100%);
+  box-shadow: 0 4px 20px oklch(0.55 0.22 310 / 0.40), 0 0 28px oklch(0.55 0.22 310 / 0.25);
+  animation: floating-orb-breathe 1.5s ease-in-out infinite;
+}
+
+/* Listening — blue glow + pulse */
+.floating-orb--listening {
+  background: radial-gradient(circle at 38% 32%, oklch(0.72 0.22 230) 0%, oklch(0.50 0.20 240) 100%);
+  box-shadow: 0 4px 24px oklch(0.55 0.22 230 / 0.50), 0 0 36px oklch(0.60 0.22 230 / 0.30);
+}
+
+/* Muted — dimmed */
+.floating-orb--muted {
+  background: radial-gradient(circle at 38% 32%, oklch(0.55 0.10 230) 0%, oklch(0.38 0.10 240) 100%);
+  box-shadow: 0 4px 16px oklch(0.40 0.10 230 / 0.30);
+}
+
+/* Speaking — warm amber glow, slightly larger shadow */
+.floating-orb--speaking {
+  background: radial-gradient(circle at 38% 32%, oklch(0.85 0.18 65) 0%, oklch(0.55 0.16 70) 100%);
+  box-shadow: 0 4px 28px oklch(0.60 0.18 65 / 0.50), 0 0 40px oklch(0.65 0.18 65 / 0.30);
+  animation: floating-orb-breathe 2s ease-in-out infinite;
+}
+
+/* Error — red glow */
+.floating-orb--error {
+  background: radial-gradient(circle at 38% 32%, oklch(0.65 0.22 25) 0%, oklch(0.42 0.18 25) 100%);
+  box-shadow: 0 4px 20px oklch(0.50 0.22 25 / 0.45), 0 0 28px oklch(0.50 0.22 25 / 0.25);
+}
+
+/* Pulse ring animation */
+.floating-orb-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid oklch(0.65 0.20 230 / 0.50);
+  animation: floating-orb-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes floating-orb-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes floating-orb-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+/* Status text */
+.floating-orb-status {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-fg-secondary, oklch(0.70 0.01 285));
+  background: var(--color-bg-overlay, oklch(0.20 0.01 285 / 0.85));
+  padding: 2px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Expansion panel */
+.floating-orb-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-bg-overlay, oklch(0.18 0.01 285 / 0.92));
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(0.35 0.02 285 / 0.40);
+  border-radius: 14px;
+  padding: 8px;
+  margin-bottom: 6px;
+  min-width: 120px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.floating-orb-panel-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-fg, white);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.floating-orb-panel-btn:hover {
+  background: oklch(0.30 0.02 285 / 0.50);
+}
+
+.floating-orb-panel-btn--danger {
+  color: oklch(0.70 0.20 25);
+}
+
+.floating-orb-panel-btn--danger:hover {
+  background: oklch(0.30 0.12 25 / 0.30);
+}
+
+.floating-orb-panel-voice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+}
+
+.floating-orb-panel-select {
+  flex: 1;
+  background: oklch(0.22 0.01 285 / 0.60);
+  border: 1px solid oklch(0.35 0.02 285 / 0.30);
+  border-radius: 8px;
+  color: var(--color-fg, white);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.floating-orb-panel-select:focus {
+  border-color: oklch(0.55 0.18 230 / 0.60);
+}
