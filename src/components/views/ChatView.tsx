@@ -14,19 +14,34 @@ import {
   MagnifyingGlass,
   Star,
   Lightning,
+  Paperclip,
+  Image as ImageIcon,
+  VideoCamera,
+  X,
+  SpinnerGap,
   ArrowLeft,
 } from '@phosphor-icons/react';
-import type { Conversation, Message, ConversationMode } from '@/types';
+import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
 import { getModeConfig, getAllModes } from '@/lib/modes';
 import { getPromptGenerationAwareness } from '@/lib/prompt-studio';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
+import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
+import { createClient } from '@supabase/supabase-js';
 
 /** Return the currently selected chat model id. */
 function activeChatModel(): string {
   return getModelSetting('chat') || 'gpt-4.1';
+}
+
+/** Lazily initialise a Supabase client for storage uploads. */
+function getSupabase() {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
 }
 
 export function ChatView() {
@@ -36,6 +51,11 @@ export function ChatView() {
   );
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showUploader, setShowUploader] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<MediaFile | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);
   const modes = getAllModes();
@@ -60,27 +80,89 @@ export function ChatView() {
     setActiveConvId(newConv.id);
   };
 
+  /** Upload a file to Supabase Storage and return its public URL. */
+  const uploadToStorage = async (media: MediaFile): Promise<string | null> => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('Supabase not configured — skipping storage upload');
+      return media.previewUrl; // fallback to local blob URL
+    }
+
+    const userId = 'default-user';
+    const ext = media.file.name.split('.').pop() || 'bin';
+    const path = `${userId}/${generateId()}.${ext}`;
+
+    setIsUploading(true);
+    setUploadProgress(10);
+
+    const { data, error } = await supabase.storage
+      .from('media_uploads')
+      .upload(path, media.file, { cacheControl: '3600', upsert: false });
+
+    setUploadProgress(80);
+
+    if (error) {
+      console.error('Storage upload error:', error.message);
+      setIsUploading(false);
+      return media.previewUrl; // fallback
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('media_uploads')
+      .getPublicUrl(data.path);
+
+    setUploadProgress(100);
+    setIsUploading(false);
+    return publicUrlData.publicUrl;
+  };
+
+  /** Handle media selection from the uploader. */
+  const handleMediaSelect = (media: MediaFile) => {
+    setPendingMedia(media);
+    setShowUploader(false);
+  };
+
   const handleSendMessage = async () => {
-    if (!input.trim() || !activeConversation || isStreaming) return;
+    if ((!input.trim() && !pendingMedia) || !activeConversation || isStreaming) return;
+
+    let mediaUrl: string | undefined;
+    let mediaType: MediaType | undefined;
+
+    // Upload pending media
+    if (pendingMedia) {
+      const url = await uploadToStorage(pendingMedia);
+      if (url) {
+        mediaUrl = url;
+        mediaType = pendingMedia.mediaType;
+      }
+      URL.revokeObjectURL(pendingMedia.previewUrl);
+      setPendingMedia(null);
+    }
 
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
-      content: input.trim(),
+      content: input.trim() || (mediaType === 'image' ? 'Analyze this image' : 'Describe this video'),
       timestamp: Date.now(),
+      ...(mediaUrl && { media_url: mediaUrl }),
+      ...(mediaType && { media_type: mediaType }),
     };
 
     setConversations((prev) => {
       const current = prev || [];
       return current.map(conv => {
         if (conv.id === activeConvId) {
-          const updated = {
+          let title = conv.title;
+          if (conv.messages.length === 0) {
+            title = input.trim().slice(0, 50)
+              || (mediaType === 'image' ? 'Image upload' : mediaType === 'video' ? 'Video upload' : 'New Conversation');
+          }
+          return {
             ...conv,
             messages: [...conv.messages, userMessage],
             updatedAt: Date.now(),
-            title: conv.messages.length === 0 ? input.trim().slice(0, 50) : conv.title,
+            title,
           };
-          return updated;
         }
         return conv;
       });
@@ -88,6 +170,7 @@ export function ChatView() {
 
     setInput('');
     setIsStreaming(true);
+    if (mediaUrl) setIsAnalyzing(true);
 
     try {
       const modeConfig = getModeConfig(activeConversation.mode);
@@ -101,7 +184,7 @@ export function ChatView() {
 Previous conversation:
 ${conversationContext}
 
-User: ${input.trim()}
+User: ${userMessage.content}
 
 Respond as the ${modeConfig.name} mode with the following characteristics:
 - Tone: ${modeConfig.tone}
@@ -119,6 +202,8 @@ Please provide a helpful response.`;
             user_id: 'default-user',
             message: fullPrompt,
             model: activeChatModel(),
+            ...(mediaUrl && { media_url: mediaUrl }),
+            ...(mediaType && { media_type: mediaType }),
           },
         }),
       });
@@ -156,6 +241,7 @@ Please provide a helpful response.`;
       console.error('Error getting AI response:', error);
     } finally {
       setIsStreaming(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -324,6 +410,20 @@ Please provide a helpful response.`;
                           : 'bg-card border border-border'
                       )}
                     >
+                      {message.media_url && message.media_type === 'image' && (
+                        <img
+                          src={message.media_url}
+                          alt="Uploaded media"
+                          className="rounded mb-2 max-h-60 object-contain"
+                        />
+                      )}
+                      {message.media_url && message.media_type === 'video' && (
+                        <video
+                          src={message.media_url}
+                          controls
+                          className="rounded mb-2 max-h-60 w-full"
+                        />
+                      )}
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                       <span className="text-xs opacity-70 mt-2 block">
                         {formatDateTime(message.timestamp)}
@@ -343,11 +443,18 @@ Please provide a helpful response.`;
                     <Robot size={18} weight="fill" className="text-primary animate-pulse" />
                   </div>
                   <div className="bg-card border border-border p-4 rounded-lg">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
+                    {isAnalyzing ? (
+                      <div className="flex items-center gap-2">
+                        <SpinnerGap size={16} className="text-primary animate-spin" />
+                        <span className="text-sm text-muted-foreground">Analyzing media…</span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -356,7 +463,54 @@ Please provide a helpful response.`;
 
           <div className="p-4 border-t border-border bg-card sticky bottom-0 safe-area-bottom">
             <div className="max-w-3xl mx-auto">
+              {/* Media uploader panel */}
+              {showUploader && (
+                <div className="mb-3">
+                  <MediaUploader
+                    onSelect={handleMediaSelect}
+                    onCancel={() => setShowUploader(false)}
+                    uploadProgress={uploadProgress}
+                    isUploading={isUploading}
+                  />
+                </div>
+              )}
+
+              {/* Pending media preview badge */}
+              {pendingMedia && !showUploader && (
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-primary/10 rounded-lg px-3 py-1.5">
+                    {pendingMedia.mediaType === 'image' ? (
+                      <ImageIcon size={14} className="text-primary" />
+                    ) : (
+                      <VideoCamera size={14} className="text-primary" />
+                    )}
+                    <span className="text-xs text-primary font-medium truncate max-w-[200px]">
+                      {pendingMedia.file.name}
+                    </span>
+                    <button
+                      onClick={() => {
+                        URL.revokeObjectURL(pendingMedia.previewUrl);
+                        setPendingMedia(null);
+                      }}
+                      className="text-primary/60 hover:text-primary transition-colors ml-1"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowUploader(!showUploader)}
+                  disabled={isStreaming}
+                  className="self-end shrink-0"
+                  title="Upload Photo/Video"
+                >
+                  <Paperclip size={18} />
+                </Button>
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -366,13 +520,13 @@ Please provide a helpful response.`;
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Type your message..."
+                  placeholder={pendingMedia ? "Add a message or press send…" : "Type your message..."}
                   className="resize-none min-h-[60px] max-h-[200px]"
                   disabled={isStreaming}
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!input.trim() || isStreaming}
+                  disabled={(!input.trim() && !pendingMedia) || isStreaming}
                   className="self-end min-h-[44px] min-w-[44px]"
                 >
                   <PaperPlaneRight size={18} weight="fill" />

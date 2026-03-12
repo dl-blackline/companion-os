@@ -76,6 +76,8 @@ export type ToolCategory =
   | 'analysis' 
   | 'workflow';
 
+export type MediaType = 'image' | 'video';
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -83,6 +85,8 @@ export interface Message {
   timestamp: number;
   citations?: Citation[];
   toolUse?: ToolUse;
+  media_url?: string;
+  media_type?: MediaType;
 }
 
 export interface Citation {
