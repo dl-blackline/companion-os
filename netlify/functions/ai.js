@@ -170,7 +170,7 @@ async function handleChat(data) {
   } catch (orchestrateError) {
     console.error("Orchestration error, falling back to direct AI:", orchestrateError.message);
 
-    // Fallback: call the AI router directly with the normalised messages array
+    // Fallback: call the AI router directly with the normalized messages array
     try {
       const aiResponse = await runAI(messages, model);
       return response(200, {

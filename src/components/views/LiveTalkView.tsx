@@ -86,6 +86,8 @@ export function LiveTalkView({
   const isProcessingRef = useRef(false);
   const voiceEnabledRef = useRef(false);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
 
   // Read voice mode preference from localStorage
   const getVoiceMode = (): 'continuous' | 'push-to-talk' => {
@@ -252,6 +254,7 @@ Respond as ${aiName}:`;
         speak(response);
 
         isProcessingRef.current = false;
+        reconnectAttemptsRef.current = 0;
         setCompanionState('idle');
       } catch (err) {
         const errorMessage =
@@ -271,9 +274,13 @@ Respond as ${aiName}:`;
 
         isProcessingRef.current = false;
 
-        // Only reconnect on actual network / request failures.
-        // Do not retry endlessly — limit automatic reconnection attempts.
-        if (voiceEnabledRef.current && isContinuousMode()) {
+        // Only reconnect on actual network / request failures, up to the limit.
+        if (
+          voiceEnabledRef.current &&
+          isContinuousMode() &&
+          reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS
+        ) {
+          reconnectAttemptsRef.current += 1;
           setCompanionState('idle');
           setStatusText('Voice connection lost. Reconnecting…');
           reconnectTimerRef.current = setTimeout(() => {
@@ -283,6 +290,7 @@ Respond as ${aiName}:`;
             }
           }, 3000);
         } else {
+          reconnectAttemptsRef.current = 0;
           setCompanionState('idle');
           setStatusText(errorMessage);
         }
