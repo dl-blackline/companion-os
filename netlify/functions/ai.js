@@ -355,6 +355,50 @@ async function handleRealtime(data) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                              REALTIME TOKEN                                */
+/* -------------------------------------------------------------------------- */
+
+async function handleRealtimeToken(data) {
+  if (!process.env.OPENAI_API_KEY) {
+    return response(500, { error: "OpenAI API key not configured" });
+  }
+
+  const model = data.model || "gpt-4o-realtime-preview";
+  const voice = data.voice || "alloy";
+
+  try {
+    const tokenRes = await fetch("https://api.openai.com/v1/realtime/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        voice,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text().catch(() => "Unknown error");
+      console.error("OpenAI realtime session error:", tokenRes.status, errText);
+      return response(tokenRes.status, {
+        error: `Failed to create realtime session: ${tokenRes.status}`,
+      });
+    }
+
+    const sessionData = await tokenRes.json();
+    return response(200, {
+      client_secret: sessionData.client_secret?.value || sessionData.client_secret,
+      session_id: sessionData.id,
+    });
+  } catch (err) {
+    console.error("Realtime token error:", err.message);
+    return response(500, { error: "Failed to create realtime session" });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                   VOICE                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -445,6 +489,9 @@ export async function handler(event) {
 
       case "voice":
         return await handleVoice(payload);
+
+      case "realtime_token":
+        return await handleRealtimeToken(payload);
 
       case "multimodal":
         return await handleMultimodal(payload);

@@ -18,6 +18,11 @@ import { generateId } from '@/lib/helpers';
 import { getModeConfig } from '@/lib/modes';
 import { cn } from '@/lib/utils';
 import { triggerHaptic } from '@/utils/haptics';
+import {
+  RealtimeVoiceClient,
+  type RealtimeVoice,
+  type RealtimeVoiceEvent,
+} from '@/lib/realtime-voice-client';
 
 interface LiveTalkViewProps {
   companionState: CompanionState;
@@ -42,6 +47,7 @@ export function LiveTalkView({
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [interimText, setInterimText] = useState('');
   const [statusText, setStatusText] = useState('Tap the mic to start talking');
+  const [useRealtime, setUseRealtime] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -50,6 +56,7 @@ export function LiveTalkView({
   const voiceEnabledRef = useRef(false);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const realtimeClientRef = useRef<RealtimeVoiceClient | null>(null);
   const MAX_RECONNECT_ATTEMPTS = 3;
 
   // Read voice mode preference from localStorage
@@ -62,6 +69,101 @@ export function LiveTalkView({
   };
 
   const isContinuousMode = () => getVoiceMode() === 'continuous';
+
+  // Read preferred realtime voice from localStorage
+  const getRealtimeVoice = (): RealtimeVoice => {
+    try {
+      return (localStorage.getItem('realtime_voice') as RealtimeVoice) || 'alloy';
+    } catch {
+      return 'alloy';
+    }
+  };
+
+  // Handle events from the RealtimeVoiceClient
+  const handleRealtimeEvent = useCallback(
+    (event: RealtimeVoiceEvent) => {
+      switch (event.type) {
+        case 'state_change':
+          if (event.state === 'listening') {
+            setCompanionState('listening');
+            setStatusText('Listening…');
+            setIsMicOn(true);
+          } else if (event.state === 'thinking') {
+            setCompanionState('thinking');
+            setStatusText('Thinking…');
+          } else if (event.state === 'speaking') {
+            setCompanionState('speaking');
+            setStatusText(`${aiName} is speaking…`);
+          } else if (event.state === 'disconnected') {
+            setIsMicOn(false);
+            setCompanionState('idle');
+            setStatusText('Tap the mic to start talking');
+          }
+          break;
+
+        case 'transcript': {
+          triggerHaptic('light');
+          const turn: TalkTurn = {
+            id: generateId(),
+            role: event.role || 'assistant',
+            text: event.text || '',
+            timestamp: Date.now(),
+          };
+          setSession((prev) => ({
+            ...prev,
+            transcript: [...prev.transcript, turn],
+          }));
+          break;
+        }
+
+        case 'interrupted':
+          triggerHaptic('light');
+          break;
+
+        case 'error':
+          console.warn('Realtime voice error:', event.error);
+          break;
+      }
+    },
+    [aiName, setCompanionState]
+  );
+
+  // Start realtime voice session
+  const startRealtime = useCallback(async (): Promise<boolean> => {
+    if (!RealtimeVoiceClient.isSupported()) return false;
+
+    try {
+      const modeConfig = getModeConfig('neutral');
+      const client = new RealtimeVoiceClient({
+        voice: getRealtimeVoice(),
+        systemPrompt: `${modeConfig.systemPrompt}\n\nYou are ${aiName}, a real-time AI companion. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed.`,
+      });
+
+      const unsubscribe = client.on(handleRealtimeEvent);
+      // Store unsubscribe so we can clean up
+      (client as unknown as Record<string, unknown>)._unsubscribe = unsubscribe;
+
+      await client.connect();
+      realtimeClientRef.current = client;
+      setUseRealtime(true);
+      return true;
+    } catch (err) {
+      console.warn('Realtime connection failed, falling back to TTS pipeline:', err);
+      return false;
+    }
+  }, [aiName, handleRealtimeEvent]);
+
+  // Stop realtime voice session
+  const stopRealtime = useCallback(() => {
+    const client = realtimeClientRef.current;
+    if (client) {
+      const unsub = (client as unknown as Record<string, unknown>)._unsubscribe as (() => void) | undefined;
+      if (unsub) unsub();
+      client.disconnect();
+      realtimeClientRef.current = null;
+    }
+    setUseRealtime(false);
+  }, []);
 
   // Auto-scroll to bottom of transcript
   useEffect(() => {
@@ -86,6 +188,12 @@ export function LiveTalkView({
   // Interrupt AI speech — if user starts speaking while AI is still talking,
   // stop TTS playback immediately and resume listening (Part 7).
   const interruptSpeech = useCallback(() => {
+    // Realtime mode: interrupt via the client
+    if (realtimeClientRef.current && realtimeClientRef.current.state === 'speaking') {
+      realtimeClientRef.current.interrupt();
+      return;
+    }
+    // Fallback mode: cancel browser TTS
     if (synthRef.current.speaking) {
       synthRef.current.cancel();
       isProcessingRef.current = false;
@@ -362,20 +470,28 @@ Respond as ${aiName}:`;
     startListeningInternal();
   }, [startListeningInternal]);
 
-  const handleMicToggle = () => {
+  const handleMicToggle = async () => {
     triggerHaptic('medium');
     // isMicOn tracks the active SpeechRecognition instance; voiceEnabledRef tracks the
     // continuous-mode voice loop (which survives between individual recognition sessions).
     // We stop both when the user explicitly clicks the toggle.
-    if (isMicOn || voiceEnabledRef.current) {
+    if (isMicOn || voiceEnabledRef.current || useRealtime) {
       voiceEnabledRef.current = false;
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
+      // Disconnect realtime if active
+      if (useRealtime) {
+        stopRealtime();
+      }
       stopListening();
     } else {
-      startListening();
+      // Try realtime first, fall back to standard speech recognition + TTS
+      const realtimeStarted = await startRealtime();
+      if (!realtimeStarted) {
+        startListening();
+      }
     }
   };
 
@@ -386,6 +502,7 @@ Respond as ${aiName}:`;
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
+    stopRealtime();
     stopListening();
     setSession({
       id: generateId(),
@@ -405,6 +522,11 @@ Respond as ${aiName}:`;
       }
       synthRef.current.cancel();
       recognitionRef.current?.stop();
+      // Disconnect realtime client on unmount
+      if (realtimeClientRef.current) {
+        realtimeClientRef.current.disconnect();
+        realtimeClientRef.current = null;
+      }
     };
   }, []);
 
