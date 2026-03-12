@@ -13,7 +13,8 @@ import {
   Sparkle,
   MagnifyingGlass,
   Star,
-  Lightning
+  Lightning,
+  ArrowLeft,
 } from '@phosphor-icons/react';
 import type { Conversation, Message, ConversationMode } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
@@ -168,12 +169,17 @@ Please provide a helpful response.`;
   };
 
   return (
-    <div className="flex h-full">
-      <div className="w-80 border-r border-border flex flex-col bg-card">
+    <div className="flex flex-col md:flex-row h-full">
+      {/* Conversation list — full width on mobile when no active conv, hidden when viewing chat */}
+      <div className={cn(
+        'border-r border-border flex flex-col bg-card',
+        'w-full md:w-80',
+        activeConversation ? 'hidden md:flex' : 'flex'
+      )}>
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Conversations</h2>
-            <Button size="sm" onClick={() => handleCreateConversation()}>
+            <Button size="sm" onClick={() => handleCreateConversation()} className="min-h-[44px] min-w-[44px]">
               <Plus size={16} className="mr-1" /> New
             </Button>
           </div>
@@ -232,18 +238,30 @@ Please provide a helpful response.`;
       </div>
 
       {activeConversation ? (
-        <div className="flex-1 flex flex-col">
+        <div className={cn(
+          'flex-1 flex flex-col',
+          activeConversation ? 'flex' : 'hidden md:flex'
+        )}>
           <div className="p-4 border-b border-border bg-card">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold mb-1">{activeConversation.title}</h2>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {getModeConfig(activeConversation.mode).name}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {activeConversation.messages.length} messages
-                  </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setActiveConvId(null)}
+                  className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div>
+                  <h2 className="font-semibold mb-1">{activeConversation.title}</h2>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {getModeConfig(activeConversation.mode).name}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {activeConversation.messages.length} messages
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -336,7 +354,7 @@ Please provide a helpful response.`;
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t border-border bg-card">
+          <div className="p-4 border-t border-border bg-card sticky bottom-0 safe-area-bottom">
             <div className="max-w-3xl mx-auto">
               <div className="flex gap-3">
                 <Textarea
@@ -355,7 +373,7 @@ Please provide a helpful response.`;
                 <Button
                   onClick={handleSendMessage}
                   disabled={!input.trim() || isStreaming}
-                  className="self-end"
+                  className="self-end min-h-[44px] min-w-[44px]"
                 >
                   <PaperPlaneRight size={18} weight="fill" />
                 </Button>
@@ -373,7 +391,7 @@ Please provide a helpful response.`;
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex-1 hidden md:flex items-center justify-center p-8">
           <div className="text-center max-w-md">
             <h3 className="font-semibold mb-2">No conversation selected</h3>
             <p className="text-sm text-muted-foreground mb-6">
