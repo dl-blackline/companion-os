@@ -101,13 +101,16 @@ Respond as the ${modeConfig.name} mode with the following characteristics:
 
 Please provide a helpful response.`;
 
-      const res = await fetch('/.netlify/functions/chat', {
+      const res = await fetch('/.netlify/functions/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversation_id: activeConversation.id,
-          user_id: 'default-user',
-          message: fullPrompt,
+          type: 'chat',
+          data: {
+            conversation_id: activeConversation.id,
+            user_id: 'default-user',
+            message: fullPrompt,
+          },
         }),
       });
 
