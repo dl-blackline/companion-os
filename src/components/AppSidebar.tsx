@@ -1,4 +1,5 @@
-import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, type Icon } from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
+import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
