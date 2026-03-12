@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,11 +54,20 @@ const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const MODEL_OPTIONS = [
-  { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  { value: 'gpt-4', label: 'GPT-4' },
-];
+interface ModelEntry {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+}
+
+interface ModelRegistry {
+  chat: ModelEntry[];
+  image: ModelEntry[];
+  video: ModelEntry[];
+  music: ModelEntry[];
+  voice: ModelEntry[];
+}
 
 const CITATION_OPTIONS = [
   { value: 'always', label: 'Always' },
@@ -214,6 +223,20 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
     }
   });
 
+  // Model registry loaded from backend
+  const [modelRegistry, setModelRegistry] = useState<ModelRegistry | null>(null);
+
+  useEffect(() => {
+    fetch('/.netlify/functions/models')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setModelRegistry(data);
+      })
+      .catch(() => {
+        /* ignore – dropdowns will remain empty until loaded */
+      });
+  }, []);
+
   const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
     setVoiceMode(mode);
     localStorage.setItem('voice_mode', mode);
@@ -280,6 +303,22 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
       ...settings,
       modelSettings: { ...settings.modelSettings, ...patch },
     });
+
+    // Persist individual model selections to localStorage for easy access
+    // by the chat request layer.
+    const MODEL_KEYS: Record<string, string> = {
+      defaultModel: 'chat_model',
+      fallbackModel: 'fallback_model',
+      imageModel: 'image_model',
+      videoModel: 'video_model',
+      musicModel: 'music_model',
+      voiceModel: 'voice_model',
+    };
+    for (const [field, storageKey] of Object.entries(MODEL_KEYS)) {
+      if (field in patch) {
+        localStorage.setItem(storageKey, (patch as Record<string, string>)[field]);
+      }
+    }
   };
 
   const updatePrivacy = (patch: Partial<CompanionSettings['privacySettings']>) => {
@@ -398,7 +437,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
               <Separator />
 
               <SettingRow
-                label="Default Model"
+                label="Chat Model"
                 description="Primary model used for all conversations."
               >
                 <Select
@@ -409,9 +448,9 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MODEL_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                    {(modelRegistry?.chat ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -422,7 +461,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
 
               <SettingRow
                 label="Fallback Model"
-                description="Used when the default model is unavailable."
+                description="Used when the chat model is unavailable."
               >
                 <Select
                   value={settings.modelSettings.fallbackModel}
@@ -432,9 +471,101 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MODEL_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                    {(modelRegistry?.chat ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <Separator />
+
+              <SettingRow
+                label="Image Model"
+                description="Model used for image generation."
+              >
+                <Select
+                  value={settings.modelSettings.imageModel}
+                  onValueChange={(value) => updateModel({ imageModel: value })}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(modelRegistry?.image ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <Separator />
+
+              <SettingRow
+                label="Video Model"
+                description="Model used for video generation."
+              >
+                <Select
+                  value={settings.modelSettings.videoModel}
+                  onValueChange={(value) => updateModel({ videoModel: value })}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(modelRegistry?.video ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <Separator />
+
+              <SettingRow
+                label="Music Model"
+                description="Model used for music generation."
+              >
+                <Select
+                  value={settings.modelSettings.musicModel}
+                  onValueChange={(value) => updateModel({ musicModel: value })}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(modelRegistry?.music ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <Separator />
+
+              <SettingRow
+                label="Voice Model"
+                description="Model used for voice synthesis."
+              >
+                <Select
+                  value={settings.modelSettings.voiceModel}
+                  onValueChange={(value) => updateModel({ voiceModel: value })}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(modelRegistry?.voice ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -222,6 +222,7 @@ Respond as ${aiName}:`;
               conversation_id: session.id,
               user_id: 'default-user',
               message: prompt,
+              model: localStorage.getItem('chat_model') || undefined,
             },
           }),
         });
