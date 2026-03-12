@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CompanionOrb } from '@/components/CompanionOrb';
+import { BackgroundGlow } from '@/components/ui/background-glow';
+import { AudioVisualizer } from '@/components/voice/audio-visualizer';
 import {
   Microphone,
   MicrophoneSlash,
@@ -15,52 +17,13 @@ import type { CompanionState, TalkSession, TalkTurn } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { getModeConfig } from '@/lib/modes';
 import { cn } from '@/lib/utils';
+import { triggerHaptic } from '@/utils/haptics';
 
 interface LiveTalkViewProps {
   companionState: CompanionState;
   setCompanionState: (state: CompanionState) => void;
   aiName: string;
   onBack: () => void;
-}
-
-const WAVEFORM_BARS = 28;
-
-function WaveformBars({ active, color }: { active: boolean; color: string }) {
-  return (
-    <div className="flex items-center gap-[3px] h-10">
-      {Array.from({ length: WAVEFORM_BARS }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="w-[3px] rounded-full origin-bottom"
-          animate={
-            active
-              ? {
-                  scaleY: [
-                    0.15,
-                    Math.random() * 0.7 + 0.3,
-                    Math.random() * 0.5 + 0.15,
-                    Math.random() * 0.9 + 0.3,
-                    0.15,
-                  ],
-                }
-              : { scaleY: 0.15 }
-          }
-          transition={
-            active
-              ? {
-                  duration: 0.55 + Math.random() * 0.45,
-                  repeat: Infinity,
-                  repeatType: 'loop',
-                  delay: (i * 0.04) % 0.5,
-                  ease: 'easeInOut',
-                }
-              : { duration: 0.3 }
-          }
-          style={{ height: 40, background: color }}
-        />
-      ))}
-    </div>
-  );
 }
 
 export function LiveTalkView({
@@ -240,6 +203,7 @@ Respond as ${aiName}:`;
         const response = data.response || '';
 
         // Valid response received — display it even if it's a fallback message
+        triggerHaptic('light');
         const assistantTurn: TalkTurn = {
           id: generateId(),
           role: 'assistant',
@@ -320,6 +284,7 @@ Respond as ${aiName}:`;
     rec.maxAlternatives = 1;
 
     rec.onstart = () => {
+      triggerHaptic('light');
       setIsMicOn(true);
       setCompanionState('listening');
       setStatusText('Listening…');
@@ -382,6 +347,7 @@ Respond as ${aiName}:`;
   }, [startListeningInternal]);
 
   const handleMicToggle = () => {
+    triggerHaptic('medium');
     // isMicOn tracks the active SpeechRecognition instance; voiceEnabledRef tracks the
     // continuous-mode voice loop (which survives between individual recognition sessions).
     // We stop both when the user explicitly clicks the toggle.
@@ -433,14 +399,8 @@ Respond as ${aiName}:`;
 
   return (
     <div className="relative flex flex-col h-full bg-background overflow-hidden">
-      {/* Ambient background */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 65% 55% at 50% 30%, oklch(0.28 0.08 285 / 0.35) 0%, transparent 70%)',
-        }}
-      />
+      {/* Dynamic ambient background glow */}
+      <BackgroundGlow state={companionState} />
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-3">
@@ -493,7 +453,7 @@ Respond as ${aiName}:`;
         />
 
         {/* Waveform */}
-        <div className="h-10 flex items-center">
+        <div className="h-12 flex items-center">
           <AnimatePresence mode="wait">
             {isListening && (
               <motion.div
@@ -502,7 +462,7 @@ Respond as ${aiName}:`;
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <WaveformBars active={true} color="oklch(0.65 0.20 230)" />
+                <AudioVisualizer active={true} color="oklch(0.65 0.20 230)" colorEnd="oklch(0.55 0.18 260)" height={48} />
               </motion.div>
             )}
             {isSpeaking && (
@@ -512,7 +472,7 @@ Respond as ${aiName}:`;
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <WaveformBars active={true} color="oklch(0.75 0.18 65)" />
+                <AudioVisualizer active={true} color="oklch(0.65 0.22 145)" colorEnd="oklch(0.75 0.18 65)" height={48} />
               </motion.div>
             )}
             {isThinking && (
@@ -541,7 +501,7 @@ Respond as ${aiName}:`;
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <WaveformBars active={false} color="oklch(0.40 0.04 270)" />
+                <AudioVisualizer active={false} color="oklch(0.40 0.04 270)" height={48} />
               </motion.div>
             )}
           </AnimatePresence>
