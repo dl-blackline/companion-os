@@ -1,37 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
-import { route } from "../../lib/ai-router.js";
-import {
-  searchEpisodicMemory,
-  searchRelationshipMemory,
-  searchMemorySummaries,
-  getUserProfile,
-  processMemory,
-} from "../../lib/memory-manager.js";
-import {
-  processKnowledgeGraph,
-  buildKnowledgeGraphContext,
-} from "../../lib/knowledge-graph.js";
-import { buildSystemPrompt } from "../../lib/system-prompt.js";
+import { orchestrate } from "../../lib/orchestrator.js";
+import { processMemory } from "../../lib/memory-manager.js";
+import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-async function searchShortTermMemory(embedding) {
-  const { data, error } = await supabase.rpc("match_messages", {
-    query_embedding: embedding,
-    match_count: 5,
-  });
-
-  if (error) {
-    console.error("Short-term memory search error:", error.message);
-    return [];
-  }
-
-  return data || [];
-}
 
 async function getRecentConversation(conversation_id) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
@@ -85,47 +61,29 @@ export async function handler(event) {
       };
     }
 
-    // 1. Generate embedding for the user message
-    const embedding = await generateEmbedding(message);
-
-    // 2. Hierarchical memory retrieval (parallel)
-    const [
-      semanticMemories,
-      episodicMemories,
-      relationshipMemories,
-      memorySummaries,
-      userProfile,
-      knowledgeGraphContext,
-      recentConversation,
-    ] = await Promise.all([
-      searchShortTermMemory(embedding),
-      searchEpisodicMemory(embedding, user_id),
-      searchRelationshipMemory(embedding, user_id),
-      searchMemorySummaries(embedding, user_id),
-      getUserProfile(user_id),
-      buildKnowledgeGraphContext(user_id),
-      getRecentConversation(conversation_id),
-    ]);
-
-    // 3. Build hierarchical system prompt with all memory layers
-    const systemPrompt = buildSystemPrompt({
-      userProfile,
-      relationshipMemories,
-      episodicMemories,
-      memorySummaries,
-      knowledgeGraphContext,
-      recentConversation,
-      semanticMemories,
+    // 1. Run the orchestrator pipeline
+    //    message → intent detection → context retrieval → planning
+    //    → tool execution → AI router → critic agent → final response
+    const result = await orchestrate({
+      message,
+      user_id,
+      conversation_id,
+      getRecentConversation,
     });
 
-    // 4. Send prompt to AI Router
-    const assistantResponse = await route({
-      task: "chat",
-      prompt: { system: systemPrompt, user: message },
-    });
+    // 2. For media results, return the media payload directly
+    if (result.isMedia) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          response: result.response,
+          intent: result.intent,
+        }),
+      };
+    }
 
-    // 5. Save both the user message and the assistant response
-    const assistantEmbedding = await generateEmbedding(assistantResponse);
+    // 3. Save both the user message and the assistant response
+    const assistantEmbedding = await generateEmbedding(result.response);
 
     await Promise.all([
       saveMessage({
@@ -133,19 +91,19 @@ export async function handler(event) {
         user_id,
         role: "user",
         content: message,
-        embedding,
+        embedding: result.embedding,
       }),
       saveMessage({
         conversation_id,
         user_id,
         role: "assistant",
-        content: assistantResponse,
+        content: result.response,
         embedding: assistantEmbedding,
       }),
     ]);
 
-    // 6. Post-response memory processing (non-blocking)
-    const conversationHistory = recentConversation
+    // 4. Post-response memory processing (non-blocking)
+    const conversationHistory = (result.context.recentConversation || [])
       .map((m) => `[${m.role}]: ${m.content}`)
       .join("\n");
 
@@ -155,14 +113,17 @@ export async function handler(event) {
         conversation_id,
         message,
         conversationHistory,
-        messageCount: recentConversation.length,
+        messageCount: (result.context.recentConversation || []).length,
       }),
       processKnowledgeGraph(user_id, message),
     ]);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ response: assistantResponse }),
+      body: JSON.stringify({
+        response: result.response,
+        intent: result.intent,
+      }),
     };
   } catch (err) {
     return {
