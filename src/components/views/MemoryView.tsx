@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -75,7 +75,7 @@ const EMPTY_FORM: MemoryFormState = {
 };
 
 export function MemoryView() {
-  const [memories, setMemories] = useKV<Memory[]>('memories', []);
+  const [memories, setMemories] = useLocalStorage<Memory[]>('memories', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<MemoryCategory | 'all'>('all');

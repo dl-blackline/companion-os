@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,7 +63,7 @@ function createEmptyTool(): Omit<Tool, 'id'> {
 }
 
 export function WorkflowsView() {
-  const [tools, setTools] = useKV<Tool[]>('tools', []);
+  const [tools, setTools] = useLocalStorage<Tool[]>('tools', []);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCreateForm, setShowCreateForm] = useState(false);

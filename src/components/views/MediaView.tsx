@@ -169,7 +169,7 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
     setPrompt('');
 
     try {
-      const descriptionPrompt = window.spark.llmPrompt`You are a ${activeTab === 'photo' ? 'photo' : 'video'} generation AI system named ${aiName}.
+      const descriptionPrompt = `You are a ${activeTab === 'photo' ? 'photo' : 'video'} generation AI system named ${aiName}.
 
 A user has requested the following ${activeTab === 'photo' ? 'photorealistic portrait/photo' : 'cinematic video'}:
 
@@ -178,7 +178,24 @@ Style: ${selectedStyle}
 
 Describe in 2-3 vivid, evocative sentences what this ${activeTab === 'photo' ? 'photograph' : 'video'} looks like — as if describing the finished output to someone who cannot see it. Be highly specific about lighting, composition, subject, mood, and visual quality. Write in present tense as if the image/video already exists.`;
 
-      const description = await window.spark.llm(descriptionPrompt);
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: newItem.id,
+          user_id: 'default-user',
+          message: descriptionPrompt,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Chat API error:', res.status, errData);
+        throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      const description = data.response;
 
       setGallery((prev) =>
         prev.map((item) =>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,7 @@ type TypeFilter = 'all' | Insight['type'];
 type PriorityFilter = 'all' | Insight['priority'];
 
 export function InsightsView() {
-  const [insights, setInsights] = useKV<Insight[]>('insights', []);
+  const [insights, setInsights] = useLocalStorage<Insight[]>('insights', []);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [showDismissed, setShowDismissed] = useState(false);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 export function ChatView() {
-  const [conversations, setConversations] = useKV<Conversation[]>('conversations', []);
+  const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
   const [activeConvId, setActiveConvId] = useState<string | null>(
     (conversations && conversations.length > 0) ? conversations[0].id : null
   );
@@ -88,7 +88,7 @@ export function ChatView() {
         .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n\n');
 
-      const prompt = window.spark.llmPrompt`${modeConfig.systemPrompt}${promptAwareness}
+      const fullPrompt = `${modeConfig.systemPrompt}${promptAwareness}
 
 Previous conversation:
 ${conversationContext}
@@ -101,7 +101,24 @@ Respond as the ${modeConfig.name} mode with the following characteristics:
 
 Please provide a helpful response.`;
 
-      const response = await window.spark.llm(prompt);
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: activeConversation.id,
+          user_id: 'default-user',
+          message: fullPrompt,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Chat API error:', res.status, errData);
+        throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      const response = data.response;
 
       const assistantMessage: Message = {
         id: generateId(),
