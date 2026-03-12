@@ -291,7 +291,7 @@ Describe in 2-3 vivid, evocative sentences what this ${activeTab === 'photo' ? '
       />
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-4 border-b border-border/50">
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 md:px-6 pt-5 pb-4 border-b border-border/50">
         <div>
           <h2
             className="text-lg font-bold tracking-tight"
@@ -337,7 +337,7 @@ Describe in 2-3 vivid, evocative sentences what this ${activeTab === 'photo' ? '
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-1 min-h-0">
+      <div className="relative z-10 flex flex-col md:flex-row flex-1 min-h-0">
         {/* Left panel: create */}
         <div className="flex flex-col w-full md:w-[380px] shrink-0 border-r border-border/50">
           <ScrollArea className="flex-1">

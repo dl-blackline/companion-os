@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { CompanionState } from '@/types';
 import {
   Microphone,
@@ -81,8 +82,10 @@ const quickActions = [
 ];
 
 export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashboardProps) {
+  const isSmallScreen = useIsMobile();
+
   return (
-    <div className="relative flex flex-col items-center justify-center h-full w-full overflow-hidden bg-background">
+    <div className="relative flex flex-col items-center justify-center h-full w-full overflow-hidden bg-background px-4">
       {/* Ambient background gradient */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -123,7 +126,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
         >
           <CompanionOrb
             state={companionState}
-            size="xl"
+            size={isSmallScreen ? 'lg' : 'xl'}
             onClick={() => onNavigate('live-talk')}
             showRipples={true}
           />
@@ -164,7 +167,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: 0.30 + i * 0.07 }}
                 onClick={() => onNavigate(action.id)}
-                className={`group relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-300
+                className={`group relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 min-h-[44px]
                   ${action.borderAccent} bg-card/60 hover:bg-card/90 backdrop-blur-sm
                   hover:shadow-[0_0_24px_oklch(0.50_0.18_285/0.25)] active:scale-[0.97]`}
               >
