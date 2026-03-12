@@ -34,13 +34,13 @@ async function searchMemory(embedding) {
 async function saveMessage({ conversation_id, user_id, role, content, embedding }) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
-  const insertData = { conversation_id, user_id, role, content };
-
-  if (embedding) {
-    insertData.embedding = embedding;
-  }
-
-  const { error } = await supabase.from(table).insert(insertData);
+  const { error } = await supabase.from(table).insert({
+    conversation_id,
+    user_id,
+    role,
+    content,
+    embedding,
+  });
 
   if (error) {
     console.error("Save message error:", error.message);
@@ -109,10 +109,7 @@ export async function handler(event) {
     const systemPrompt = `You are a Companion AI assistant with persistent conversational memory.
 
 MEMORY
-${memoryContext}
-
-USER MESSAGE
-${message}`;
+${memoryContext}`;
 
     // 4. Call OpenAI, fallback to Gemini on failure
     let assistantResponse;
@@ -125,6 +122,8 @@ ${message}`;
     }
 
     // 5. Save both the user message and the assistant response
+    const assistantEmbedding = await generateEmbedding(assistantResponse);
+
     await Promise.all([
       saveMessage({
         conversation_id,
@@ -138,6 +137,7 @@ ${message}`;
         user_id,
         role: "assistant",
         content: assistantResponse,
+        embedding: assistantEmbedding,
       }),
     ]);
 
