@@ -418,13 +418,13 @@ export function KnowledgeView() {
   );
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col md:flex-row h-full">
       {/* Left panel — knowledge list */}
-      <div className="w-80 border-r border-border flex flex-col bg-card">
+      <div className="w-full md:w-80 border-r border-border flex flex-col bg-card">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Knowledge Vault</h2>
-            <Button size="sm" onClick={startCreating}>
+            <Button size="sm" onClick={startCreating} className="min-h-[44px]">
               <Plus size={16} className="mr-1" /> Add Item
             </Button>
           </div>
@@ -541,7 +541,7 @@ export function KnowledgeView() {
           <ScrollArea className="flex-1">{renderDetail(selectedItem)}</ScrollArea>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex-1 hidden md:flex items-center justify-center p-8">
           <div className="text-center max-w-md">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
               <Books size={32} weight="fill" className="text-primary" />

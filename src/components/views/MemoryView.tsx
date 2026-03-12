@@ -411,13 +411,13 @@ export function MemoryView() {
   );
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col md:flex-row h-full">
       {/* Left panel — memory list */}
-      <div className="w-80 border-r border-border flex flex-col bg-card">
+      <div className="w-full md:w-80 border-r border-border flex flex-col bg-card">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Memories</h2>
-            <Button size="sm" onClick={startCreating}>
+            <Button size="sm" onClick={startCreating} className="min-h-[44px]">
               <Plus size={16} className="mr-1" /> New
             </Button>
           </div>
@@ -536,7 +536,7 @@ export function MemoryView() {
           <ScrollArea className="flex-1">{renderDetail(selectedMemory)}</ScrollArea>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex-1 hidden md:flex items-center justify-center p-8">
           <div className="text-center max-w-md">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
               <Brain size={32} weight="fill" className="text-primary" />

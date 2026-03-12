@@ -342,8 +342,8 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
   };
 
   return (
-    <div className="settings-panel p-8 max-w-3xl mx-auto">
-      <div className="space-y-8">
+    <div className="settings-panel p-4 md:p-8 max-w-3xl mx-auto">
+      <div className="space-y-6 md:space-y-8">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -359,7 +359,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
       </motion.div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
+        <TabsList className="settings-tabs-list">
           <TabsTrigger value="general" className="gap-1.5">
             <Robot size={16} /> General
           </TabsTrigger>

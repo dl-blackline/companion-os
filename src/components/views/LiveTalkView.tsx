@@ -534,19 +534,27 @@ Respond as ${aiName}:`;
   const isSpeaking = companionState === 'speaking';
   const isThinking = companionState === 'thinking';
   const isActive = isListening || isSpeaking || isThinking;
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsSmallScreen(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   return (
-    <div className="relative flex flex-col h-full bg-background overflow-hidden">
+    <div className="relative flex flex-col h-full bg-background overflow-hidden safe-area-bottom">
       {/* Dynamic ambient background glow */}
       <BackgroundGlow state={companionState} />
 
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-3">
+      <div className="relative z-10 flex items-center justify-between px-4 md:px-6 pt-5 pb-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="gap-2 text-muted-foreground hover:text-foreground"
+          className="gap-2 text-muted-foreground hover:text-foreground min-h-[44px]"
         >
           <ArrowLeft size={16} />
           Back
@@ -586,7 +594,7 @@ Respond as ${aiName}:`;
       <div className="relative z-10 flex flex-col items-center pt-4 pb-6 gap-5">
         <CompanionOrb
           state={companionState}
-          size="lg"
+          size={isSmallScreen ? 'md' : 'lg'}
           showRipples={true}
         />
 
@@ -737,11 +745,12 @@ Respond as ${aiName}:`;
       </div>
 
       {/* Mic button */}
-      <div className="relative z-10 flex items-center justify-center pb-8 pt-4">
+      <div className="relative z-10 flex items-center justify-center pb-8 pt-4 safe-area-bottom">
         <motion.button
           onClick={handleMicToggle}
           className={cn(
-            'relative flex items-center justify-center w-20 h-20 rounded-full transition-all duration-300',
+            'relative flex items-center justify-center rounded-full transition-all duration-300',
+            isSmallScreen ? 'w-[72px] h-[72px]' : 'w-20 h-20',
             isMicOn
               ? 'bg-[oklch(0.65_0.20_230)] shadow-[0_0_32px_oklch(0.65_0.20_230/0.65),0_0_64px_oklch(0.65_0.20_230/0.30)]'
               : 'bg-card border border-border hover:border-primary/50 hover:bg-card/80 hover:shadow-[0_0_20px_oklch(0.50_0.18_285/0.25)]'
