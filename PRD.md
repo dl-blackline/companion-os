@@ -36,7 +36,7 @@ Companion OS must deliver **one of the most advanced, polished, and human-like A
 This world-class standard applies across seven core dimensions:
 
 ### 2.1 UI Smoothness
-- The interface must feel **fluid, responsive, and buttery smooth** at all times — no jank, stutter, lag, or dropped frames under any conditions.
+- The interface must feel **fluid, responsive, and buttery smooth** at all times — no jank, stutter, lag, or perceptible dropped frames on supported devices under normal operating conditions.
 - Every surface, component, and visual element must render with **pixel-perfect precision**.
 - Screen transitions, panel animations, and layout shifts must feel **instant and seamless**, never clunky or delayed.
 - The UI must never feel stiff, overloaded, or generic. It must feel alive and effortless.
@@ -266,7 +266,7 @@ All motion must be **purposeful, elegant, physics-based, and world-class** — t
 - Quick easing for functional transitions (navigation, panel opens)
 - Ripple, pulse, and glow animations must feel **refined and premium** — not flashy
 - Waveform animations during voice states must feel **responsive and accurate**
-- **All motion must maintain 60fps minimum** — any dropped frame is a quality failure
+- **All motion must maintain 60fps minimum** — sustained or perceptible frame drops during user interaction are quality failures
 - **Transitions must feel seamless and continuous** — no hard cuts, no flashes, no layout jumps
 - **Animation choreography must feel intentional** — timing, sequencing, and easing must convey intelligence and craft
 - The motion language must reinforce the **premium, alive, and frictionless** feel required by Section 2.3
@@ -407,14 +407,14 @@ During Live Talk sessions, the AI must:
 - Speech recognition must begin returning **interim results within 100ms** of speech onset
 - Audio playback must begin as soon as the first response chunk is available (streaming output preferred)
 - UI state transitions must reflect changes **within 100ms** of the event
-- **The conversation must feel genuinely real-time** — latency must be low enough that the user never consciously waits for a response
+- **The conversation must feel genuinely real-time** — visual feedback within 200ms of user action, voice response onset within 1.5s target, so the user never consciously waits
 
 ### 12.2 Animation Performance
 - All animations must maintain **60 fps** minimum — this is a hard floor, not a target
 - The AI orb must never drop below 60 fps during state transitions
 - Waveform animations must remain synchronized with actual audio during speaking state
 - No jank, stutter, or frame drops during compound animations (orb + ripple + waveform simultaneously)
-- **Animation smoothness is a primary product quality signal** — any visible stutter is treated as a production-blocking defect
+- **Animation smoothness is a primary product quality signal** — sustained frame drops below 55fps or perceptible stutter during user interaction are treated as production-blocking defects
 
 ### 12.3 Generation Performance
 - Photo generation: **target < 10 seconds** from prompt submission to result display
