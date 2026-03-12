@@ -408,6 +408,6 @@ export async function handler(event) {
     }
   } catch (err) {
     console.error("AI Gateway error:", err);
-    return response(500, { error: err.message });
+    return response(500, { error: "AI provider temporarily unavailable" });
   }
 }
