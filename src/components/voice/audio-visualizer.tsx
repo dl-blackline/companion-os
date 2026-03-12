@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -18,54 +19,62 @@ export function AudioVisualizer({
   height = 48,
   className,
 }: AudioVisualizerProps) {
+  // Pre-compute stable random values and colors per bar, only recalculated when
+  // barCount, color, or colorEnd change — not on every render.
+  const bars = useMemo(() => {
+    return Array.from({ length: barCount }).map((_, i) => {
+      const t = barCount > 1 ? i / (barCount - 1) : 0;
+      const barColor = colorEnd
+        ? `color-mix(in oklch, ${color} ${Math.round((1 - t) * 100)}%, ${colorEnd})`
+        : color;
+
+      return {
+        barColor,
+        keyframes: [
+          0.1,
+          Math.random() * 0.6 + 0.35,
+          Math.random() * 0.4 + 0.1,
+          Math.random() * 0.8 + 0.2,
+          0.1,
+        ],
+        duration: 0.5 + Math.random() * 0.5,
+        delay: (i * 0.035) % 0.5,
+      };
+    });
+  }, [barCount, color, colorEnd]);
+
   return (
     <div
       className={cn('flex items-center justify-center gap-[2px]', className)}
       style={{ height }}
     >
-      {Array.from({ length: barCount }).map((_, i) => {
-        const t = barCount > 1 ? i / (barCount - 1) : 0;
-        // Interpolate color via gradient if colorEnd is provided
-        const barColor = colorEnd
-          ? `color-mix(in oklch, ${color} ${Math.round((1 - t) * 100)}%, ${colorEnd})`
-          : color;
-
-        return (
-          <motion.div
-            key={i}
-            className="rounded-full origin-bottom"
-            style={{
-              width: 3,
-              height,
-              background: barColor,
-            }}
-            animate={
-              active
-                ? {
-                    scaleY: [
-                      0.1,
-                      Math.random() * 0.6 + 0.35,
-                      Math.random() * 0.4 + 0.1,
-                      Math.random() * 0.8 + 0.2,
-                      0.1,
-                    ],
-                  }
-                : { scaleY: 0.1 }
-            }
-            transition={
-              active
-                ? {
-                    duration: 0.5 + Math.random() * 0.5,
-                    repeat: Infinity,
-                    repeatType: 'loop',
-                    delay: (i * 0.035) % 0.5,
-                    ease: 'easeInOut',
-                  }
-                : { duration: 0.4, ease: 'easeOut' }
-            }
-          />
-        );
-      })}
+      {bars.map((bar, i) => (
+        <motion.div
+          key={i}
+          className="rounded-full origin-bottom"
+          style={{
+            width: 3,
+            height,
+            background: bar.barColor,
+          }}
+          animate={
+            active
+              ? { scaleY: bar.keyframes }
+              : { scaleY: 0.1 }
+          }
+          transition={
+            active
+              ? {
+                  duration: bar.duration,
+                  repeat: Infinity,
+                  repeatType: 'loop',
+                  delay: bar.delay,
+                  ease: 'easeInOut',
+                }
+              : { duration: 0.4, ease: 'easeOut' }
+          }
+        />
+      ))}
     </div>
   );
 }

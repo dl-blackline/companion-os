@@ -290,6 +290,7 @@
 /* ─── Settings Panel Scroll Fix ─── */
 
 .settings-panel {
+  /* 140px accounts for header (64px) + top/bottom padding (76px) */
   height: calc(100vh - 140px);
   overflow-y: auto;
   scroll-behavior: smooth;
