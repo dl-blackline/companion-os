@@ -1,9 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const CHAT_TABLE = process.env.CHAT_HISTORY_TABLE || "messages";
+
+const supabase =
+  SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 export async function handler(event) {
   const headers = {
@@ -15,6 +17,16 @@ export async function handler(event) {
 
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers, body: "" };
+  }
+
+  if (!supabase) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: "Server configuration error: missing Supabase credentials",
+      }),
+    };
   }
 
   if (event.httpMethod !== "GET") {
@@ -39,10 +51,8 @@ export async function handler(event) {
       };
     }
 
-    const table = process.env.CHAT_HISTORY_TABLE || "messages";
-
     let query = supabase
-      .from(table)
+      .from(CHAT_TABLE)
       .select("id, conversation_id, role, content, created_at")
       .eq("user_id", user_id)
       .order("created_at", { ascending: false })

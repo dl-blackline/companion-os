@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabase =
+  SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 export async function handler(event) {
   const headers = {
@@ -15,6 +16,16 @@ export async function handler(event) {
 
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers, body: "" };
+  }
+
+  if (!supabase) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: "Server configuration error: missing Supabase credentials",
+      }),
+    };
   }
 
   try {
