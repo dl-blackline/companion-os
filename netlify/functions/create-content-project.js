@@ -1,4 +1,4 @@
-import { createProject, addWorkflowStep, runWorkflow } from "../../lib/workflow-engine.js";
+import { createProject, addWorkflowStep } from "../../lib/workflow-engine.js";
 
 export async function handler(event) {
   const headers = {
