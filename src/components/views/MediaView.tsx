@@ -178,13 +178,16 @@ Style: ${selectedStyle}
 
 Describe in 2-3 vivid, evocative sentences what this ${activeTab === 'photo' ? 'photograph' : 'video'} looks like — as if describing the finished output to someone who cannot see it. Be highly specific about lighting, composition, subject, mood, and visual quality. Write in present tense as if the image/video already exists.`;
 
-      const res = await fetch('/.netlify/functions/chat', {
+      const res = await fetch('/.netlify/functions/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversation_id: newItem.id,
-          user_id: 'default-user',
-          message: descriptionPrompt,
+          type: 'chat',
+          data: {
+            conversation_id: newItem.id,
+            user_id: 'default-user',
+            message: descriptionPrompt,
+          },
         }),
       });
 

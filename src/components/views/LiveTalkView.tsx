@@ -172,13 +172,16 @@ User said: "${text.trim()}"
 
 Respond as ${aiName}:`;
 
-        const res = await fetch('/.netlify/functions/chat', {
+        const res = await fetch('/.netlify/functions/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            conversation_id: session.id,
-            user_id: 'default-user',
-            message: prompt,
+            type: 'chat',
+            data: {
+              conversation_id: session.id,
+              user_id: 'default-user',
+              message: prompt,
+            },
           }),
         });
 
