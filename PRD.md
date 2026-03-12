@@ -99,6 +99,7 @@ The following capabilities were absent from the prior product plan and must be t
 | 10 | Dynamic state-based interface (idle / listening / thinking / speaking / generating) | P0 |
 | 11 | Adaptive screen transformation based on AI's active task | P0 |
 | 12 | Premium asset quality — HD icons, cinematic motion, custom visual treatments | P0 |
+| 13 | Prompt Generation Studio — conversational image and video prompt creation | P0 |
 
 ---
 
@@ -563,6 +564,18 @@ A feature is considered **Done** when all of the following are true **and** the 
 - [ ] Error state displays clearly if generation fails
 - [ ] Delete removes item from gallery
 - [ ] Completed count badge in header updates accurately
+
+### Prompt Generation Studio
+- [ ] Prompt Studio mode appears in conversation mode selector
+- [ ] In Prompt Studio mode, AI generates labeled [IMAGE PROMPT] and [VIDEO PROMPT] outputs from casual input
+- [ ] AI auto-detects whether user wants an image prompt, video prompt, or both
+- [ ] AI generates multiple prompt variations when helpful
+- [ ] AI can refine, expand, shorten, or restyle prompts via follow-up messages
+- [ ] Prompts include composition, lighting, mood, style, and camera direction details
+- [ ] Video prompts include motion direction, camera movement, and shot dynamics
+- [ ] Prompt generation awareness works in all conversation modes (not only Prompt Studio)
+- [ ] Output format is clean, labeled, and ready to paste into generation tools
+- [ ] Conversational prompt refinement works across multiple turns
 
 ### AI Orb (All Contexts)
 - [ ] Orb renders correctly at sm, md, lg, xl sizes

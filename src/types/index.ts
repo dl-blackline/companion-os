@@ -5,7 +5,10 @@ export type ConversationMode =
   | 'coach' 
   | 'creative' 
   | 'neutral'
+  | 'prompt-studio'
   | 'custom';
+
+export type PromptGenerationType = 'image' | 'video' | 'both';
 
 export type CompanionState =
   | 'idle'

@@ -17,6 +17,7 @@ import {
 import type { Conversation, Message, ConversationMode } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
 import { getModeConfig, getAllModes } from '@/lib/modes';
+import { getPromptGenerationAwareness } from '@/lib/prompt-studio';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -82,11 +83,12 @@ export function ChatView() {
 
     try {
       const modeConfig = getModeConfig(activeConversation.mode);
+      const promptAwareness = getPromptGenerationAwareness(activeConversation.mode);
       const conversationContext = activeConversation.messages
         .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n\n');
 
-      const prompt = window.spark.llmPrompt`${modeConfig.systemPrompt}
+      const prompt = window.spark.llmPrompt`${modeConfig.systemPrompt}${promptAwareness}
 
 Previous conversation:
 ${conversationContext}
