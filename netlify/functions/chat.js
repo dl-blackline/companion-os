@@ -1,21 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateEmbedding } from "../../lib/openai-client.js";
+import { route } from "../../lib/ai-router.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-async function generateEmbedding(text) {
-  const response = await openai.embeddings.create({
-    model: process.env.OPENAI_EMBEDDING_MODEL,
-    input: text,
-  });
-  return response.data[0].embedding;
-}
 
 async function searchMemory(embedding) {
   const { data, error } = await supabase.rpc("match_messages", {
@@ -57,28 +47,6 @@ function buildMemoryContext(memories) {
     .join("\n");
 }
 
-async function callOpenAI(systemPrompt, userMessage) {
-  const response = await openai.chat.completions.create({
-    model: process.env.OPENAI_REALTIME_MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
-    ],
-  });
-
-  return response.choices[0].message.content;
-}
-
-async function callGemini(systemPrompt, userMessage) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL });
-
-  const prompt = `${systemPrompt}\n\nUser message: ${userMessage}`;
-  const result = await model.generateContent(prompt);
-  const response = result.response;
-  return response.text();
-}
-
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return {
@@ -111,15 +79,11 @@ export async function handler(event) {
 MEMORY
 ${memoryContext}`;
 
-    // 4. Call OpenAI, fallback to Gemini on failure
-    let assistantResponse;
-
-    try {
-      assistantResponse = await callOpenAI(systemPrompt, message);
-    } catch (openaiError) {
-      console.error("OpenAI error, falling back to Gemini:", openaiError.message);
-      assistantResponse = await callGemini(systemPrompt, message);
-    }
+    // 4. Send prompt to AI Router
+    const assistantResponse = await route({
+      task: "chat",
+      prompt: { system: systemPrompt, user: message },
+    });
 
     // 5. Save both the user message and the assistant response
     const assistantEmbedding = await generateEmbedding(assistantResponse);

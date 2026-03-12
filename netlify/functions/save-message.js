@@ -1,20 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import OpenAI from "openai";
+import { generateEmbedding } from "../../lib/openai-client.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-async function generateEmbedding(text) {
-  const response = await openai.embeddings.create({
-    model: process.env.OPENAI_EMBEDDING_MODEL,
-    input: text,
-  });
-  return response.data[0].embedding;
-}
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
