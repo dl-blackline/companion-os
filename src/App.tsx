@@ -27,8 +27,8 @@ const defaultSettings: CompanionSettings = {
   modelSettings: {
     defaultModel: 'gpt-4.1',
     fallbackModel: 'gpt-4.1-mini',
-    imageModel: 'flux',
-    videoModel: 'runway',
+    imageModel: 'openai-image',
+    videoModel: 'sora',
     musicModel: 'suno',
     voiceModel: 'elevenlabs',
     temperature: 0.7,
