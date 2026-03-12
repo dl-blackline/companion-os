@@ -3,6 +3,7 @@ import { generateEmbedding } from "../../lib/openai-client.js";
 import { orchestrate } from "../../lib/orchestrator.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
+import { detectEmotions, storeEmotionalSignals } from "../../lib/emotion-detector.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -116,6 +117,14 @@ export async function handler(event) {
         messageCount: (result.context.recentConversation || []).length,
       }),
       processKnowledgeGraph(user_id, message),
+      detectEmotions(message).then((signals) =>
+        storeEmotionalSignals({
+          user_id,
+          conversation_id,
+          signals,
+          source_message: message,
+        })
+      ),
     ]);
 
     return {
