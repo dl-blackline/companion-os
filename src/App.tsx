@@ -4,13 +4,15 @@ import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
 import { HomeDashboard } from '@/components/views/HomeDashboard';
 import { ChatView } from '@/components/views/ChatView';
+import { LiveTalkView } from '@/components/views/LiveTalkView';
+import { MediaView } from '@/components/views/MediaView';
 import { MemoryView } from '@/components/views/MemoryView';
 import { KnowledgeView } from '@/components/views/KnowledgeView';
 import { GoalsView } from '@/components/views/GoalsView';
 import { InsightsView } from '@/components/views/InsightsView';
 import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
-import type { CompanionSettings, DashboardData } from '@/types';
+import type { CompanionSettings, CompanionState } from '@/types';
 
 const defaultSettings: CompanionSettings = {
   aiName: 'Companion OS',
@@ -36,19 +38,10 @@ const defaultSettings: CompanionSettings = {
   },
 };
 
-const defaultDashboardData: DashboardData = {
-  priorities: [],
-  activeGoals: [],
-  recentConversations: [],
-  memoryHighlights: [],
-  insights: [],
-  currentProjects: [],
-};
-
 function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('home');
+  const [companionState, setCompanionState] = useState<CompanionState>('idle');
   const [settings, setSettings] = useKV<CompanionSettings>('companion-settings', defaultSettings);
-  const [dashboardData] = useKV<DashboardData>('dashboard-data', defaultDashboardData);
 
   const handleNavigate = (section: string) => {
     setActiveSection(section as NavSection);
@@ -59,9 +52,32 @@ function App() {
   const renderContent = () => {
     switch (activeSection) {
       case 'home':
-        return <HomeDashboard data={dashboardData || defaultDashboardData} onNavigate={handleNavigate} />;
+        return (
+          <HomeDashboard
+            companionState={companionState}
+            aiName={currentSettings.aiName}
+            onNavigate={handleNavigate}
+          />
+        );
+      case 'live-talk':
+        return (
+          <LiveTalkView
+            companionState={companionState}
+            setCompanionState={setCompanionState}
+            aiName={currentSettings.aiName}
+            onBack={() => setActiveSection('home')}
+          />
+        );
       case 'chat':
         return <ChatView />;
+      case 'media':
+        return (
+          <MediaView
+            companionState={companionState}
+            setCompanionState={setCompanionState}
+            aiName={currentSettings.aiName}
+          />
+        );
       case 'memory':
         return <MemoryView />;
       case 'knowledge':
@@ -75,18 +91,25 @@ function App() {
       case 'settings':
         return <SettingsView settings={currentSettings} onSettingsChange={setSettings} />;
       default:
-        return <HomeDashboard data={dashboardData || defaultDashboardData} onNavigate={handleNavigate} />;
+        return (
+          <HomeDashboard
+            companionState={companionState}
+            aiName={currentSettings.aiName}
+            onNavigate={handleNavigate}
+          />
+        );
     }
   };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      <AppSidebar 
-        activeSection={activeSection} 
+      <AppSidebar
+        activeSection={activeSection}
         onSectionChange={setActiveSection}
         aiName={currentSettings.aiName}
+        companionState={companionState}
       />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-hidden">
         {renderContent()}
       </main>
       <Toaster />

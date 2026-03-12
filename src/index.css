@@ -37,7 +37,219 @@
   --ring: oklch(0.45 0.15 290);
 
   --radius: 0.75rem;
+
+  /* Orb color tokens */
+  --orb-primary: oklch(0.55 0.22 290);
+  --orb-secondary: oklch(0.45 0.18 280);
+  --orb-glow: oklch(0.50 0.20 285);
+  --orb-listening: oklch(0.65 0.20 230);
+  --orb-thinking: oklch(0.60 0.22 310);
+  --orb-speaking: oklch(0.70 0.18 65);
 }
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 3);
+  --radius-full: 9999px;
+
+  --font-space: 'Space Grotesk', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space);
+  }
+
+  h1 {
+    @apply text-[32px] font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-[24px] font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-[18px] font-medium;
+  }
+
+  code, pre {
+    font-family: var(--font-mono);
+  }
+}
+
+.streaming-text {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── AI Orb Animations ─── */
+
+@keyframes orb-idle-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 40px oklch(0.50 0.20 285 / 0.55),
+      0 0 80px oklch(0.45 0.18 280 / 0.30),
+      0 0 140px oklch(0.45 0.15 290 / 0.15),
+      inset 0 0 30px oklch(0.65 0.22 290 / 0.20);
+  }
+  50% {
+    box-shadow:
+      0 0 55px oklch(0.55 0.22 290 / 0.70),
+      0 0 100px oklch(0.45 0.18 280 / 0.40),
+      0 0 180px oklch(0.45 0.15 290 / 0.20),
+      inset 0 0 40px oklch(0.65 0.22 290 / 0.30);
+  }
+}
+
+@keyframes orb-listening-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 50px oklch(0.65 0.20 230 / 0.70),
+      0 0 100px oklch(0.60 0.18 230 / 0.45),
+      0 0 160px oklch(0.55 0.16 230 / 0.25),
+      inset 0 0 40px oklch(0.75 0.22 230 / 0.30);
+  }
+  50% {
+    box-shadow:
+      0 0 70px oklch(0.70 0.22 230 / 0.85),
+      0 0 130px oklch(0.65 0.20 230 / 0.55),
+      0 0 200px oklch(0.60 0.18 230 / 0.35),
+      inset 0 0 60px oklch(0.80 0.24 230 / 0.40);
+  }
+}
+
+@keyframes orb-thinking-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 50px oklch(0.60 0.22 310 / 0.65),
+      0 0 100px oklch(0.55 0.20 310 / 0.40),
+      0 0 160px oklch(0.50 0.18 310 / 0.20),
+      inset 0 0 35px oklch(0.70 0.25 310 / 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 65px oklch(0.65 0.24 310 / 0.80),
+      0 0 120px oklch(0.60 0.22 310 / 0.50),
+      0 0 200px oklch(0.55 0.20 310 / 0.30),
+      inset 0 0 50px oklch(0.75 0.28 310 / 0.35);
+  }
+}
+
+@keyframes orb-speaking-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 55px oklch(0.70 0.18 65 / 0.70),
+      0 0 110px oklch(0.65 0.16 65 / 0.45),
+      0 0 180px oklch(0.60 0.14 65 / 0.25),
+      inset 0 0 40px oklch(0.80 0.20 65 / 0.30);
+  }
+  30% {
+    box-shadow:
+      0 0 80px oklch(0.75 0.20 65 / 0.90),
+      0 0 150px oklch(0.70 0.18 65 / 0.60),
+      0 0 240px oklch(0.65 0.16 65 / 0.35),
+      inset 0 0 60px oklch(0.85 0.22 65 / 0.45);
+  }
+  70% {
+    box-shadow:
+      0 0 45px oklch(0.65 0.16 65 / 0.55),
+      0 0 90px oklch(0.60 0.14 65 / 0.35),
+      0 0 150px oklch(0.55 0.12 65 / 0.20),
+      inset 0 0 30px oklch(0.75 0.18 65 / 0.22);
+  }
+}
+
+@keyframes orb-generating-pulse {
+  0%   { box-shadow: 0 0 50px oklch(0.65 0.20 290 / 0.60), 0 0 100px oklch(0.55 0.18 290 / 0.35), 0 0 170px oklch(0.50 0.16 290 / 0.18); }
+  25%  { box-shadow: 0 0 55px oklch(0.70 0.22 65  / 0.65), 0 0 110px oklch(0.65 0.20 65  / 0.40), 0 0 180px oklch(0.60 0.18 65  / 0.22); }
+  50%  { box-shadow: 0 0 60px oklch(0.65 0.22 310 / 0.70), 0 0 120px oklch(0.60 0.20 310 / 0.45), 0 0 190px oklch(0.55 0.18 310 / 0.25); }
+  75%  { box-shadow: 0 0 55px oklch(0.68 0.20 230 / 0.65), 0 0 110px oklch(0.63 0.18 230 / 0.40), 0 0 180px oklch(0.58 0.16 230 / 0.22); }
+  100% { box-shadow: 0 0 50px oklch(0.65 0.20 290 / 0.60), 0 0 100px oklch(0.55 0.18 290 / 0.35), 0 0 170px oklch(0.50 0.16 290 / 0.18); }
+}
+
+@keyframes orb-ring-idle {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes orb-ring-reverse {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+
+@keyframes ripple-expand {
+  0%   { transform: scale(1);   opacity: 0.60; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes waveform-bar {
+  0%, 100% { transform: scaleY(0.15); }
+  50%       { transform: scaleY(1);    }
+}
+
+@keyframes ambient-float {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33%       { transform: translateY(-8px) translateX(4px); }
+  66%       { transform: translateY(4px)  translateX(-6px); }
+}
+
+/* Utility classes */
+.orb-idle     { animation: orb-idle-pulse      3.5s ease-in-out infinite; }
+.orb-listen   { animation: orb-listening-pulse 1.2s ease-in-out infinite; }
+.orb-think    { animation: orb-thinking-pulse  1.8s ease-in-out infinite; }
+.orb-speak    { animation: orb-speaking-pulse  0.9s ease-in-out infinite; }
+.orb-generate { animation: orb-generating-pulse 3.0s linear infinite; }
+
+.ring-slow   { animation: orb-ring-idle    12s linear infinite; }
+.ring-medium { animation: orb-ring-reverse  8s linear infinite; }
+.ring-fast   { animation: orb-ring-idle     5s linear infinite; }
+
+.ripple-1 { animation: ripple-expand 2.0s ease-out infinite; }
+.ripple-2 { animation: ripple-expand 2.0s ease-out infinite 0.65s; }
+.ripple-3 { animation: ripple-expand 2.0s ease-out infinite 1.30s; }
+
 
 @theme {
   --color-background: var(--background);

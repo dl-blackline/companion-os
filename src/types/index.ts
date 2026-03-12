@@ -7,6 +7,52 @@ export type ConversationMode =
   | 'neutral'
   | 'custom';
 
+export type CompanionState =
+  | 'idle'
+  | 'listening'
+  | 'thinking'
+  | 'speaking'
+  | 'generating-image'
+  | 'generating-video'
+  | 'writing'
+  | 'analyzing';
+
+export interface TalkSession {
+  id: string;
+  transcript: TalkTurn[];
+  startedAt: number;
+  endedAt?: number;
+  mode: ConversationMode;
+}
+
+export interface TalkTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: number;
+  audioUrl?: string;
+}
+
+export interface MediaGeneration {
+  id: string;
+  type: 'photo' | 'video';
+  prompt: string;
+  style: MediaStyle;
+  status: 'pending' | 'generating' | 'complete' | 'error';
+  resultUrl?: string;
+  resultDescription?: string;
+  createdAt: number;
+  completedAt?: number;
+}
+
+export type MediaStyle =
+  | 'photorealistic'
+  | 'cinematic'
+  | 'artistic'
+  | 'portrait'
+  | 'lifestyle'
+  | 'editorial';
+
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export type MemoryCategory = 
