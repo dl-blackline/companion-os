@@ -10,10 +10,12 @@ interface LoginProps {
 }
 
 export default function Login({ onNavigateToSignup }: LoginProps) {
-  const { login } = useAuth()
+  const { login, configured } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    configured ? null : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables."
+  )
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
