@@ -12,6 +12,7 @@ import { GoalsView } from '@/components/views/GoalsView';
 import { InsightsView } from '@/components/views/InsightsView';
 import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
+import { AgentsView } from '@/components/views/AgentsView';
 import type { CompanionSettings, CompanionState } from '@/types';
 
 const defaultSettings: CompanionSettings = {
@@ -92,6 +93,8 @@ function App() {
         return <WorkflowsView />;
       case 'insights':
         return <InsightsView />;
+      case 'agents':
+        return <AgentsView />;
       case 'settings':
         return <SettingsView settings={currentSettings} onSettingsChange={setSettings} />;
       default:
