@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
+import { runAI } from "../../lib/ai-router.js";
 import { orchestrate } from "../../lib/orchestrator.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
@@ -44,6 +45,8 @@ async function saveMessage({ conversation_id, user_id, role, content, embedding 
   }
 }
 
+const FALLBACK_SYSTEM_PROMPT = "You are a helpful assistant.";
+
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return {
@@ -52,8 +55,12 @@ export async function handler(event) {
     };
   }
 
+  let message;
+
   try {
-    const { conversation_id, user_id, message } = JSON.parse(event.body);
+    const body = JSON.parse(event.body);
+    const { conversation_id, user_id } = body;
+    message = body.message;
 
     if (!conversation_id || !user_id || !message) {
       return {
@@ -137,6 +144,23 @@ export async function handler(event) {
       }),
     };
   } catch (err) {
+    // Orchestration failed — attempt a direct AI response via the resilient
+    // router so the user still receives a meaningful reply.
+    if (message) {
+      try {
+        const response = await runAI({
+          system: FALLBACK_SYSTEM_PROMPT,
+          user: message,
+        });
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ response }),
+        };
+      } catch (fallbackErr) {
+        console.error("Fallback AI call also failed:", fallbackErr.message);
+      }
+    }
+
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
