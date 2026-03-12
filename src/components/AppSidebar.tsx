@@ -1,74 +1,121 @@
 import type { Icon } from '@phosphor-icons/react';
-import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear } from '@phosphor-icons/react';
+import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, Microphone, Images } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { CompanionOrb } from '@/components/CompanionOrb';
+import type { CompanionState } from '@/types';
 
-export type NavSection = 'home' | 'chat' | 'memory' | 'knowledge' | 'goals' | 'workflows' | 'insights' | 'settings';
+export type NavSection =
+  | 'home'
+  | 'live-talk'
+  | 'chat'
+  | 'media'
+  | 'memory'
+  | 'knowledge'
+  | 'goals'
+  | 'workflows'
+  | 'insights'
+  | 'settings';
 
 interface AppSidebarProps {
   activeSection: NavSection;
   onSectionChange: (section: NavSection) => void;
   aiName: string;
+  companionState: CompanionState;
 }
 
-const navItems: Array<{ id: NavSection; label: string; icon: Icon }> = [
-  { id: 'home', label: 'Home', icon: House },
-  { id: 'chat', label: 'Chat', icon: ChatCircle },
-  { id: 'memory', label: 'Memory', icon: Brain },
-  { id: 'knowledge', label: 'Knowledge', icon: Books },
-  { id: 'goals', label: 'Goals', icon: Target },
-  { id: 'workflows', label: 'Workflows', icon: Lightning },
-  { id: 'insights', label: 'Insights', icon: Lightbulb },
-  { id: 'settings', label: 'Settings', icon: Gear },
+const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: string }> = [
+  { id: 'home',      label: 'Home',      icon: House,      group: 'main' },
+  { id: 'live-talk', label: 'Live Talk', icon: Microphone, group: 'main' },
+  { id: 'chat',      label: 'Chat',      icon: ChatCircle, group: 'main' },
+  { id: 'media',     label: 'Create',    icon: Images,     group: 'main' },
+  { id: 'memory',    label: 'Memory',    icon: Brain,      group: 'tools' },
+  { id: 'knowledge', label: 'Knowledge', icon: Books,      group: 'tools' },
+  { id: 'goals',     label: 'Goals',     icon: Target,     group: 'tools' },
+  { id: 'workflows', label: 'Workflows', icon: Lightning,  group: 'tools' },
+  { id: 'insights',  label: 'Insights',  icon: Lightbulb,  group: 'tools' },
+  { id: 'settings',  label: 'Settings',  icon: Gear,       group: 'system' },
 ];
 
-export function AppSidebar({ activeSection, onSectionChange, aiName }: AppSidebarProps) {
+export function AppSidebar({ activeSection, onSectionChange, aiName, companionState }: AppSidebarProps) {
+  const mainItems  = navItems.filter((i) => i.group === 'main');
+  const toolItems  = navItems.filter((i) => i.group === 'tools');
+  const sysItems   = navItems.filter((i) => i.group === 'system');
+
+  const renderItem = (item: (typeof navItems)[number]) => {
+    const Icon = item.icon;
+    const isActive = activeSection === item.id;
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => onSectionChange(item.id)}
+        className={cn(
+          'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all relative',
+          isActive
+            ? 'bg-primary text-primary-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        )}
+      >
+        {isActive && (
+          <motion.div
+            layoutId="activeNav"
+            className="absolute inset-0 bg-primary rounded-lg"
+            initial={false}
+            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+          />
+        )}
+        <Icon size={20} weight={isActive ? 'fill' : 'regular'} className="relative z-10" />
+        <span className="relative z-10">{item.label}</span>
+      </button>
+    );
+  };
+
   return (
     <div className="w-64 border-r border-border bg-card flex flex-col h-full">
-      <div className="p-6 border-b border-border">
-        <h1 className="text-xl font-bold text-primary tracking-tight">{aiName}</h1>
-        <p className="text-xs text-muted-foreground mt-1">Personal AI Companion</p>
+      {/* Brand / orb header */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-border">
+        <CompanionOrb state={companionState} size="sm" showRipples={false} />
+        <div className="flex flex-col min-w-0">
+          <h1
+            className="text-base font-bold text-foreground tracking-tight leading-none truncate"
+            style={{ fontFamily: 'var(--font-space)' }}
+          >
+            {aiName}
+          </h1>
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-none">AI Companion</p>
+        </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeSection === item.id;
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => onSectionChange(item.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all relative',
-                isActive 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              )}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="activeNav"
-                  className="absolute inset-0 bg-primary rounded-lg"
-                  initial={false}
-                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                />
-              )}
-              <Icon size={20} weight={isActive ? 'fill' : 'regular'} className="relative z-10" />
-              <span className="relative z-10">{item.label}</span>
-            </button>
-          );
-        })}
+      <nav className="flex-1 p-3 flex flex-col gap-4 overflow-y-auto">
+        {/* Main */}
+        <div className="space-y-1">
+          <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+            Companion
+          </p>
+          {mainItems.map(renderItem)}
+        </div>
+
+        {/* Tools */}
+        <div className="space-y-1">
+          <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+            Tools
+          </p>
+          {toolItems.map(renderItem)}
+        </div>
       </nav>
 
-      <div className="p-4 border-t border-border">
+      {/* Footer */}
+      <div className="p-3 border-t border-border space-y-1">
+        {sysItems.map(renderItem)}
         <div className="px-4 py-2 text-xs text-muted-foreground">
           <div className="flex items-center justify-between">
-            <span>Version 1.0.0</span>
-            <span className="w-2 h-2 bg-accent rounded-full"></span>
+            <span>v1.0.0</span>
+            <span className="w-2 h-2 bg-accent rounded-full" />
           </div>
         </div>
       </div>
     </div>
   );
 }
+

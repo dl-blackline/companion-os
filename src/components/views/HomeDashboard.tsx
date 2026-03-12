@@ -1,195 +1,200 @@
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Sparkle, ArrowRight, CheckCircle, Clock } from '@phosphor-icons/react';
-import type { DashboardData } from '@/types';
-import { formatTime } from '@/lib/helpers';
 import { motion } from 'framer-motion';
+import { CompanionOrb } from '@/components/CompanionOrb';
+import type { CompanionState } from '@/types';
+import {
+  Microphone,
+  ChatCircle,
+  Images,
+  Lightning,
+  ArrowRight,
+} from '@phosphor-icons/react';
 
 interface HomeDashboardProps {
-  data: DashboardData;
+  companionState: CompanionState;
+  aiName: string;
   onNavigate: (section: string) => void;
 }
 
-export function HomeDashboard({ data, onNavigate }: HomeDashboardProps) {
+const STATE_LABELS: Record<CompanionState, string> = {
+  idle: 'Ready',
+  listening: 'Listening…',
+  thinking: 'Thinking…',
+  speaking: 'Speaking…',
+  'generating-image': 'Generating image…',
+  'generating-video': 'Generating video…',
+  writing: 'Writing…',
+  analyzing: 'Analyzing…',
+};
+
+const STATE_SUBLABELS: Record<CompanionState, string> = {
+  idle: 'Your AI companion is here',
+  listening: 'I can hear you',
+  thinking: 'Working on your request',
+  speaking: 'Playing response',
+  'generating-image': 'Creating your vision',
+  'generating-video': 'Rendering your scene',
+  writing: 'Composing for you',
+  analyzing: 'Processing your content',
+};
+
+const quickActions = [
+  {
+    id: 'live-talk',
+    label: 'Live Talk',
+    icon: Microphone,
+    description: 'Real-time voice conversation',
+    accent: 'oklch(0.65 0.20 230)',
+    borderAccent: 'border-[oklch(0.65_0.20_230/0.35)]',
+    bgAccent: 'oklch(0.65 0.20 230 / 0.08)',
+    iconColor: 'text-[oklch(0.70_0.20_230)]',
+  },
+  {
+    id: 'chat',
+    label: 'Chat',
+    icon: ChatCircle,
+    description: 'Text conversation',
+    accent: 'oklch(0.55 0.22 290)',
+    borderAccent: 'border-[oklch(0.55_0.22_290/0.35)]',
+    bgAccent: 'oklch(0.55 0.22 290 / 0.08)',
+    iconColor: 'text-[oklch(0.60_0.22_290)]',
+  },
+  {
+    id: 'media',
+    label: 'Create',
+    icon: Images,
+    description: 'Generate photos & videos',
+    accent: 'oklch(0.72 0.26 310)',
+    borderAccent: 'border-[oklch(0.72_0.26_310/0.35)]',
+    bgAccent: 'oklch(0.72 0.26 310 / 0.08)',
+    iconColor: 'text-[oklch(0.72_0.26_310)]',
+  },
+  {
+    id: 'workflows',
+    label: 'Automate',
+    icon: Lightning,
+    description: 'Intelligent workflows',
+    accent: 'oklch(0.75 0.14 65)',
+    borderAccent: 'border-[oklch(0.75_0.14_65/0.35)]',
+    bgAccent: 'oklch(0.75 0.14 65 / 0.08)',
+    iconColor: 'text-[oklch(0.75_0.14_65)]',
+  },
+];
+
+export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashboardProps) {
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back</h1>
-        <p className="text-muted-foreground">Here's what's happening with your goals and projects today.</p>
-      </div>
+    <div className="relative flex flex-col items-center justify-center h-full w-full overflow-hidden bg-background">
+      {/* Ambient background gradient */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 60% at 50% 45%, oklch(0.28 0.08 285 / 0.40) 0%, transparent 72%)',
+        }}
+      />
+      {/* Subtle grid texture */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.025]"
+        style={{
+          backgroundImage:
+            'linear-gradient(oklch(0.80 0.05 280) 1px, transparent 1px), linear-gradient(90deg, oklch(0.80 0.05 280) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
 
-      {data.focusRecommendation && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center gap-0">
+        {/* App name */}
+        <motion.p
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-xs font-semibold tracking-[0.22em] uppercase text-muted-foreground mb-10"
+          style={{ fontFamily: 'var(--font-space)' }}
         >
-          <Card className="p-6 border-l-4 border-l-accent bg-gradient-to-r from-accent/10 to-transparent">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-lg bg-accent/20">
-                <Sparkle size={24} weight="fill" className="text-accent" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Focus Recommendation</h3>
-                <p className="text-sm text-muted-foreground">{data.focusRecommendation}</p>
-              </div>
-            </div>
-          </Card>
+          {aiName}
+        </motion.p>
+
+        {/* Orb */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-8"
+        >
+          <CompanionOrb
+            state={companionState}
+            size="xl"
+            onClick={() => onNavigate('live-talk')}
+            showRipples={true}
+          />
         </motion.div>
-      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Today's Priorities</h3>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('goals')}>
-              View all <ArrowRight size={16} className="ml-1" />
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {data.priorities.slice(0, 3).map((task) => (
-              <div key={task.id} className="flex items-start gap-3">
-                <CheckCircle size={20} weight={task.completed ? 'fill' : 'regular'} 
-                  className={task.completed ? 'text-accent mt-0.5' : 'text-muted-foreground mt-0.5'} />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                    {task.title}
-                  </p>
-                  {task.dueDate && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Clock size={12} /> {formatTime(task.dueDate)}
-                    </p>
-                  )}
-                </div>
-                <Badge variant={task.priority === 'critical' ? 'destructive' : 'secondary'} className="text-xs">
-                  {task.priority}
-                </Badge>
-              </div>
-            ))}
-            {data.priorities.length === 0 && (
-              <p className="text-sm text-muted-foreground">No priorities for today</p>
-            )}
-          </div>
-        </Card>
+        {/* State label */}
+        <motion.div
+          className="flex flex-col items-center gap-1 mb-12"
+          key={companionState}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+        >
+          <span
+            className="text-2xl font-semibold tracking-tight"
+            style={{ fontFamily: 'var(--font-space)' }}
+          >
+            {STATE_LABELS[companionState]}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {STATE_SUBLABELS[companionState]}
+          </span>
+        </motion.div>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Active Goals</h3>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('goals')}>
-              View all <ArrowRight size={16} className="ml-1" />
-            </Button>
-          </div>
-          <div className="space-y-4">
-            {data.activeGoals.slice(0, 3).map((goal) => (
-              <div key={goal.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium">{goal.title}</p>
-                  <span className="text-xs text-muted-foreground">{goal.progress}%</span>
+        {/* Quick actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-xl px-4"
+        >
+          {quickActions.map((action, i) => {
+            const Icon = action.icon;
+            return (
+              <motion.button
+                key={action.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.30 + i * 0.07 }}
+                onClick={() => onNavigate(action.id)}
+                className={`group relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-300
+                  ${action.borderAccent} bg-card/60 hover:bg-card/90 backdrop-blur-sm
+                  hover:shadow-[0_0_24px_oklch(0.50_0.18_285/0.25)] active:scale-[0.97]`}
+              >
+                <div
+                  className="flex items-center justify-center w-10 h-10 rounded-xl"
+                  style={{ background: action.bgAccent }}
+                >
+                  <Icon size={20} weight="fill" className={action.iconColor} />
                 </div>
-                <Progress value={goal.progress} className="h-2" />
-              </div>
-            ))}
-            {data.activeGoals.length === 0 && (
-              <p className="text-sm text-muted-foreground">No active goals</p>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Recent Conversations</h3>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('chat')}>
-              View all <ArrowRight size={16} className="ml-1" />
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {data.recentConversations.slice(0, 3).map((conv) => (
-              <div key={conv.id} className="flex items-start gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg -m-2 transition-colors"
-                onClick={() => onNavigate('chat')}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{conv.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(conv.updatedAt).toLocaleDateString()}
-                  </p>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span
+                    className="text-sm font-semibold leading-none"
+                    style={{ fontFamily: 'var(--font-space)' }}
+                  >
+                    {action.label}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                    {action.description}
+                  </span>
                 </div>
-                <Badge variant="outline" className="text-xs">{conv.mode}</Badge>
-              </div>
-            ))}
-            {data.recentConversations.length === 0 && (
-              <p className="text-sm text-muted-foreground">No recent conversations</p>
-            )}
-          </div>
-        </Card>
+                <ArrowRight
+                  size={12}
+                  className="absolute top-3 right-3 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity"
+                />
+              </motion.button>
+            );
+          })}
+        </motion.div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Insights</h3>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('insights')}>
-              View all <ArrowRight size={16} className="ml-1" />
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {data.insights.slice(0, 4).map((insight) => (
-              <div key={insight.id} className="p-3 border border-border rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Badge variant={insight.priority === 'high' ? 'default' : 'secondary'} className="mt-1">
-                    {insight.type}
-                  </Badge>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{insight.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {data.insights.length === 0 && (
-              <p className="text-sm text-muted-foreground">No insights available</p>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Memory Highlights</h3>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('memory')}>
-              View all <ArrowRight size={16} className="ml-1" />
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {data.memoryHighlights.slice(0, 4).map((memory) => (
-              <div key={memory.id} className="p-3 border border-border rounded-lg">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{memory.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{memory.content}</p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">{memory.category}</Badge>
-                </div>
-              </div>
-            ))}
-            {data.memoryHighlights.length === 0 && (
-              <p className="text-sm text-muted-foreground">No memory highlights</p>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {data.currentProjects.length > 0 && (
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4">Current Projects</h3>
-          <div className="flex flex-wrap gap-2">
-            {data.currentProjects.map((project, idx) => (
-              <Badge key={idx} variant="secondary" className="px-3 py-1">
-                {project}
-              </Badge>
-            ))}
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
+
