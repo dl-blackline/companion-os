@@ -110,6 +110,7 @@ Please provide a helpful response.`;
             conversation_id: activeConversation.id,
             user_id: 'default-user',
             message: fullPrompt,
+            model: localStorage.getItem('chat_model') || undefined,
           },
         }),
       });

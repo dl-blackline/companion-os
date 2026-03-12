@@ -82,7 +82,7 @@ async function saveMessage(supabase, { conversation_id, user_id, role, content, 
 }
 
 async function handleChat(data) {
-  const { conversation_id, user_id, message } = data;
+  const { conversation_id, user_id, message, model } = data;
 
   if (!conversation_id || !user_id || !message) {
     return response(400, {
@@ -98,6 +98,7 @@ async function handleChat(data) {
     conversation_id,
     getRecentConversation: (convId) =>
       getRecentConversation(supabase, convId),
+    model,
   });
 
   // For media results, return the media payload directly

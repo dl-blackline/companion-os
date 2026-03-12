@@ -242,6 +242,10 @@ export interface CompanionSettings {
   modelSettings: {
     defaultModel: string;
     fallbackModel: string;
+    imageModel: string;
+    videoModel: string;
+    musicModel: string;
+    voiceModel: string;
     temperature: number;
     maxLength: number;
     citationPreference: 'always' | 'when-available' | 'never';

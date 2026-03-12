@@ -59,7 +59,7 @@ export async function handler(event) {
 
   try {
     const body = JSON.parse(event.body);
-    const { conversation_id, user_id } = body;
+    const { conversation_id, user_id, model } = body;
     message = body.message;
 
     if (!conversation_id || !user_id || !message) {
@@ -77,6 +77,7 @@ export async function handler(event) {
       user_id,
       conversation_id,
       getRecentConversation,
+      model,
     });
 
     // 2. For media results, return the media payload directly
