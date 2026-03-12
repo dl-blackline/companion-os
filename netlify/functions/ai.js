@@ -74,10 +74,9 @@ async function saveMessage(
     role,
     content,
     embedding,
+    ...(media_url && { media_url }),
+    ...(media_type && { media_type }),
   };
-
-  if (media_url) row.media_url = media_url;
-  if (media_type) row.media_type = media_type;
 
   await supabase.from(table).insert(row);
 }

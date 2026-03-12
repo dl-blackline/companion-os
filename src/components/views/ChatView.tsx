@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -151,13 +151,17 @@ export function ChatView() {
       const current = prev || [];
       return current.map(conv => {
         if (conv.id === activeConvId) {
-          const updated = {
+          let title = conv.title;
+          if (conv.messages.length === 0) {
+            title = input.trim().slice(0, 50)
+              || (mediaType === 'image' ? 'Image upload' : mediaType === 'video' ? 'Video upload' : 'New Conversation');
+          }
+          return {
             ...conv,
             messages: [...conv.messages, userMessage],
             updatedAt: Date.now(),
-            title: conv.messages.length === 0 ? input.trim().slice(0, 50) : conv.title,
+            title,
           };
-          return updated;
         }
         return conv;
       });
