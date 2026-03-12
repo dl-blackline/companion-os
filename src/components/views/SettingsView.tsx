@@ -75,6 +75,16 @@ const CITATION_OPTIONS = [
   { value: 'never', label: 'Never' },
 ];
 
+/** Maps modelSettings field names to their localStorage keys. */
+const MODEL_STORAGE_KEYS: Record<string, string> = {
+  defaultModel: 'chat_model',
+  fallbackModel: 'fallback_model',
+  imageModel: 'image_model',
+  videoModel: 'video_model',
+  musicModel: 'music_model',
+  voiceModel: 'voice_model',
+};
+
 function SettingRow({
   icon: Icon,
   label,
@@ -232,8 +242,8 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
       .then((data) => {
         if (data) setModelRegistry(data);
       })
-      .catch(() => {
-        /* ignore – dropdowns will remain empty until loaded */
+      .catch((err) => {
+        console.warn('Failed to load model registry:', err);
       });
   }, []);
 
@@ -306,15 +316,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
 
     // Persist individual model selections to localStorage for easy access
     // by the chat request layer.
-    const MODEL_KEYS: Record<string, string> = {
-      defaultModel: 'chat_model',
-      fallbackModel: 'fallback_model',
-      imageModel: 'image_model',
-      videoModel: 'video_model',
-      musicModel: 'music_model',
-      voiceModel: 'voice_model',
-    };
-    for (const [field, storageKey] of Object.entries(MODEL_KEYS)) {
+    for (const [field, storageKey] of Object.entries(MODEL_STORAGE_KEYS)) {
       if (field in patch) {
         localStorage.setItem(storageKey, (patch as Record<string, string>)[field]);
       }
