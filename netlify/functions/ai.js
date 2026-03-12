@@ -287,6 +287,8 @@ async function handleMedia(data) {
     const result = await runMediaTask({
       type: data.media_type || data.type || "image",
       prompt: data.prompt,
+      model: data.model,
+      options: data.options || {},
     });
 
     return response(200, result);
