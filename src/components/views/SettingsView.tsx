@@ -328,7 +328,8 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-3xl mx-auto">
+    <div className="settings-panel p-8 max-w-3xl mx-auto">
+      <div className="space-y-8">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -884,6 +885,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
           </motion.div>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

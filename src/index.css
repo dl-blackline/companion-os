@@ -250,6 +250,70 @@
 .ripple-2 { animation: ripple-expand 2.0s ease-out infinite 0.65s; }
 .ripple-3 { animation: ripple-expand 2.0s ease-out infinite 1.30s; }
 
+/* ─── Smooth Scrolling Containers ─── */
+
+.container-scroll {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-right: 8px;
+}
+
+.container-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.container-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.container-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 10px;
+}
+
+.container-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ─── Visual Depth: Glass Cards ─── */
+
+.glass-card {
+  background: rgba(20, 20, 30, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Settings Panel Scroll Fix ─── */
+
+.settings-panel {
+  height: calc(100vh - 140px);
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.settings-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-panel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 10px;
+}
+
+/* ─── GPU-Accelerated Utility ─── */
+
+.gpu-accelerated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
 
 @layer base {
   body {

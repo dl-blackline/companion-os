@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
@@ -117,7 +118,18 @@ function App() {
         companionState={companionState}
       />
       <main className="flex-1 overflow-hidden">
-        {renderContent()}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="h-full"
+          >
+            {renderContent()}
+          </motion.div>
+        </AnimatePresence>
       </main>
       <Toaster />
     </div>
