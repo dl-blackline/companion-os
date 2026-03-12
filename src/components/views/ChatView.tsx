@@ -18,7 +18,7 @@ import {
   Image as ImageIcon,
   VideoCamera,
   X,
-  SpinnerGap
+  SpinnerGap,
   ArrowLeft,
 } from '@phosphor-icons/react';
 import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
@@ -527,8 +527,6 @@ Please provide a helpful response.`;
                 <Button
                   onClick={handleSendMessage}
                   disabled={(!input.trim() && !pendingMedia) || isStreaming}
-                  className="self-end"
-                  disabled={!input.trim() || isStreaming}
                   className="self-end min-h-[44px] min-w-[44px]"
                 >
                   <PaperPlaneRight size={18} weight="fill" />
