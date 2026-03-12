@@ -158,9 +158,7 @@ export async function handler(event) {
         messageCount: recentConversation.length,
       }),
       processKnowledgeGraph(user_id, message),
-    ]).catch((err) => {
-      console.error("Background memory processing error:", err.message);
-    });
+    ]);
 
     return {
       statusCode: 200,
