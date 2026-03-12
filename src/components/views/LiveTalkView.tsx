@@ -32,7 +32,6 @@ function WaveformBars({ active, color }: { active: boolean; color: string }) {
         <motion.div
           key={i}
           className="w-[3px] rounded-full origin-bottom"
-          style={{ background: color }}
           animate={
             active
               ? {
@@ -206,13 +205,28 @@ Respond as ${aiName}:`;
         }));
 
         speak(response);
-      } catch {
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Something went wrong. Try again.';
+        console.error('Live Talk error:', err);
+
+        const errorTurn: TalkTurn = {
+          id: generateId(),
+          role: 'assistant',
+          text: `⚠️ ${errorMessage}`,
+          timestamp: Date.now(),
+        };
+        setSession((prev) => ({
+          ...prev,
+          transcript: [...prev.transcript, errorTurn],
+        }));
+
         isProcessingRef.current = false;
         setCompanionState('idle');
-        setStatusText('Something went wrong. Try again.');
+        setStatusText(errorMessage);
       }
     },
-    [session.transcript, aiName, setCompanionState, speak]
+    [session.id, session.transcript, aiName, setCompanionState, speak]
   );
 
   const startListening = useCallback(() => {
