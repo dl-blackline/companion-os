@@ -196,11 +196,11 @@ Respond as ${aiName}:`;
   );
 
   const startListening = useCallback(() => {
-    const SR =
-      (window as typeof window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition })
-        .SpeechRecognition ??
-      (window as typeof window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition })
-        .webkitSpeechRecognition;
+    const w = window as typeof window & {
+      SpeechRecognition?: typeof SpeechRecognition;
+      webkitSpeechRecognition?: typeof SpeechRecognition;
+    };
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
 
     if (!SR) {
       setStatusText('Voice input not supported in this browser');
