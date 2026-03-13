@@ -121,6 +121,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     if (!supabaseConfigured) return
     await supabase.auth.signOut()
+    // Clear state immediately (onAuthStateChange will also fire, but this
+    // prevents any window where getAccessToken could return a stale token)
+    setSession(null)
+    setUser(null)
+    setRole('user')
+    setPlan('free')
     setAuthState({ status: 'unauthenticated' })
   }
 

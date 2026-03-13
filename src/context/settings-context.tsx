@@ -220,6 +220,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // getToken is intentionally excluded — it is memoized via useCallback and
+    // only depends on getAccessToken which is itself stable.  We re-fetch
+    // preferences when the authenticated user identity changes (authUser?.id).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
