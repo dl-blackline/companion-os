@@ -95,7 +95,18 @@ export class RealtimeVoiceClient {
       };
 
       // 4. Get microphone stream and add track
-      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Use explicit audio constraints to enable hardware/browser-level noise
+      // suppression, echo cancellation and auto-gain control, and capture mono
+      // audio at the sample rate that the Realtime API expects.
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
       this.localStream.getTracks().forEach((track) => {
         this.pc!.addTrack(track, this.localStream!);
       });
@@ -199,16 +210,7 @@ export class RealtimeVoiceClient {
     if (options.systemPrompt !== undefined) this.systemPrompt = options.systemPrompt;
 
     if (this.dc && this.dc.readyState === 'open') {
-      this.dc.send(
-        JSON.stringify({
-          type: 'session.update',
-          session: {
-            voice: this.voice,
-            instructions: this.systemPrompt || undefined,
-            input_audio_transcription: { model: 'whisper-1' },
-          },
-        })
-      );
+      this.sendSessionUpdate();
     }
   }
 
@@ -257,17 +259,11 @@ export class RealtimeVoiceClient {
     if (!this.dc) return;
 
     this.dc.onopen = () => {
-      // Configure the session once the data channel is ready
-      this.dc!.send(
-        JSON.stringify({
-          type: 'session.update',
-          session: {
-            voice: this.voice,
-            instructions: this.systemPrompt || undefined,
-            input_audio_transcription: { model: 'whisper-1' },
-          },
-        })
-      );
+      // Configure the session once the data channel is ready.
+      // Server-side VAD is tuned with a higher threshold so that background
+      // noise does not falsely trigger speech detection, and a longer silence
+      // duration so the AI waits for the user to actually finish speaking.
+      this.sendSessionUpdate();
     };
 
     this.dc.onmessage = (event) => {
@@ -362,6 +358,34 @@ export class RealtimeVoiceClient {
     if (this._state === state) return;
     this._state = state;
     this.emit({ type: 'state_change', state });
+  }
+
+  /**
+   * Send a session.update event with the current voice, system prompt, and
+   * VAD configuration.  Centralised here so both the initial onopen handler
+   * and updateSession() stay in sync.
+   */
+  private sendSessionUpdate(): void {
+    if (!this.dc || this.dc.readyState !== 'open') return;
+    this.dc.send(
+      JSON.stringify({
+        type: 'session.update',
+        session: {
+          voice: this.voice,
+          instructions: this.systemPrompt || undefined,
+          input_audio_transcription: { model: 'whisper-1' },
+          // Server-side VAD: higher threshold reduces false triggers from
+          // background noise; longer silence window avoids cutting the user
+          // off too early.
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.75,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 800,
+          },
+        },
+      })
+    );
   }
 
   private emit(event: RealtimeVoiceEvent): void {
