@@ -16,6 +16,7 @@ import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AgentsView } from '@/components/views/AgentsView';
 import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
+import { useVoice } from '@/context/voice-context';
 import { List, X } from '@phosphor-icons/react';
 import type { CompanionSettings, CompanionState } from '@/types';
 
@@ -53,15 +54,24 @@ function App() {
   const [settings, setSettings] = useLocalStorage<CompanionSettings>('companion-settings', defaultSettings);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { isActive: isGlobalVoiceActive, stopLiveTalk } = useVoice();
 
-  const handleNavigate = (section: string) => {
+  // Stop any active global voice session when entering Live Talk to prevent
+  // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
+  const navigateTo = (section: string) => {
+    if (section === 'live-talk' && isGlobalVoiceActive) {
+      stopLiveTalk();
+    }
     setActiveSection(section as NavSection);
     setIsMobileMenuOpen(false);
   };
 
+  const handleNavigate = (section: string) => {
+    navigateTo(section);
+  };
+
   const handleSectionChange = (section: NavSection) => {
-    setActiveSection(section);
-    setIsMobileMenuOpen(false);
+    navigateTo(section);
   };
 
   const currentSettings = settings || defaultSettings;
@@ -184,8 +194,11 @@ function App() {
         </AnimatePresence>
       </main>
 
-      {/* Global floating Live Talk orb — visible on all pages */}
-      <FloatingLiveOrb />
+      {/* Global floating Live Talk orb — hidden on the Live Talk page since
+          LiveTalkView manages its own voice session. Showing both simultaneously
+          would create two independent RealtimeVoiceClient instances and cause
+          duplicate audio. */}
+      {activeSection !== 'live-talk' && <FloatingLiveOrb />}
 
       <Toaster />
     </div>
