@@ -19,7 +19,7 @@ import {
   runWorkflow,
 } from "../../lib/workflow-engine.js";
 import { runMediaTask } from "../../lib/media-engine.js";
-import { processVoiceTurn } from "../../lib/voice-engine.js";
+import { processVoiceTurn, createRealtimeSession } from "../../lib/voice-engine.js";
 import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
 import { runTask } from "../../lib/multimodal-engine.js";
 import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
@@ -520,34 +520,12 @@ async function handleRealtimeToken(data) {
     return response(500, { error: "OpenAI API key not configured" });
   }
 
-  const model = data.model || "gpt-4o-realtime-preview";
-  const voice = data.voice || "alloy";
+  const model = data.model;
+  const voice = data.voice;
 
   try {
-    const tokenRes = await fetch("https://api.openai.com/v1/realtime/sessions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        voice,
-      }),
-    });
-
-    if (!tokenRes.ok) {
-      const errText = await tokenRes.text().catch(() => "Unknown error");
-      console.error("OpenAI realtime session error:", tokenRes.status, errText);
-      return response(tokenRes.status, {
-        error: `Failed to create realtime session: ${tokenRes.status}`,
-      });
-    }
-
-    const sessionData = await tokenRes.json();
-    return response(200, {
-      client_secret: sessionData.client_secret?.value,
-    });
+    const { client_secret } = await createRealtimeSession({ model, voice });
+    return response(200, { client_secret });
   } catch (err) {
     console.error("Realtime token error:", err.message);
     return response(500, { error: "Failed to create realtime session" });
