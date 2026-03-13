@@ -1,3 +1,9 @@
+// Re-export domain type modules
+export * from './async';
+export * from './media';
+export * from './knowledge';
+export * from './memory';
+
 export type ConversationMode = 
   | 'strategist' 
   | 'operator' 
