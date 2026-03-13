@@ -45,6 +45,8 @@ export interface MediaGeneration {
   type: 'photo' | 'video';
   prompt: string;
   style: MediaStyle;
+  /** Aspect ratio used for the generation (e.g. '1:1', '16:9'). Photo only. */
+  aspectRatio?: string;
   status: 'pending' | 'generating' | 'complete' | 'error';
   resultUrl?: string;
   resultDescription?: string;

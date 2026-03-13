@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 import { 
   Plus, 
   PaperPlaneRight, 
@@ -20,6 +20,7 @@ import {
   X,
   SpinnerGap,
   ArrowLeft,
+  Trash,
 } from '@phosphor-icons/react';
 import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
@@ -61,14 +62,40 @@ export function ChatView() {
   );
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUploader, setShowUploader] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<MediaFile | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);
   const modes = getAllModes();
+
+  /** Scroll to bottom of messages */
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Auto-scroll when messages change or streaming text updates
+  useEffect(() => {
+    if (isStreaming || (activeConversation?.messages.length ?? 0) > 0) {
+      scrollToBottom();
+    }
+  }, [activeConversation?.messages.length, streamingText, isStreaming]);
+
+  /** Filter conversations by search query */
+  const filteredConversations = (conversations || []).filter((conv) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      conv.title.toLowerCase().includes(q) ||
+      conv.mode.toLowerCase().includes(q) ||
+      conv.messages.some((m) => m.content.toLowerCase().includes(q))
+    );
+  });
 
   const handleCreateConversation = (mode: ConversationMode = 'neutral') => {
     const newConv: Conversation = {
@@ -181,6 +208,7 @@ export function ChatView() {
 
     setInput('');
     setIsStreaming(true);
+    setStreamingText('');
     if (mediaUrl) setIsAnalyzing(true);
 
     try {
@@ -213,6 +241,7 @@ Please provide a helpful response.`;
             user_id: 'default-user',
             message: fullPrompt,
             model: activeChatModel(),
+            stream: !mediaUrl, // Streaming is disabled for vision requests: the backend processes the full image before generating a response, so streaming adds no UX value and complicates the response handling.
             ...(mediaUrl && { media_url: mediaUrl }),
             ...(mediaType && { media_type: mediaType }),
           },
@@ -225,20 +254,66 @@ Please provide a helpful response.`;
         throw new Error(errData.error || `Chat request failed with status ${res.status}`);
       }
 
-      const data = await res.json();
+      let responseText = '';
+      let responseMediaUrl: string | undefined;
+      let responseMediaType: MediaType | undefined;
+
+      // Handle NDJSON streaming responses
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/x-ndjson') || contentType.includes('text/event-stream')) {
+        setIsAnalyzing(false);
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            for (const line of chunk.split('\n')) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              try {
+                const parsed = JSON.parse(trimmed);
+                // Backend sends { token, done } format
+                if (parsed.token !== undefined && !parsed.done) {
+                  responseText += parsed.token;
+                  setStreamingText(responseText);
+                } else if (parsed.delta) {
+                  responseText += parsed.delta;
+                  setStreamingText(responseText);
+                } else if (parsed.response) {
+                  responseText = parsed.response;
+                  setStreamingText(responseText);
+                }
+              } catch {
+                // Non-JSON line — ignore
+              }
+            }
+          }
+        }
+      } else {
+        // Fall back to standard JSON response
+        const data = await res.json();
+        responseText = data.response || '';
+        if (data.media_url) {
+          responseMediaUrl = data.media_url;
+          responseMediaType = data.media_type as MediaType;
+        }
+      }
 
       // Detect media response (image or video generated by the AI)
-      const isMediaResponse = data.media_url && data.media_type;
+      const isMediaResponse = !!responseMediaUrl && !!responseMediaType;
 
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
-        content: data.response || (isMediaResponse ? `[${data.media_type} generated]` : ''),
+        content: responseText || (isMediaResponse ? `[${responseMediaType} generated]` : ''),
         timestamp: Date.now(),
-        ...(isMediaResponse && { media_url: data.media_url }),
-        ...(isMediaResponse && { media_type: data.media_type as MediaType }),
+        ...(isMediaResponse && { media_url: responseMediaUrl }),
+        ...(isMediaResponse && { media_type: responseMediaType }),
       };
 
+      setStreamingText('');
       setConversations((prev) => {
         const current = prev || [];
         return current.map(conv => {
@@ -254,6 +329,7 @@ Please provide a helpful response.`;
       });
     } catch (error) {
       console.error('Error getting AI response:', error);
+      setStreamingText('');
     } finally {
       setIsStreaming(false);
       setIsAnalyzing(false);
@@ -267,6 +343,26 @@ Please provide a helpful response.`;
         conv.id === convId ? { ...conv, isPinned: !conv.isPinned } : conv
       );
     });
+  };
+
+  const handleDeleteConversation = (convId: string) => {
+    const conv = conversations?.find(c => c.id === convId);
+    const remaining = (conversations || []).filter(c => c.id !== convId);
+    setConversations(remaining);
+    if (activeConvId === convId) {
+      setActiveConvId(remaining.length > 0 ? remaining[0].id : null);
+    }
+    toast.success(`Deleted "${conv?.title || 'conversation'}"`);
+  };
+
+  const handleClearMessages = (convId: string) => {
+    setConversations((prev) => {
+      const current = prev || [];
+      return current.map(c =>
+        c.id === convId ? { ...c, messages: [], updatedAt: Date.now() } : c
+      );
+    });
+    toast.success('Conversation cleared');
   };
 
   return (
@@ -288,6 +384,8 @@ Please provide a helpful response.`;
             <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search conversations..."
               className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
@@ -296,37 +394,58 @@ Please provide a helpful response.`;
 
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
-            {conversations?.map((conv) => (
-              <button
+            {filteredConversations.map((conv) => (
+              <div
                 key={conv.id}
-                onClick={() => setActiveConvId(conv.id)}
                 className={cn(
-                  'w-full p-3 rounded-lg text-left transition-colors relative',
+                  'group relative rounded-lg transition-colors',
                   activeConvId === conv.id 
                     ? 'bg-primary/10 border-l-2 border-l-primary' 
                     : 'hover:bg-muted'
                 )}
               >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <span className="text-sm font-medium line-clamp-1 flex-1">{conv.title}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePin(conv.id);
-                    }}
-                    className="shrink-0 hover:scale-110 transition-transform"
-                  >
-                    <Star size={14} weight={conv.isPinned ? 'fill' : 'regular'} className={conv.isPinned ? 'text-accent' : 'text-muted-foreground'} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">{conv.mode}</Badge>
-                  <span className="text-xs text-muted-foreground">{formatDateTime(conv.updatedAt)}</span>
-                </div>
-              </button>
+                <button
+                  onClick={() => setActiveConvId(conv.id)}
+                  className="w-full p-3 text-left"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-sm font-medium line-clamp-1 flex-1">{conv.title}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePin(conv.id);
+                      }}
+                      className="shrink-0 hover:scale-110 transition-transform"
+                    >
+                      <Star size={14} weight={conv.isPinned ? 'fill' : 'regular'} className={conv.isPinned ? 'text-accent' : 'text-muted-foreground'} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{conv.mode}</Badge>
+                    <span className="text-xs text-muted-foreground">{formatDateTime(conv.updatedAt)}</span>
+                  </div>
+                </button>
+                {/* Delete button appears on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(conv.id);
+                  }}
+                  className="absolute top-2 right-8 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                  title="Delete conversation"
+                >
+                  <Trash size={13} />
+                </button>
+              </div>
             ))}
 
-            {(!conversations || conversations.length === 0) && (
+            {filteredConversations.length === 0 && searchQuery.trim() && (
+              <div className="p-8 text-center">
+                <p className="text-sm text-muted-foreground">No conversations match "{searchQuery}"</p>
+              </div>
+            )}
+
+            {(!conversations || conversations.length === 0) && !searchQuery.trim() && (
               <div className="p-8 text-center">
                 <p className="text-sm text-muted-foreground mb-4">No conversations yet</p>
                 <Button onClick={() => handleCreateConversation()}>
@@ -384,6 +503,17 @@ Please provide a helpful response.`;
                     <option key={mode.id} value={mode.id}>{mode.name}</option>
                   ))}
                 </select>
+                {activeConversation.messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    title="Clear conversation"
+                    onClick={() => handleClearMessages(activeConversation.id)}
+                  >
+                    <Trash size={16} />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -457,12 +587,14 @@ Please provide a helpful response.`;
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Robot size={18} weight="fill" className="text-primary animate-pulse" />
                   </div>
-                  <div className="bg-card border border-border p-4 rounded-lg">
+                  <div className="bg-card border border-border p-4 rounded-lg max-w-[80%]">
                     {isAnalyzing ? (
                       <div className="flex items-center gap-2">
                         <SpinnerGap size={16} className="text-primary animate-spin" />
                         <span className="text-sm text-muted-foreground">Analyzing media…</span>
                       </div>
+                    ) : streamingText ? (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}<span className="inline-block w-0.5 h-4 bg-primary/80 ml-0.5 animate-pulse align-text-bottom" aria-hidden="true" /><span className="sr-only"> Generating response…</span></p>
                     ) : (
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -473,6 +605,7 @@ Please provide a helpful response.`;
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
