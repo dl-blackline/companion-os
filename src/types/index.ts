@@ -34,6 +34,10 @@ export interface TalkTurn {
   text: string;
   timestamp: number;
   audioUrl?: string;
+  /** URL of a generated media asset attached to this turn */
+  mediaUrl?: string;
+  /** Type of the attached media asset */
+  mediaType?: 'image' | 'video';
 }
 
 export interface MediaGeneration {

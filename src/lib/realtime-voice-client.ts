@@ -24,12 +24,19 @@ export const REALTIME_VOICES: { id: RealtimeVoice; label: string }[] = [
   { id: 'verse', label: 'Verse' },
 ];
 
+export interface RealtimeToolCall {
+  callId: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
 export interface RealtimeVoiceEvent {
-  type: 'state_change' | 'transcript' | 'error' | 'interrupted';
+  type: 'state_change' | 'transcript' | 'error' | 'interrupted' | 'tool_call';
   state?: RealtimeVoiceState;
   role?: 'user' | 'assistant';
   text?: string;
   error?: string;
+  toolCall?: RealtimeToolCall;
 }
 
 type EventCallback = (event: RealtimeVoiceEvent) => void;
@@ -41,6 +48,75 @@ interface RealtimeVoiceClientOptions {
 }
 
 const REALTIME_MODEL = 'gpt-4o-realtime-preview';
+
+/**
+ * Function tools available during live talk sessions.
+ * The model calls these to generate images, start role-play, or automate tasks.
+ */
+const LIVE_TALK_TOOLS = [
+  {
+    type: 'function',
+    name: 'generate_image',
+    description:
+      'Generate an image when the user asks to create, draw, visualize, or see something. Call this whenever the user requests any kind of image, picture, or visual.',
+    parameters: {
+      type: 'object',
+      properties: {
+        prompt: {
+          type: 'string',
+          description: 'Detailed description of the image to generate',
+        },
+        style: {
+          type: 'string',
+          description: 'Optional visual style',
+          enum: ['photorealistic', 'artistic', 'cinematic', 'cartoon', 'abstract'],
+        },
+      },
+      required: ['prompt'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'start_roleplay',
+    description:
+      'Start a role-play scenario when the user asks the AI to play a character, persona, or act out a scenario.',
+    parameters: {
+      type: 'object',
+      properties: {
+        character: {
+          type: 'string',
+          description: 'The character or persona to play (e.g. "a pirate captain", "Sherlock Holmes")',
+        },
+        scenario: {
+          type: 'string',
+          description: 'The scenario or context for the role-play',
+        },
+      },
+      required: ['character', 'scenario'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'run_task',
+    description:
+      'Execute an automated task when the user asks to create a document, write code, build a plan, summarize something, or automate a multi-step process.',
+    parameters: {
+      type: 'object',
+      properties: {
+        taskType: {
+          type: 'string',
+          description: 'The type of task to run',
+          enum: ['document', 'plan', 'code', 'summary', 'other'],
+        },
+        description: {
+          type: 'string',
+          description: 'Complete description of what needs to be done',
+        },
+      },
+      required: ['taskType', 'description'],
+    },
+  },
+];
 
 export class RealtimeVoiceClient {
   private pc: RTCPeerConnection | null = null;
@@ -231,6 +307,29 @@ export class RealtimeVoiceClient {
     }
   }
 
+  /**
+   * Submit the result of a tool/function call back to the model so it can
+   * continue the conversation with the tool output.
+   */
+  submitToolResult(callId: string, result: string): void {
+    if (!this.dc || this.dc.readyState !== 'open') return;
+
+    // Send the function call output as a conversation item
+    this.dc.send(
+      JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call_output',
+          call_id: callId,
+          output: result,
+        },
+      })
+    );
+
+    // Trigger the model to produce a follow-up response
+    this.dc.send(JSON.stringify({ type: 'response.create' }));
+  }
+
   // ── Private ──
 
   private async fetchEphemeralKey(): Promise<string> {
@@ -351,6 +450,20 @@ export class RealtimeVoiceClient {
         });
         break;
       }
+
+      case 'response.function_call_arguments.done': {
+        // The model wants to call one of our tools
+        const callId = msg.call_id as string;
+        const name = msg.name as string;
+        const argsStr = msg.arguments as string;
+        try {
+          const args = JSON.parse(argsStr || '{}') as Record<string, unknown>;
+          this.emit({ type: 'tool_call', toolCall: { callId, name, arguments: args } });
+        } catch (parseErr) {
+          console.warn('Failed to parse tool call arguments', { callId, name, argsStr, parseErr });
+        }
+        break;
+      }
     }
   }
 
@@ -383,6 +496,9 @@ export class RealtimeVoiceClient {
             prefix_padding_ms: 300,
             silence_duration_ms: 800,
           },
+          // Function tools the model can call during the conversation
+          tools: LIVE_TALK_TOOLS,
+          tool_choice: 'auto',
         },
       })
     );
