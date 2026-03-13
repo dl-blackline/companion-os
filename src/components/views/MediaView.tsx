@@ -116,6 +116,8 @@ function GenerationCard({
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(item.prompt).then(() => {
       toast.success('Prompt copied');
+    }).catch(() => {
+      toast.error('Failed to copy prompt');
     });
   };
 
@@ -412,6 +414,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
       type: activeTab,
       prompt: prompt.trim(),
       style: selectedStyle,
+      aspectRatio: activeTab === 'photo' ? selectedRatio : undefined,
       status: 'generating',
       createdAt: Date.now(),
     };
@@ -423,13 +426,15 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
     await runGeneration(newItem.id, currentPrompt, selectedStyle, selectedRatio, activeTab);
   };
 
-  /** Retry a failed item using the same prompt and style */
+  /** Retry a failed item using the same prompt, style, and original aspect ratio */
   const handleRetry = useCallback(
     async (item: MediaGeneration) => {
       setGallery((prev) =>
         prev.map((g) => (g.id === item.id ? { ...g, status: 'generating', completedAt: undefined } : g))
       );
-      await runGeneration(item.id, item.prompt, item.style, selectedRatio, item.type);
+      // Use the stored aspect ratio from the item, fall back to current selection
+      const ratio = (item.aspectRatio as typeof selectedRatio) || selectedRatio;
+      await runGeneration(item.id, item.prompt, item.style, ratio, item.type);
     },
     [runGeneration, selectedRatio]
   );
@@ -458,7 +463,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
       if (res.ok) {
         const data = await res.json();
         if (data.response) {
-          setPrompt(data.response.trim().replace(/^["']|["']$/g, ''));
+          setPrompt(data.response.trim().replace(/^["']/, '').replace(/["']$/, ''));
           toast.success('Prompt enhanced');
         }
       }

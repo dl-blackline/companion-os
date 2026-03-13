@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 import { 
   Plus, 
   PaperPlaneRight, 
@@ -19,6 +20,7 @@ import {
   X,
   SpinnerGap,
   ArrowLeft,
+  Trash,
 } from '@phosphor-icons/react';
 import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
@@ -239,7 +241,7 @@ Please provide a helpful response.`;
             user_id: 'default-user',
             message: fullPrompt,
             model: activeChatModel(),
-            stream: !mediaUrl, // stream only for text (not vision) responses
+            stream: !mediaUrl, // Streaming is disabled for vision requests: the backend processes the full image before generating a response, so streaming adds no UX value and complicates the response handling.
             ...(mediaUrl && { media_url: mediaUrl }),
             ...(mediaType && { media_type: mediaType }),
           },
@@ -343,6 +345,26 @@ Please provide a helpful response.`;
     });
   };
 
+  const handleDeleteConversation = (convId: string) => {
+    const conv = conversations?.find(c => c.id === convId);
+    const remaining = (conversations || []).filter(c => c.id !== convId);
+    setConversations(remaining);
+    if (activeConvId === convId) {
+      setActiveConvId(remaining.length > 0 ? remaining[0].id : null);
+    }
+    toast.success(`Deleted "${conv?.title || 'conversation'}"`);
+  };
+
+  const handleClearMessages = (convId: string) => {
+    setConversations((prev) => {
+      const current = prev || [];
+      return current.map(c =>
+        c.id === convId ? { ...c, messages: [], updatedAt: Date.now() } : c
+      );
+    });
+    toast.success('Conversation cleared');
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-full">
       {/* Conversation list — full width on mobile when no active conv, hidden when viewing chat */}
@@ -373,33 +395,48 @@ Please provide a helpful response.`;
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
             {filteredConversations.map((conv) => (
-              <button
+              <div
                 key={conv.id}
-                onClick={() => setActiveConvId(conv.id)}
                 className={cn(
-                  'w-full p-3 rounded-lg text-left transition-colors relative',
+                  'group relative rounded-lg transition-colors',
                   activeConvId === conv.id 
                     ? 'bg-primary/10 border-l-2 border-l-primary' 
                     : 'hover:bg-muted'
                 )}
               >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <span className="text-sm font-medium line-clamp-1 flex-1">{conv.title}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePin(conv.id);
-                    }}
-                    className="shrink-0 hover:scale-110 transition-transform"
-                  >
-                    <Star size={14} weight={conv.isPinned ? 'fill' : 'regular'} className={conv.isPinned ? 'text-accent' : 'text-muted-foreground'} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">{conv.mode}</Badge>
-                  <span className="text-xs text-muted-foreground">{formatDateTime(conv.updatedAt)}</span>
-                </div>
-              </button>
+                <button
+                  onClick={() => setActiveConvId(conv.id)}
+                  className="w-full p-3 text-left"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-sm font-medium line-clamp-1 flex-1">{conv.title}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePin(conv.id);
+                      }}
+                      className="shrink-0 hover:scale-110 transition-transform"
+                    >
+                      <Star size={14} weight={conv.isPinned ? 'fill' : 'regular'} className={conv.isPinned ? 'text-accent' : 'text-muted-foreground'} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{conv.mode}</Badge>
+                    <span className="text-xs text-muted-foreground">{formatDateTime(conv.updatedAt)}</span>
+                  </div>
+                </button>
+                {/* Delete button appears on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(conv.id);
+                  }}
+                  className="absolute top-2 right-8 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                  title="Delete conversation"
+                >
+                  <Trash size={13} />
+                </button>
+              </div>
             ))}
 
             {filteredConversations.length === 0 && searchQuery.trim() && (
@@ -466,6 +503,17 @@ Please provide a helpful response.`;
                     <option key={mode.id} value={mode.id}>{mode.name}</option>
                   ))}
                 </select>
+                {activeConversation.messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    title="Clear conversation"
+                    onClick={() => handleClearMessages(activeConversation.id)}
+                  >
+                    <Trash size={16} />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -546,7 +594,7 @@ Please provide a helpful response.`;
                         <span className="text-sm text-muted-foreground">Analyzing media…</span>
                       </div>
                     ) : streamingText ? (
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}<span className="inline-block w-0.5 h-4 bg-primary/80 ml-0.5 animate-pulse align-text-bottom" /></p>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}<span className="inline-block w-0.5 h-4 bg-primary/80 ml-0.5 animate-pulse align-text-bottom" aria-hidden="true" /><span className="sr-only"> Generating response…</span></p>
                     ) : (
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
