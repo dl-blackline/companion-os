@@ -15,8 +15,10 @@ import { InsightsView } from '@/components/views/InsightsView';
 import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AgentsView } from '@/components/views/AgentsView';
+import { AdminConsoleView } from '@/components/views/AdminConsoleView';
 import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
 import { useVoice } from '@/context/voice-context';
+import { useAuth } from '@/context/auth-context';
 import { List, X } from '@phosphor-icons/react';
 import type { CompanionSettings, CompanionState } from '@/types';
 
@@ -55,6 +57,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isActive: isGlobalVoiceActive, stopLiveTalk } = useVoice();
+  const { isAdmin } = useAuth();
 
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
@@ -119,6 +122,14 @@ function App() {
         return <AgentsView />;
       case 'settings':
         return <SettingsView settings={currentSettings} onSettingsChange={setSettings} />;
+      case 'admin-console':
+        return isAdmin ? <AdminConsoleView /> : (
+          <HomeDashboard
+            companionState={companionState}
+            aiName={currentSettings.aiName}
+            onNavigate={handleNavigate}
+          />
+        );
       default:
         return (
           <HomeDashboard
