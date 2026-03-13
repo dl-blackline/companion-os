@@ -13,6 +13,10 @@ import {
   SpeakerSimpleHigh,
   SpeakerSimpleSlash,
   Trash,
+  MagicWand,
+  Image as ImageIcon,
+  Lightning,
+  X,
 } from '@phosphor-icons/react';
 import type { CompanionState, TalkSession, TalkTurn } from '@/types';
 import { generateId } from '@/lib/helpers';
@@ -24,6 +28,21 @@ import {
   type RealtimeVoice,
   type RealtimeVoiceEvent,
 } from '@/lib/realtime-voice-client';
+
+/** Roleplay context tracked locally during a session */
+interface RoleplayContext {
+  character: string;
+  scenario: string;
+}
+
+/** Example capability prompts shown in the empty-state hint bar */
+const CAPABILITY_HINTS = [
+  'Generate an image of…',
+  'Play the role of…',
+  'Write a plan for…',
+  'Summarize…',
+  'Write code for…',
+];
 
 interface LiveTalkViewProps {
   companionState: CompanionState;
@@ -49,6 +68,7 @@ export function LiveTalkView({
   const [interimText, setInterimText] = useState('');
   const [statusText, setStatusText] = useState('Tap the mic to start talking');
   const [useRealtime, setUseRealtime] = useState(false);
+  const [roleplayMode, setRoleplayMode] = useState<RoleplayContext | null>(null);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -58,6 +78,7 @@ export function LiveTalkView({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const realtimeClientRef = useRef<RealtimeVoiceClient | null>(null);
+  const roleplayRef = useRef<RoleplayContext | null>(null);
   const MAX_RECONNECT_ATTEMPTS = 3;
 
   // Read voice mode preference from localStorage
@@ -124,20 +145,146 @@ export function LiveTalkView({
         case 'error':
           console.warn('Realtime voice error:', event.error);
           break;
+
+        case 'tool_call': {
+          if (!event.toolCall) break;
+          const { callId, name, arguments: toolArgs } = event.toolCall;
+
+          if (name === 'generate_image') {
+            // Show generating state immediately
+            setCompanionState('generating-image');
+            setStatusText('Generating image…');
+            triggerHaptic('light');
+
+            const imagePrompt = (toolArgs.prompt as string) || '';
+            const imageStyle = (toolArgs.style as string) || '';
+            const fullPrompt = imageStyle ? `${imagePrompt}, style: ${imageStyle}` : imagePrompt;
+
+            fetch('/.netlify/functions/ai', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'media',
+                data: { type: 'image', prompt: fullPrompt },
+              }),
+            })
+              .then((r) => r.json())
+              .then((imgData) => {
+                if (imgData.url) {
+                  const imageTurn: TalkTurn = {
+                    id: generateId(),
+                    role: 'assistant',
+                    text: '',
+                    timestamp: Date.now(),
+                    mediaUrl: imgData.url,
+                    mediaType: 'image',
+                  };
+                  setSession((prev) => ({
+                    ...prev,
+                    transcript: [...prev.transcript, imageTurn],
+                  }));
+                }
+                realtimeClientRef.current?.submitToolResult(
+                  callId,
+                  imgData.url
+                    ? 'Image generated and displayed to the user.'
+                    : 'Image generation failed — no URL returned.'
+                );
+                // Let the realtime state_change events drive the UI state
+              })
+              .catch(() => {
+                realtimeClientRef.current?.submitToolResult(
+                  callId,
+                  'Image generation failed due to a server error.'
+                );
+                setCompanionState('listening');
+              });
+          } else if (name === 'start_roleplay') {
+            const character = (toolArgs.character as string) || 'a character';
+            const scenario = (toolArgs.scenario as string) || '';
+            const ctx: RoleplayContext = { character, scenario };
+            roleplayRef.current = ctx;
+            setRoleplayMode(ctx);
+            // Update the realtime session so subsequent turns stay in character
+            realtimeClientRef.current?.updateSession({
+              systemPrompt: `You are ${character}. ${scenario} Stay fully in character throughout the entire conversation. Speak naturally as if talking aloud. Keep responses to 1-3 sentences unless more detail is requested.`,
+            });
+            realtimeClientRef.current?.submitToolResult(
+              callId,
+              `Role-play started. You are now ${character}.`
+            );
+            triggerHaptic('medium');
+          } else if (name === 'run_task') {
+            const taskDesc = (toolArgs.description as string) || '';
+            const taskType = (toolArgs.taskType as string) || 'other';
+            setStatusText('Running task…');
+
+            fetch('/.netlify/functions/ai', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'live_talk',
+                data: {
+                  // Pass intent_override so the backend skips re-detection
+                  message: taskDesc,
+                  intent_override: 'run_task',
+                  task_type: taskType,
+                  ai_name: aiName,
+                  mode: 'neutral',
+                },
+              }),
+            })
+              .then((r) => r.json())
+              .then((taskData) => {
+                const taskText = taskData.response || 'Task completed.';
+                const taskTurn: TalkTurn = {
+                  id: generateId(),
+                  role: 'assistant',
+                  text: taskText,
+                  timestamp: Date.now(),
+                };
+                setSession((prev) => ({
+                  ...prev,
+                  transcript: [...prev.transcript, taskTurn],
+                }));
+                realtimeClientRef.current?.submitToolResult(callId, taskText);
+              })
+              .catch(() => {
+                realtimeClientRef.current?.submitToolResult(
+                  callId,
+                  'Task execution encountered an error.'
+                );
+              });
+          }
+          break;
+        }
       }
     },
     [aiName, setCompanionState]
   );
 
   // Start realtime voice session
+  const getBaseSystemPrompt = useCallback(() => {
+    const modeConfig = getModeConfig('neutral');
+    return `${modeConfig.systemPrompt}
+
+You are ${aiName}, an enterprise-grade real-time AI companion with powerful capabilities. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed.
+
+You have the following tools available — use them proactively when the user requests:
+- generate_image: Call this whenever the user wants to see, create, draw, or visualize anything.
+- start_roleplay: Call this when the user wants you to play a character or act out a scenario.
+- run_task: Call this to generate documents, code, plans, or summaries the user requests.
+
+Prefer using tools over just talking about doing something. If the user asks for an image, call generate_image. If they want role-play, call start_roleplay. Always follow safety guidelines.`;
+  }, [aiName]);
+
   const startRealtime = useCallback(async (): Promise<boolean> => {
     if (!RealtimeVoiceClient.isSupported()) return false;
 
     try {
-      const modeConfig = getModeConfig('neutral');
       const client = new RealtimeVoiceClient({
         voice: getRealtimeVoice(),
-        systemPrompt: `${modeConfig.systemPrompt}\n\nYou are ${aiName}, a real-time AI companion. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed.`,
+        systemPrompt: getBaseSystemPrompt(),
       });
 
       const unsubscribe = client.on(handleRealtimeEvent);
@@ -152,7 +299,7 @@ export function LiveTalkView({
       console.warn('Realtime connection failed, falling back to TTS pipeline:', err);
       return false;
     }
-  }, [aiName, handleRealtimeEvent]);
+  }, [getBaseSystemPrompt, handleRealtimeEvent]);
 
   // Stop realtime voice session
   const stopRealtime = useCallback(() => {
@@ -281,61 +428,83 @@ export function LiveTalkView({
       setStatusText('Thinking…');
 
       try {
-        const modeConfig = getModeConfig('neutral');
-        const contextLines = session.transcript
-          .slice(-8)
-          .map((t) => `${t.role === 'user' ? 'User' : aiName}: ${t.text}`)
-          .join('\n');
-
-        const prompt = `${modeConfig.systemPrompt}
-
-You are ${aiName}, a real-time AI companion. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed. Avoid bullet points or markdown; speak in flowing prose.
-
-Recent conversation:
-${contextLines}
-
-User said: "${text.trim()}"
-
-Respond as ${aiName}:`;
-
         const res = await fetch('/.netlify/functions/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            type: 'chat',
+            type: 'live_talk',
             data: {
-              conversation_id: session.id,
-              user_id: 'default-user',
-              message: prompt,
-              model: localStorage.getItem('chat_model') || undefined,
+              message: text.trim(),
+              conversation_history: session.transcript.slice(-8),
+              mode: 'neutral',
+              ai_name: aiName,
+              roleplay_context: roleplayRef.current || undefined,
             },
           }),
         });
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('Chat API error:', res.status, errData);
-          // Network / server error — allow the catch block to trigger reconnect
+          console.error('Live Talk API error:', res.status, errData);
           throw new Error(errData.error || `Chat request failed with status ${res.status}`);
         }
 
         const data = await res.json();
-        const response = data.response || '';
+        const responseText = data.response || '';
 
-        // Valid response received — display it even if it's a fallback message
-        triggerHaptic('light');
-        const assistantTurn: TalkTurn = {
-          id: generateId(),
-          role: 'assistant',
-          text: response,
-          timestamp: Date.now(),
-        };
-        setSession((prev) => ({
-          ...prev,
-          transcript: [...prev.transcript, assistantTurn],
-        }));
+        // Handle action payloads (image generation, role-play, task)
+        if (data.action) {
+          if (
+            (data.action.type === 'image_generated' || data.action.type === 'image') &&
+            data.action.mediaUrl
+          ) {
+            triggerHaptic('light');
+            const imageTurn: TalkTurn = {
+              id: generateId(),
+              role: 'assistant',
+              text: '',
+              timestamp: Date.now(),
+              mediaUrl: data.action.mediaUrl,
+              mediaType: 'image',
+            };
+            setSession((prev) => ({
+              ...prev,
+              transcript: [...prev.transcript, imageTurn],
+            }));
+          } else if (
+            data.action.type === 'roleplay_started' ||
+            data.action.type === 'roleplay_continued'
+          ) {
+            const ctx: RoleplayContext = {
+              character: data.action.character || 'a character',
+              scenario: data.action.scenario || '',
+            };
+            roleplayRef.current = ctx;
+            setRoleplayMode(ctx);
+            triggerHaptic('medium');
+          } else if (data.action.type === 'roleplay_ended') {
+            // Backend detected the user wants to exit role-play
+            roleplayRef.current = null;
+            setRoleplayMode(null);
+          }
+        }
 
-        speak(response);
+        // Add text response turn
+        if (responseText) {
+          triggerHaptic('light');
+          const assistantTurn: TalkTurn = {
+            id: generateId(),
+            role: 'assistant',
+            text: responseText,
+            timestamp: Date.now(),
+          };
+          setSession((prev) => ({
+            ...prev,
+            transcript: [...prev.transcript, assistantTurn],
+          }));
+
+          speak(responseText);
+        }
 
         isProcessingRef.current = false;
         reconnectAttemptsRef.current = 0;
@@ -505,6 +674,8 @@ Respond as ${aiName}:`;
     }
     stopRealtime();
     stopListening();
+    roleplayRef.current = null;
+    setRoleplayMode(null);
     setSession({
       id: generateId(),
       transcript: [],
@@ -534,7 +705,8 @@ Respond as ${aiName}:`;
   const isListening = companionState === 'listening';
   const isSpeaking = companionState === 'speaking';
   const isThinking = companionState === 'thinking';
-  const isActive = isListening || isSpeaking || isThinking;
+  const isGeneratingImage = companionState === 'generating-image';
+  const isActive = isListening || isSpeaking || isThinking || isGeneratingImage;
   const isSmallScreen = useIsMobile();
 
   return (
@@ -638,6 +810,27 @@ Respond as ${aiName}:`;
                 </div>
               </motion.div>
             )}
+            {isGeneratingImage && (
+              <motion.div
+                key="image-indicator"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: 'oklch(0.65 0.22 60)' }}
+                      animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+                      transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.20 }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
             {!isActive && (
               <motion.div
                 key="idle"
@@ -661,15 +854,17 @@ Respond as ${aiName}:`;
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'px-3 py-1 rounded-full text-[11px] font-medium tracking-wide uppercase',
+                'flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium tracking-wide uppercase',
                 isListening && 'bg-[oklch(0.65_0.20_230/0.15)] text-[oklch(0.65_0.20_230)]',
                 isSpeaking && 'bg-[oklch(0.65_0.22_145/0.15)] text-[oklch(0.65_0.22_145)]',
                 isThinking && 'bg-[oklch(0.60_0.22_310/0.15)] text-[oklch(0.60_0.22_310)]',
+                isGeneratingImage && 'bg-[oklch(0.65_0.22_60/0.15)] text-[oklch(0.65_0.22_60)]',
               )}
             >
-              {isListening && '🎙 Listening'}
-              {isSpeaking && '🔊 Speaking'}
-              {isThinking && '💭 Thinking'}
+              {isListening && <><Microphone size={11} weight="fill" />Listening</>}
+              {isSpeaking && <><SpeakerSimpleHigh size={11} weight="fill" />Speaking</>}
+              {isThinking && <><Lightning size={11} weight="fill" />Thinking</>}
+              {isGeneratingImage && <><ImageIcon size={11} weight="fill" />Generating image…</>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -685,6 +880,42 @@ Respond as ${aiName}:`;
           {statusText}
         </motion.p>
       </div>
+
+      {/* Role-play mode banner */}
+      <AnimatePresence>
+        {roleplayMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="relative z-10 mx-4 mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <MagicWand size={14} className="text-purple-400 shrink-0" />
+              <span className="text-xs text-purple-400 font-medium truncate">
+                Role-playing as <span className="font-semibold">{roleplayMode.character}</span>
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                roleplayRef.current = null;
+                setRoleplayMode(null);
+                // Restore the full base system prompt (including tool instructions) in the live session
+                if (realtimeClientRef.current) {
+                  realtimeClientRef.current.updateSession({
+                    systemPrompt: getBaseSystemPrompt(),
+                  });
+                }
+              }}
+              className="shrink-0 text-purple-400/70 hover:text-purple-400 transition-colors"
+              aria-label="Exit role-play"
+            >
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Transcript */}
       <div className="relative z-10 flex-1 min-h-0 px-4 pb-2">
@@ -702,16 +933,29 @@ Respond as ${aiName}:`;
                     turn.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
                 >
-                  <div
-                    className={cn(
-                      'max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed',
-                      turn.role === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-br-md'
-                        : 'bg-card border border-border text-foreground rounded-bl-md'
-                    )}
-                  >
-                    {turn.text}
-                  </div>
+                  {/* Image turns */}
+                  {turn.mediaUrl && turn.mediaType === 'image' ? (
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md overflow-hidden border border-border/40 bg-card shadow-sm">
+                      <img
+                        src={turn.mediaUrl}
+                        alt="Generated image"
+                        className="w-full object-contain max-h-72"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    /* Text turns */
+                    <div
+                      className={cn(
+                        'max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed',
+                        turn.role === 'user'
+                          ? 'bg-primary text-primary-foreground rounded-br-md'
+                          : 'bg-card border border-border text-foreground rounded-bl-md'
+                      )}
+                    >
+                      {turn.text}
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -730,9 +974,22 @@ Respond as ${aiName}:`;
             )}
 
             {session.transcript.length === 0 && !interimText && (
-              <p className="text-center text-muted-foreground text-sm py-6 opacity-60">
-                Your conversation will appear here
-              </p>
+              <div className="py-6 space-y-4">
+                <p className="text-center text-muted-foreground text-sm opacity-60">
+                  Your conversation will appear here
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 px-2">
+                  {CAPABILITY_HINTS.map((hint) => (
+                    <div
+                      key={hint}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/60 border border-border/60 text-[11px] text-muted-foreground opacity-70 select-none"
+                    >
+                      <Lightning size={10} className="shrink-0" />
+                      {hint}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </ScrollArea>
