@@ -505,19 +505,24 @@ async function handleRealtimeToken(data) {
     return response(500, { error: "OpenAI API key not configured" });
   }
 
-  const model = data.model || "gpt-4o-realtime-preview";
+  const model = data.model || "gpt-realtime";
   const voice = data.voice || "alloy";
 
   try {
-    const tokenRes = await fetch("https://api.openai.com/v1/realtime/sessions", {
+    const tokenRes = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model,
-        voice,
+        session: {
+          type: "realtime",
+          model,
+          audio: {
+            output: { voice },
+          },
+        },
       }),
     });
 
@@ -531,8 +536,7 @@ async function handleRealtimeToken(data) {
 
     const sessionData = await tokenRes.json();
     return response(200, {
-      client_secret: sessionData.client_secret?.value || sessionData.client_secret,
-      session_id: sessionData.id,
+      client_secret: sessionData.value,
     });
   } catch (err) {
     console.error("Realtime token error:", err.message);
@@ -623,7 +627,7 @@ async function detectLiveTalkIntent(message, historyContext) {
         system: LIVE_TALK_INTENT_SYSTEM,
         user: `Message: "${message}"\n\nRecent context:\n${historyContext}`,
       },
-      "gpt-4o-mini"
+      "gpt-4.1-mini"
     );
     // Strip potential markdown fences
     const cleaned = raw.replace(/```json|```/g, "").trim();
@@ -752,7 +756,7 @@ async function handleLiveTalk(data) {
             system: `You are ${ai_name}, a voice AI. In exactly one warm, natural sentence acknowledge that you just created the image the user requested. Do not describe its contents in detail.`,
             user: `I generated an image described as: "${imagePrompt}". Briefly acknowledge this.`,
           },
-          "gpt-4o-mini"
+          "gpt-4.1-mini"
         );
         return response(200, {
           response: voiceReply,
@@ -786,7 +790,7 @@ async function handleLiveTalk(data) {
             system: `You are ${ai_name}, a voice AI. In exactly one warm, natural sentence acknowledge that you just created the video the user requested. Do not describe its contents in detail.`,
             user: `I generated a video described as: "${videoPrompt}". Briefly acknowledge this.`,
           },
-          "gpt-4o-mini"
+          "gpt-4.1-mini"
         );
         return response(200, {
           response: voiceReply,
