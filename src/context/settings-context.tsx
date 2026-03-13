@@ -21,11 +21,11 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 import { toast } from 'sonner';
 import type { CompanionSettings, ConversationMode, UserPreferences } from '@/types';
 import { DEFAULT_USER_PREFERENCES } from '@/types';
 import { setModelSetting } from '@/utils/model-cache';
+import { useAuth } from '@/context/auth-context';
 
 // ── Default CompanionSettings ────────────────────────────────────────────────
 export const DEFAULT_SETTINGS: CompanionSettings = {
@@ -183,17 +183,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // Save-sequence counter to prevent out-of-order responses overwriting newer state
   const saveSeq = useRef(0);
 
-  const getToken = useCallback(async (): Promise<string | null> => {
-    if (!supabaseConfigured) return null;
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  }, []);
+  // Use the auth context's synchronous token getter.  This reads from the
+  // session kept in memory by onAuthStateChange — no extra async round-trip
+  // and no race with Supabase's internal session hydration.
+  const { getAccessToken, user: authUser } = useAuth();
 
-  // Load preferences from backend on mount
+  const getToken = useCallback((): string | null => {
+    return getAccessToken();
+  }, [getAccessToken]);
+
+  // Load preferences from backend when the authenticated user changes
+  // (login, logout, token refresh).  Using authUser?.id as the dependency
+  // ensures we re-fetch whenever the identity changes.
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const token = await getToken();
+      const token = getToken();
       if (!token) return;
       setPrefsLoading(true);
       try {
@@ -215,7 +220,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [getToken]);
+    // getToken is intentionally excluded — it is memoized via useCallback and
+    // only depends on getAccessToken which is itself stable.  We re-fetch
+    // preferences when the authenticated user identity changes (authUser?.id).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id]);
 
   const updatePreferences = useCallback(
     async (patch: Partial<UserPreferences>) => {
@@ -229,7 +238,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const seq = ++saveSeq.current;
 
       try {
-        const token = await getToken();
+        const token = getToken();
         if (!token) {
           toast.error('Not authenticated — settings not saved');
           setPrefs(prevPrefs);

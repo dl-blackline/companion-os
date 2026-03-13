@@ -25,6 +25,26 @@ vi.mock('@/lib/supabase-client', () => ({
   supabaseConfigured: true,
 }));
 
+// ── Mock auth context ───────────────────────────────────────────────────────
+const mockGetAccessToken = vi.fn(() => 'test-token');
+vi.mock('@/context/auth-context', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user-id', email: 'test@example.com' },
+    session: { access_token: 'test-token' },
+    loading: false,
+    configured: true,
+    role: 'user',
+    plan: 'free',
+    isAdmin: false,
+    authState: { status: 'authenticated', userId: 'test-user-id', email: 'test@example.com' },
+    login: vi.fn(),
+    signup: vi.fn(),
+    logout: vi.fn(),
+    refreshRole: vi.fn(),
+    getAccessToken: mockGetAccessToken,
+  }),
+}));
+
 // ── localStorage mock ───────────────────────────────────────────────────────
 const storage = new Map<string, string>();
 const localStorageMock = {
