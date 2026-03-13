@@ -74,9 +74,12 @@ const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
+/** Placeholder user ID used until auth context is wired into this view. */
+const MEMORY_LOCAL_USER_ID = 'local-user';
+
 function getSupabase() {
-  const url = (import.meta as Record<string, Record<string,string>>).env?.VITE_SUPABASE_URL;
-  const key = (import.meta as Record<string, Record<string,string>>).env?.VITE_SUPABASE_ANON_KEY;
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (!url || !key) return null;
   return createClient(url, key);
 }
@@ -337,7 +340,7 @@ export function MemoryView() {
     let storagePath: string;
 
     try {
-      const userId = 'local-user';
+      const userId = MEMORY_LOCAL_USER_ID;
       const result = await uploadMedia(mediaFile, userId, setUploadProgress);
       mediaUrl = result.url;
       storagePath = result.path;
@@ -356,7 +359,7 @@ export function MemoryView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'analyze',
-          user_id: 'local-user',
+          user_id: MEMORY_LOCAL_USER_ID,
           public_url: mediaUrl,
           storage_path: storagePath,
           filename: mediaFile.name,
@@ -379,7 +382,7 @@ export function MemoryView() {
       // Store locally as well for UI display
       const localRecord: UploadedMedia = {
         id: media_record?.id || generateId(),
-        user_id: 'local-user',
+        user_id: MEMORY_LOCAL_USER_ID,
         storage_path: storagePath,
         public_url: mediaUrl,
         filename: mediaFile.name,
@@ -412,7 +415,7 @@ export function MemoryView() {
       // If backend not available, do a local-only fallback
       const fallbackRecord: UploadedMedia = {
         id: generateId(),
-        user_id: 'local-user',
+        user_id: MEMORY_LOCAL_USER_ID,
         storage_path: storagePath,
         public_url: mediaUrl,
         filename: mediaFile.name,
@@ -444,7 +447,7 @@ export function MemoryView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'approve',
-          user_id: 'local-user',
+          user_id: MEMORY_LOCAL_USER_ID,
           candidate_id: candidate.id,
         }),
       });
@@ -485,7 +488,7 @@ export function MemoryView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'reject',
-          user_id: 'local-user',
+          user_id: MEMORY_LOCAL_USER_ID,
           candidate_id: candidateId,
         }),
       });
@@ -1122,7 +1125,13 @@ export function MemoryView() {
                     <div
                       onDrop={handleDrop}
                       onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                      onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        // Only deactivate if the cursor leaves the drop zone entirely
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          setDragActive(false);
+                        }
+                      }}
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
                         'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 cursor-pointer transition-colors mb-4',

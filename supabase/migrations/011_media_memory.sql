@@ -69,6 +69,8 @@ CREATE INDEX IF NOT EXISTS idx_media_analysis_media_id
 CREATE INDEX IF NOT EXISTS idx_media_analysis_user_id
   ON media_analysis(user_id);
 
+-- Note: IVFFlat lists = 50 is suitable for medium datasets (~10k–100k rows).
+-- For smaller datasets (<10k), reduce to lists = 10; for large datasets (>100k), set lists ≈ sqrt(total_rows).
 CREATE INDEX IF NOT EXISTS idx_media_analysis_embedding
   ON media_analysis USING ivfflat (embedding vector_cosine_ops)
   WITH (lists = 50);
@@ -154,6 +156,8 @@ CREATE TABLE IF NOT EXISTS media_knowledge_entries (
 CREATE INDEX IF NOT EXISTS idx_media_knowledge_user_id
   ON media_knowledge_entries(user_id) WHERE deleted_at IS NULL;
 
+-- Note: IVFFlat lists = 50 is suitable for medium datasets (~10k–100k rows).
+-- For smaller datasets (<10k), reduce to lists = 10; for large datasets (>100k), set lists ≈ sqrt(total_rows).
 CREATE INDEX IF NOT EXISTS idx_media_knowledge_embedding
   ON media_knowledge_entries USING ivfflat (embedding vector_cosine_ops)
   WITH (lists = 50);
