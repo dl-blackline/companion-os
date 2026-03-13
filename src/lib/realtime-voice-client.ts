@@ -48,7 +48,7 @@ interface RealtimeVoiceClientOptions {
   model?: string;
 }
 
-const REALTIME_MODEL = 'gpt-realtime';
+const REALTIME_MODEL = 'gpt-4o-realtime-preview';
 
 /**
  * Function tools available during live talk sessions.
@@ -235,7 +235,7 @@ export class RealtimeVoiceClient {
 
       // 7. Send SDP to OpenAI Realtime endpoint
       const sdpResponse = await fetch(
-        `https://api.openai.com/v1/realtime/calls?model=${encodeURIComponent(this.model)}`,
+        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(this.model)}`,
         {
           method: 'POST',
           headers: {
