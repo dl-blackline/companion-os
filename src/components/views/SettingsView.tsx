@@ -43,6 +43,7 @@ import {
   getCachedModels,
   preloadModels,
 } from '@/utils/model-cache';
+import { AI_MOODS } from '@/lib/ai-moods';
 
 interface SettingsViewProps {
   settings: CompanionSettings;
@@ -60,16 +61,6 @@ const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const AI_MOODS: { value: string; label: string; description: string }[] = [
-  { value: 'neutral', label: 'Neutral', description: 'Balanced and adaptive' },
-  { value: 'friendly', label: 'Friendly', description: 'Warm and approachable' },
-  { value: 'professional', label: 'Professional', description: 'Formal and precise' },
-  { value: 'playful', label: 'Playful', description: 'Fun and witty' },
-  { value: 'romantic', label: 'Romantic', description: 'Warm and intimate' },
-  { value: 'direct', label: 'Direct', description: 'Blunt and concise' },
-  { value: 'empathetic', label: 'Empathetic', description: 'Compassionate and nurturing' },
-  { value: 'creative', label: 'Creative', description: 'Imaginative and expressive' },
-];
 
 interface ModelEntry {
   id: string;

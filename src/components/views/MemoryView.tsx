@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -88,13 +88,28 @@ export function MemoryView() {
   const [customInstructions, setCustomInstructions] = useLocalStorage<string>('memory-instructions', '');
   const [instructionDraft, setInstructionDraft] = useState<string>(customInstructions ?? '');
   const [instructionSaved, setInstructionSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current !== null) {
+        clearTimeout(savedTimerRef.current);
+      }
+    };
+  }, []);
 
   const allMemories = memories || [];
 
   const saveInstructions = () => {
     setCustomInstructions(instructionDraft);
     setInstructionSaved(true);
-    setTimeout(() => setInstructionSaved(false), 2000);
+    if (savedTimerRef.current !== null) {
+      clearTimeout(savedTimerRef.current);
+    }
+    savedTimerRef.current = setTimeout(() => {
+      setInstructionSaved(false);
+      savedTimerRef.current = null;
+    }, 2000);
   };
 
   const filteredMemories = allMemories.filter((m) => {
@@ -433,13 +448,13 @@ export function MemoryView() {
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-sm font-semibold">Custom Instructions</h3>
               <span className="text-xs text-muted-foreground">
-                — Always followed by your AI companion
+                — Applied whenever possible
               </span>
             </div>
             <Textarea
               value={instructionDraft}
               onChange={(e) => setInstructionDraft(e.target.value)}
-              placeholder="Enter instructions your AI must always follow (e.g. 'Always respond in a casual tone', 'Call me by my nickname', 'Remember I prefer concise answers')…"
+              placeholder="Enter instructions your AI should follow (e.g. 'Always respond in a casual tone', 'Call me by my nickname', 'Prefer concise answers')…"
               className="min-h-[72px] resize-none text-sm mb-2"
             />
             <div className="flex items-center gap-2">

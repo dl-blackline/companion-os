@@ -66,7 +66,7 @@ export function ChatView() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [companionSettings] = useLocalStorage<CompanionSettings>('companion-settings', null as unknown as CompanionSettings);
+  const [companionSettings] = useLocalStorage<CompanionSettings | null>('companion-settings', null);
   const [memoryInstructions] = useLocalStorage<string>('memory-instructions', '');
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);

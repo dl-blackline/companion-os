@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
 import { orchestrate } from "../../lib/orchestrator.js";
+import { buildSystemPrompt } from "../../lib/system-prompt.js";
 import { runAI, streamAI } from "../../lib/ai-router.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
@@ -255,13 +256,33 @@ async function handleChat(data) {
     /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
 
     if (stream && !isMediaResponse) {
-      // True token streaming via the OpenAI streaming API
+      // True token streaming via the OpenAI streaming API.
+      // Use the system prompt built by the orchestrator so mood / custom
+      // instructions are honoured even during streaming.
+      const ctx = result.context;
+      const streamSystemPrompt = ctx
+        ? buildSystemPrompt({
+            userProfile: ctx.userProfile,
+            personalityInstructions: ctx.personalityInstructions,
+            relationshipContext: ctx.relationshipContext,
+            relationshipMemories: ctx.relationshipMemories,
+            episodicMemories: ctx.episodicMemories,
+            memorySummaries: ctx.memorySummaries,
+            knowledgeGraphContext: ctx.knowledgeGraphContext,
+            recentConversation: ctx.recentConversation,
+            semanticMemories: ctx.semanticMemories,
+            aiMood: ai_mood,
+            customInstructions: custom_instructions,
+          })
+        : null;
+
+      const streamMessages = streamSystemPrompt
+        ? [{ role: "system", content: streamSystemPrompt }, { role: "user", content: message }]
+        : [{ role: "user", content: message }];
+
       const chunks = [];
       try {
-        for await (const token of streamAI(
-          [{ role: "user", content: message }],
-          model
-        )) {
+        for await (const token of streamAI(streamMessages, model)) {
           chunks.push(
             JSON.stringify({ token, done: false }) + "\n"
           );
@@ -311,10 +332,22 @@ async function handleChat(data) {
     /* --------------------------- ROUTER FALLBACK ---------------------------- */
 
     try {
-      const aiResponse = await runAI(
-        [{ role: "user", content: message }],
-        model
-      );
+      // Build a minimal system prompt with mood/custom-instructions even when
+      // the orchestrator fails, so the setting is never silently ignored.
+      const fallbackMessages = [];
+      const moodDesc = ai_mood && ai_mood !== "neutral"
+        ? `Your current mood/tone: ${ai_mood}.`
+        : null;
+      const hasFallbackSystem = moodDesc || custom_instructions;
+      if (hasFallbackSystem) {
+        const parts = [];
+        if (moodDesc) parts.push(moodDesc);
+        if (custom_instructions) parts.push(`User instructions: ${custom_instructions}`);
+        fallbackMessages.push({ role: "system", content: parts.join("\n") });
+      }
+      fallbackMessages.push({ role: "user", content: message });
+
+      const aiResponse = await runAI(fallbackMessages, model);
 
       return response(200, {
         response: aiResponse,

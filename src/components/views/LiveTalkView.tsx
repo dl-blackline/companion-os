@@ -308,6 +308,13 @@ Respond as ${aiName}:`;
               user_id: 'default-user',
               message: prompt,
               model: localStorage.getItem('chat_model') || undefined,
+              ai_mood: (() => {
+                try {
+                  const s = localStorage.getItem('companion-settings');
+                  return s ? (JSON.parse(s) as { aiMood?: string }).aiMood ?? 'neutral' : 'neutral';
+                } catch { return 'neutral'; }
+              })(),
+              custom_instructions: localStorage.getItem('memory-instructions') || undefined,
             },
           }),
         });
