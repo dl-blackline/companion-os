@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
@@ -19,45 +18,18 @@ import { AdminConsoleView } from '@/components/views/AdminConsoleView';
 import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
 import { useVoice } from '@/context/voice-context';
 import { useAuth } from '@/context/auth-context';
+import { useSettings } from '@/context/settings-context';
 import { List, X } from '@phosphor-icons/react';
-import type { CompanionSettings, CompanionState } from '@/types';
-
-const defaultSettings: CompanionSettings = {
-  aiName: 'Companion OS',
-  defaultMode: 'neutral',
-  memorySettings: {
-    autoCapture: true,
-    requireApproval: false,
-    summarization: true,
-  },
-  modelSettings: {
-    defaultModel: 'gpt-5.4',
-    fallbackModel: 'gpt-4.1-mini',
-    imageModel: 'openai-image',
-    videoModel: 'sora',
-    musicModel: 'suno',
-    voiceModel: 'elevenlabs',
-    temperature: 0.7,
-    maxLength: 2000,
-    citationPreference: 'when-available',
-    toolUseAggressiveness: 0.5,
-    memoryRetrievalIntensity: 0.7,
-  },
-  privacySettings: {
-    dataStorage: true,
-    exportEnabled: true,
-    auditTrail: true,
-  },
-};
+import type { CompanionState } from '@/types';
 
 function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('home');
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
-  const [settings, setSettings] = useLocalStorage<CompanionSettings>('companion-settings', defaultSettings);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isActive: isGlobalVoiceActive, stopLiveTalk } = useVoice();
   const { isAdmin } = useAuth();
+  const { settings } = useSettings();
 
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
@@ -77,15 +49,13 @@ function App() {
     navigateTo(section);
   };
 
-  const currentSettings = settings || defaultSettings;
-
   const renderContent = () => {
     switch (activeSection) {
       case 'home':
         return (
           <HomeDashboard
             companionState={companionState}
-            aiName={currentSettings.aiName}
+            aiName={settings.aiName}
             onNavigate={handleNavigate}
           />
         );
@@ -94,7 +64,7 @@ function App() {
           <LiveTalkView
             companionState={companionState}
             setCompanionState={setCompanionState}
-            aiName={currentSettings.aiName}
+            aiName={settings.aiName}
             onBack={() => setActiveSection('home')}
           />
         );
@@ -105,7 +75,7 @@ function App() {
           <MediaView
             companionState={companionState}
             setCompanionState={setCompanionState}
-            aiName={currentSettings.aiName}
+            aiName={settings.aiName}
           />
         );
       case 'memory':
@@ -121,12 +91,12 @@ function App() {
       case 'agents':
         return <AgentsView />;
       case 'settings':
-        return <SettingsView settings={currentSettings} onSettingsChange={setSettings} />;
+        return <SettingsView />;
       case 'admin-console':
         return isAdmin ? <AdminConsoleView /> : (
           <HomeDashboard
             companionState={companionState}
-            aiName={currentSettings.aiName}
+            aiName={settings.aiName}
             onNavigate={handleNavigate}
           />
         );
@@ -134,7 +104,7 @@ function App() {
         return (
           <HomeDashboard
             companionState={companionState}
-            aiName={currentSettings.aiName}
+            aiName={settings.aiName}
             onNavigate={handleNavigate}
           />
         );
@@ -157,7 +127,7 @@ function App() {
             className="text-sm font-semibold tracking-widest uppercase text-muted-foreground"
             style={{ fontFamily: 'var(--font-space)' }}
           >
-            {currentSettings.aiName}
+            {settings.aiName}
           </span>
           <div className="w-11" />
         </div>
@@ -177,7 +147,7 @@ function App() {
           <AppSidebar
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
-            aiName={currentSettings.aiName}
+            aiName={settings.aiName}
             companionState={companionState}
           />
         </div>
@@ -185,7 +155,7 @@ function App() {
         <AppSidebar
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
-          aiName={currentSettings.aiName}
+          aiName={settings.aiName}
           companionState={companionState}
         />
       )}
