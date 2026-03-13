@@ -19,6 +19,9 @@ function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
+// PostgREST error code for "row not found" (single-row select returned 0 rows)
+const PGRST_NOT_FOUND = "PGRST116";
+
 async function getUserFromToken(supabase, token) {
   if (!token) return null;
   const { data: { user } } = await supabase.auth.getUser(token);
@@ -45,7 +48,7 @@ export async function handler(event) {
         .eq("user_id", user.id)
         .single();
 
-      if (error && error.code !== "PGRST116") {
+      if (error && error.code !== PGRST_NOT_FOUND) {
         return res(500, { error: "Failed to fetch preferences" });
       }
 

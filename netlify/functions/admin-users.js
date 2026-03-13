@@ -49,7 +49,9 @@ async function auditLog(supabase, actorId, actorEmail, action, targetType, targe
   });
 }
 
-export async function handler(event) {
+// Ban duration for effectively permanent suspension (~100 years)
+const PERMANENT_BAN_DURATION = "876600h";
+
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS, body: "" };
 
   const supabase = getSupabase();
@@ -170,7 +172,7 @@ export async function handler(event) {
       if (status === "suspended") {
         updates.push(
           supabase.auth.admin.updateUserById(targetUserId, {
-            ban_duration: "876600h", // ~100 years
+            ban_duration: PERMANENT_BAN_DURATION,
           })
         );
       } else if (status === "active") {

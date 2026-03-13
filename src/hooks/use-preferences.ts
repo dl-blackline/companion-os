@@ -52,6 +52,8 @@ export function usePreferences(): UsePreferencesReturn {
   }, []);
 
   const update = useCallback(async (partial: Partial<UserPreferences>) => {
+    // Save previous state for rollback on failure
+    const prevPrefs = prefs;
     // Optimistic update
     setPrefs((prev) => ({ ...prev, ...partial }));
     setSaving(true);
@@ -70,15 +72,17 @@ export function usePreferences(): UsePreferencesReturn {
       if (!res.ok) {
         const { error: msg } = await res.json();
         setError(msg || 'Failed to save');
-        // Rollback on failure
-        setPrefs((prev) => ({ ...prev }));
+        // Rollback to previous state on failure
+        setPrefs(prevPrefs);
       }
     } catch (e) {
       setError('Network error');
+      // Rollback to previous state on network error
+      setPrefs(prevPrefs);
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [prefs]);
 
   return { prefs, loading, saving, error, update };
 }

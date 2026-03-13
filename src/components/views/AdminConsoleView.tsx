@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Users,
   UserPlus,
@@ -1345,26 +1345,24 @@ export function AdminConsoleView() {
           </ScrollArea>
 
           <div className="mt-6">
-            <AnimatePresence mode="wait">
-              <TabsContent value="overview" forceMount className={activeTab !== 'overview' ? 'hidden' : ''}>
-                <OverviewTab />
-              </TabsContent>
-              <TabsContent value="users" forceMount className={activeTab !== 'users' ? 'hidden' : ''}>
-                <UsersTab />
-              </TabsContent>
-              <TabsContent value="health" forceMount className={activeTab !== 'health' ? 'hidden' : ''}>
-                <SystemHealthTab />
-              </TabsContent>
-              <TabsContent value="flags" forceMount className={activeTab !== 'flags' ? 'hidden' : ''}>
-                <FeatureFlagsTab />
-              </TabsContent>
-              <TabsContent value="support" forceMount className={activeTab !== 'support' ? 'hidden' : ''}>
-                <SupportTab />
-              </TabsContent>
-              <TabsContent value="audit" forceMount className={activeTab !== 'audit' ? 'hidden' : ''}>
-                <AuditLogsTab />
-              </TabsContent>
-            </AnimatePresence>
+            <TabsContent value="overview">
+              <OverviewTab />
+            </TabsContent>
+            <TabsContent value="users">
+              <UsersTab />
+            </TabsContent>
+            <TabsContent value="health">
+              <SystemHealthTab />
+            </TabsContent>
+            <TabsContent value="flags">
+              <FeatureFlagsTab />
+            </TabsContent>
+            <TabsContent value="support">
+              <SupportTab />
+            </TabsContent>
+            <TabsContent value="audit">
+              <AuditLogsTab />
+            </TabsContent>
           </div>
         </Tabs>
       </div>
