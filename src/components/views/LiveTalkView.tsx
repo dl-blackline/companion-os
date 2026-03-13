@@ -28,6 +28,7 @@ import {
   type RealtimeVoice,
   type RealtimeVoiceEvent,
 } from '@/lib/realtime-voice-client';
+import { useVoice } from '@/context/voice-context';
 
 /** Roleplay context tracked locally during a session */
 interface RoleplayContext {
@@ -80,6 +81,19 @@ export function LiveTalkView({
   const realtimeClientRef = useRef<RealtimeVoiceClient | null>(null);
   const roleplayRef = useRef<RoleplayContext | null>(null);
   const MAX_RECONNECT_ATTEMPTS = 3;
+
+  // Stop the global voice session (FloatingLiveOrb) if it is running when this
+  // view mounts. Both this view and the FloatingLiveOrb create independent
+  // RealtimeVoiceClient instances, so allowing both to run simultaneously
+  // causes duplicate audio output on this page.
+  const { isActive: isGlobalVoiceActive, stopLiveTalk: stopGlobalVoice } = useVoice();
+  useEffect(() => {
+    if (isGlobalVoiceActive) {
+      stopGlobalVoice();
+    }
+    // Only run on initial mount — deps intentionally omitted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Read voice mode preference from localStorage
   const getVoiceMode = (): 'continuous' | 'push-to-talk' => {
