@@ -36,6 +36,9 @@ export interface RealtimeVoiceEvent {
   state?: RealtimeVoiceState;
   role?: 'user' | 'assistant';
   text?: string;
+  /** When true the transcript is still streaming — update the in-progress
+   *  bubble rather than adding a new turn to the conversation. */
+  partial?: boolean;
   error?: string;
   toolCall?: RealtimeToolCall;
 }
@@ -167,6 +170,8 @@ export class RealtimeVoiceClient {
   private systemPrompt: string;
   private model: string;
   private isInterrupted = false;
+  /** Accumulates assistant transcript deltas so we can emit partial updates. */
+  private currentAssistantTranscript = '';
 
   constructor(options: RealtimeVoiceClientOptions = {}) {
     this.voice = options.voice || 'alloy';
@@ -296,6 +301,7 @@ export class RealtimeVoiceClient {
     if (this._state !== 'speaking' || !this.dc || this.dc.readyState !== 'open') return;
 
     this.isInterrupted = true;
+    this.currentAssistantTranscript = '';
 
     // Send cancel event via data channel
     this.dc.send(JSON.stringify({ type: 'response.cancel' }));
@@ -444,6 +450,7 @@ export class RealtimeVoiceClient {
         // AI audio is being streamed
         if (this._state !== 'speaking') {
           this.isInterrupted = false;
+          this.currentAssistantTranscript = '';
           this.setState('speaking');
         }
         break;
@@ -471,10 +478,26 @@ export class RealtimeVoiceClient {
         break;
       }
 
+      case 'response.audio_transcript.delta': {
+        // Partial assistant transcript — stream text as it arrives
+        const delta = (msg as Record<string, unknown>).delta as string;
+        if (delta) {
+          this.currentAssistantTranscript += delta;
+          this.emit({
+            type: 'transcript',
+            role: 'assistant',
+            text: this.currentAssistantTranscript,
+            partial: true,
+          });
+        }
+        break;
+      }
+
       case 'response.audio_transcript.done': {
         // AI response transcription available
         const transcript = (msg as Record<string, unknown>).transcript as string;
         if (transcript) {
+          this.currentAssistantTranscript = '';
           this.emit({ type: 'transcript', role: 'assistant', text: transcript });
         }
         break;
@@ -527,14 +550,16 @@ export class RealtimeVoiceClient {
           voice: this.voice,
           instructions: this.systemPrompt || undefined,
           input_audio_transcription: { model: 'whisper-1' },
-          // Server-side VAD: higher threshold reduces false triggers from
-          // background noise; longer silence window avoids cutting the user
-          // off too early.
+          // Server-side VAD: a higher threshold ensures background noise and
+          // ambient sounds do not falsely trigger speech detection.  The
+          // shorter silence window keeps responses snappy — the higher
+          // threshold already filters out noise so we don't need as much
+          // padding before ending the turn.
           turn_detection: {
             type: 'server_vad',
-            threshold: 0.75,
+            threshold: 0.85,
             prefix_padding_ms: 300,
-            silence_duration_ms: 800,
+            silence_duration_ms: 600,
           },
           // Function tools the model can call during the conversation
           tools: LIVE_TALK_TOOLS,

@@ -100,6 +100,7 @@ export function LiveTalkView({
   const [isMicOn, setIsMicOn] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [interimText, setInterimText] = useState('');
+  const [interimAssistantText, setInterimAssistantText] = useState('');
   const [statusText, setStatusText] = useState('Tap the mic to start talking');
   const [useRealtime, setUseRealtime] = useState(false);
   const [roleplayMode, setRoleplayMode] = useState<RoleplayContext | null>(null);
@@ -171,6 +172,17 @@ export function LiveTalkView({
           break;
 
         case 'transcript': {
+          if (event.partial) {
+            // Streaming assistant text — update the in-progress bubble
+            if (event.role === 'assistant') {
+              setInterimAssistantText(event.text || '');
+            }
+            break;
+          }
+          // Final transcript — clear interim bubble and add completed turn
+          if (event.role === 'assistant') {
+            setInterimAssistantText('');
+          }
           triggerHaptic('light');
           const turn: TalkTurn = {
             id: generateId(),
@@ -187,6 +199,7 @@ export function LiveTalkView({
 
         case 'interrupted':
           triggerHaptic('light');
+          setInterimAssistantText('');
           break;
 
         case 'error':
@@ -428,7 +441,7 @@ Prefer using tools over just talking about doing something. If the user asks for
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [session.transcript, interimText]);
+  }, [session.transcript, interimText, interimAssistantText]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -1126,7 +1139,7 @@ Prefer using tools over just talking about doing something. If the user asks for
               ))}
             </AnimatePresence>
 
-            {/* Interim text */}
+            {/* Interim text (user speech in progress) */}
             {interimText && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -1139,7 +1152,20 @@ Prefer using tools over just talking about doing something. If the user asks for
               </motion.div>
             )}
 
-            {session.transcript.length === 0 && !interimText && (
+            {/* Streaming assistant text (realtime transcript delta) */}
+            {interimAssistantText && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex justify-start"
+              >
+                <div className="max-w-[78%] px-4 py-2.5 rounded-2xl rounded-bl-md bg-card border border-border text-foreground/60 text-sm leading-relaxed italic">
+                  {interimAssistantText}
+                </div>
+              </motion.div>
+            )}
+
+            {session.transcript.length === 0 && !interimText && !interimAssistantText && (
               <div className="py-6 space-y-4">
                 <p className="text-center text-muted-foreground text-sm opacity-60">
                   Your conversation will appear here
