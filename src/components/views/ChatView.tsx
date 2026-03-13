@@ -33,7 +33,7 @@ import { createClient } from '@supabase/supabase-js';
 
 /** Return the currently selected chat model id. */
 function activeChatModel(): string {
-  return getModelSetting('chat') || 'gpt-4.1';
+  return getModelSetting('chat') || 'gpt-5.4';
 }
 
 /** Lazily initialise a Supabase client for storage uploads. */
