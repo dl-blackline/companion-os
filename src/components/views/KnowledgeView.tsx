@@ -27,6 +27,8 @@ import {
   Tag,
   ArrowSquareOut,
   X,
+  Image as ImageIcon,
+  VideoCamera,
 } from '@phosphor-icons/react';
 import type { KnowledgeItem } from '@/types';
 import { generateId, getRelativeTime, formatDateTime } from '@/lib/helpers';
@@ -41,6 +43,7 @@ const TYPE_TABS: { value: ItemType | 'all'; label: string }[] = [
   { value: 'note', label: 'Notes' },
   { value: 'link', label: 'Links' },
   { value: 'snippet', label: 'Snippets' },
+  { value: 'media', label: 'Media' },
 ];
 
 const TYPE_COLORS: Record<ItemType, string> = {
@@ -48,6 +51,7 @@ const TYPE_COLORS: Record<ItemType, string> = {
   note: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
   link: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
   snippet: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
+  media: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
 };
 
 const TYPE_ICON_COLORS: Record<ItemType, string> = {
@@ -55,6 +59,7 @@ const TYPE_ICON_COLORS: Record<ItemType, string> = {
   note: 'text-amber-600',
   link: 'text-emerald-600',
   snippet: 'text-violet-600',
+  media: 'text-cyan-600',
 };
 
 function TypeIcon({ type, size = 16 }: { type: ItemType; size?: number }) {
@@ -67,6 +72,8 @@ function TypeIcon({ type, size = 16 }: { type: ItemType; size?: number }) {
       return <Link size={size} />;
     case 'snippet':
       return <CodeBlock size={size} />;
+    case 'media':
+      return <ImageIcon size={size} />;
   }
 }
 
@@ -248,6 +255,7 @@ export function KnowledgeView() {
                 <SelectItem value="note">Note</SelectItem>
                 <SelectItem value="link">Link</SelectItem>
                 <SelectItem value="snippet">Snippet</SelectItem>
+                <SelectItem value="media">Media</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -372,6 +380,21 @@ export function KnowledgeView() {
         </Card>
       )}
 
+      {/* Media thumbnail for media-type knowledge items */}
+      {item.type === 'media' && item.mediaUrl && (
+        <div className="rounded-lg overflow-hidden bg-black/5 max-h-64">
+          {item.mediaType === 'image' ? (
+            <img
+              src={item.mediaUrl}
+              alt={item.title}
+              className="w-full object-contain max-h-64"
+            />
+          ) : (
+            <video src={item.mediaUrl} controls className="w-full max-h-64" />
+          )}
+        </div>
+      )}
+
       <Card className="p-4">
         <p className="text-sm whitespace-pre-wrap leading-relaxed">{item.content}</p>
       </Card>
@@ -480,7 +503,20 @@ export function KnowledgeView() {
                     : 'hover:bg-muted'
                 )}
               >
-                <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex items-start gap-2 mb-1">
+                  {/* Media thumbnail for media items */}
+                  {item.type === 'media' && item.mediaUrl && item.mediaType === 'image' && (
+                    <img
+                      src={item.mediaUrl}
+                      alt={item.title}
+                      className="w-10 h-10 rounded object-cover shrink-0"
+                    />
+                  )}
+                  {item.type === 'media' && item.mediaType === 'video' && (
+                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+                      <VideoCamera size={16} className="text-muted-foreground" />
+                    </div>
+                  )}
                   <span className="text-sm font-medium line-clamp-1 flex-1 flex items-center gap-1.5">
                     <span className={cn('shrink-0', TYPE_ICON_COLORS[item.type])}>
                       <TypeIcon type={item.type} size={14} />

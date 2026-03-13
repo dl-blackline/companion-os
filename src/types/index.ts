@@ -70,7 +70,8 @@ export type MemoryCategory =
   | 'project' 
   | 'knowledge' 
   | 'episodic' 
-  | 'session';
+  | 'session'
+  | 'media';
 
 export type PrivacyLevel = 'public' | 'private' | 'sensitive';
 
@@ -147,19 +148,27 @@ export interface Memory {
   isPinned: boolean;
   tags: string[];
   relatedMemories: string[];
+  /** Optional link to uploaded media that originated this memory */
+  mediaId?: string;
+  mediaUrl?: string;
+  mediaType?: MediaType;
 }
 
 export interface KnowledgeItem {
   id: string;
   title: string;
   content: string;
-  type: 'document' | 'note' | 'link' | 'snippet';
+  type: 'document' | 'note' | 'link' | 'snippet' | 'media';
   category: string;
   tags: string[];
   createdAt: number;
   updatedAt: number;
   summary?: string;
   sourceUrl?: string;
+  /** For media-type knowledge items */
+  mediaId?: string;
+  mediaUrl?: string;
+  mediaType?: MediaType;
 }
 
 export interface Goal {
@@ -488,4 +497,94 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   reduce_motion: false,
   high_contrast: false,
   font_size: 'md',
+};
+
+// ─── Media Memory System ──────────────────────────────────────────────────────
+
+export type MediaProcessingState = 'pending' | 'processing' | 'done' | 'failed';
+export type MemoryCandidateStatus = 'pending' | 'approved' | 'rejected';
+
+export interface MediaEntity {
+  name: string;
+  type: 'person' | 'place' | 'object' | 'event' | 'brand' | 'other';
+  confidence: number;
+}
+
+export interface TimestampedMoment {
+  timestamp: string;
+  description: string;
+}
+
+export interface MediaAnalysis {
+  id: string;
+  media_id: string;
+  summary: string | null;
+  description: string | null;
+  extracted_text: string | null;
+  transcript: string | null;
+  tags: string[];
+  entities: MediaEntity[];
+  emotional_cues: string[];
+  timestamped_moments: TimestampedMoment[];
+  model_used: string | null;
+  created_at: string;
+}
+
+export interface MemoryCandidate {
+  id: string;
+  user_id: string;
+  media_id: string | null;
+  title: string;
+  content: string;
+  category: MemoryCategory;
+  confidence: number;
+  privacy_level: PrivacyLevel;
+  tags: string[];
+  status: MemoryCandidateStatus;
+  decided_at: string | null;
+  created_at: string;
+  /** Joined from uploaded_media */
+  uploaded_media?: {
+    id: string;
+    public_url: string | null;
+    filename: string;
+    media_type: MediaType;
+    user_title: string | null;
+  };
+}
+
+export interface UploadedMedia {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  public_url: string | null;
+  filename: string;
+  media_type: MediaType;
+  mime_type: string | null;
+  file_size_bytes: number | null;
+  user_title: string | null;
+  user_note: string | null;
+  processing_state: MediaProcessingState;
+  created_at: string;
+  updated_at: string;
+  /** Joined */
+  media_analysis?: MediaAnalysis[];
+  /** Joined */
+  memory_candidates?: MemoryCandidate[];
+}
+
+export interface UserMemoryPreferences {
+  memory_enabled: boolean;
+  auto_save_memory: boolean;
+  ask_before_saving: boolean;
+  media_learning_enabled: boolean;
+  retention_days: number | null;
+}
+
+export const DEFAULT_MEMORY_PREFERENCES: UserMemoryPreferences = {
+  memory_enabled: true,
+  auto_save_memory: false,
+  ask_before_saving: true,
+  media_learning_enabled: true,
+  retention_days: null,
 };
