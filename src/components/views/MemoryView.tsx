@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useAuth } from '@/context/auth-context';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -74,7 +75,7 @@ const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
-/** Placeholder user ID used until auth context is wired into this view. */
+/** Fallback user ID used when auth is not available. */
 const MEMORY_LOCAL_USER_ID = 'local-user';
 
 function getSupabase() {
@@ -142,6 +143,8 @@ const EMPTY_FORM: MemoryFormState = {
 };
 
 export function MemoryView() {
+  const { user: authUser } = useAuth();
+  const memoryUserId = authUser?.id ?? MEMORY_LOCAL_USER_ID;
   const [memories, setMemories] = useLocalStorage<Memory[]>('memories', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -340,7 +343,7 @@ export function MemoryView() {
     let storagePath: string;
 
     try {
-      const userId = MEMORY_LOCAL_USER_ID;
+      const userId = memoryUserId;
       const result = await uploadMedia(mediaFile, userId, setUploadProgress);
       mediaUrl = result.url;
       storagePath = result.path;
@@ -359,7 +362,7 @@ export function MemoryView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'analyze',
-          user_id: MEMORY_LOCAL_USER_ID,
+          user_id: memoryUserId,
           public_url: mediaUrl,
           storage_path: storagePath,
           filename: mediaFile.name,
@@ -382,7 +385,7 @@ export function MemoryView() {
       // Store locally as well for UI display
       const localRecord: UploadedMedia = {
         id: media_record?.id || generateId(),
-        user_id: MEMORY_LOCAL_USER_ID,
+        user_id: memoryUserId,
         storage_path: storagePath,
         public_url: mediaUrl,
         filename: mediaFile.name,
@@ -415,7 +418,7 @@ export function MemoryView() {
       // If backend not available, do a local-only fallback
       const fallbackRecord: UploadedMedia = {
         id: generateId(),
-        user_id: MEMORY_LOCAL_USER_ID,
+        user_id: memoryUserId,
         storage_path: storagePath,
         public_url: mediaUrl,
         filename: mediaFile.name,
@@ -447,7 +450,7 @@ export function MemoryView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'approve',
-          user_id: MEMORY_LOCAL_USER_ID,
+          user_id: memoryUserId,
           candidate_id: candidate.id,
         }),
       });
@@ -488,7 +491,7 @@ export function MemoryView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'reject',
-          user_id: MEMORY_LOCAL_USER_ID,
+          user_id: memoryUserId,
           candidate_id: candidateId,
         }),
       });

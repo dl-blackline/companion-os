@@ -305,6 +305,43 @@ export interface DashboardData {
   currentProjects: string[];
 }
 
+// ─── Auth State Types ─────────────────────────────────────────────────────────
+
+/** Discriminated union representing all possible authentication states. */
+export type AuthState =
+  | { status: 'initializing' }
+  | { status: 'unauthenticated' }
+  | { status: 'authenticating' }
+  | { status: 'authenticated'; userId: string; email: string }
+  | { status: 'refreshing'; userId: string; email: string }
+  | { status: 'error'; error: string };
+
+export type AuthStatus = AuthState['status'];
+
+export interface AuthSession {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  userId: string;
+  email: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AuthErrorInfo {
+  code: string;
+  message: string;
+  recoverable: boolean;
+}
+
 // ─── RBAC / Entitlement Types ─────────────────────────────────────────────────
 
 export type UserRole = 'admin' | 'user';
