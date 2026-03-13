@@ -461,6 +461,8 @@ export class RealtimeVoiceClient {
           this.emit({ type: 'tool_call', toolCall: { callId, name, arguments: args } });
         } catch (parseErr) {
           console.warn('Failed to parse tool call arguments', { callId, name, argsStr, parseErr });
+          // Send a fallback result so the model doesn't stall waiting for output
+          this.submitToolResult(callId, 'Tool call failed due to invalid arguments.');
         }
         break;
       }

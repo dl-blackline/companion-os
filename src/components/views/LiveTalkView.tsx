@@ -190,15 +190,14 @@ export function LiveTalkView({
                     ? 'Image generated and displayed to the user.'
                     : 'Image generation failed — no URL returned.'
                 );
+                // Let the realtime state_change events drive the UI state
               })
               .catch(() => {
                 realtimeClientRef.current?.submitToolResult(
                   callId,
                   'Image generation failed due to a server error.'
                 );
-              })
-              .finally(() => {
-                setCompanionState('speaking');
+                setCompanionState('listening');
               });
           } else if (name === 'start_roleplay') {
             const character = (toolArgs.character as string) || 'a character';
@@ -217,6 +216,7 @@ export function LiveTalkView({
             triggerHaptic('medium');
           } else if (name === 'run_task') {
             const taskDesc = (toolArgs.description as string) || '';
+            const taskType = (toolArgs.taskType as string) || 'other';
             setStatusText('Running task…');
 
             fetch('/.netlify/functions/ai', {
@@ -225,7 +225,10 @@ export function LiveTalkView({
               body: JSON.stringify({
                 type: 'live_talk',
                 data: {
+                  // Pass intent_override so the backend skips re-detection
                   message: taskDesc,
+                  intent_override: 'run_task',
+                  task_type: taskType,
                   ai_name: aiName,
                   mode: 'neutral',
                 },
@@ -261,14 +264,9 @@ export function LiveTalkView({
   );
 
   // Start realtime voice session
-  const startRealtime = useCallback(async (): Promise<boolean> => {
-    if (!RealtimeVoiceClient.isSupported()) return false;
-
-    try {
-      const modeConfig = getModeConfig('neutral');
-      const client = new RealtimeVoiceClient({
-        voice: getRealtimeVoice(),
-        systemPrompt: `${modeConfig.systemPrompt}
+  const getBaseSystemPrompt = useCallback(() => {
+    const modeConfig = getModeConfig('neutral');
+    return `${modeConfig.systemPrompt}
 
 You are ${aiName}, an enterprise-grade real-time AI companion with powerful capabilities. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed.
 
@@ -277,7 +275,16 @@ You have the following tools available — use them proactively when the user re
 - start_roleplay: Call this when the user wants you to play a character or act out a scenario.
 - run_task: Call this to generate documents, code, plans, or summaries the user requests.
 
-Always use tools instead of just talking about doing something. If the user asks for an image, call generate_image immediately. If they want role-play, call start_roleplay. Never refuse a reasonable request — find a way to help.`,
+Prefer using tools over just talking about doing something. If the user asks for an image, call generate_image. If they want role-play, call start_roleplay. Always follow safety guidelines.`;
+  }, [aiName]);
+
+  const startRealtime = useCallback(async (): Promise<boolean> => {
+    if (!RealtimeVoiceClient.isSupported()) return false;
+
+    try {
+      const client = new RealtimeVoiceClient({
+        voice: getRealtimeVoice(),
+        systemPrompt: getBaseSystemPrompt(),
       });
 
       const unsubscribe = client.on(handleRealtimeEvent);
@@ -292,7 +299,7 @@ Always use tools instead of just talking about doing something. If the user asks
       console.warn('Realtime connection failed, falling back to TTS pipeline:', err);
       return false;
     }
-  }, [aiName, handleRealtimeEvent]);
+  }, [getBaseSystemPrompt, handleRealtimeEvent]);
 
   // Stop realtime voice session
   const stopRealtime = useCallback(() => {
@@ -475,6 +482,10 @@ Always use tools instead of just talking about doing something. If the user asks
             roleplayRef.current = ctx;
             setRoleplayMode(ctx);
             triggerHaptic('medium');
+          } else if (data.action.type === 'roleplay_ended') {
+            // Backend detected the user wants to exit role-play
+            roleplayRef.current = null;
+            setRoleplayMode(null);
           }
         }
 
@@ -890,11 +901,10 @@ Always use tools instead of just talking about doing something. If the user asks
               onClick={() => {
                 roleplayRef.current = null;
                 setRoleplayMode(null);
-                // If realtime is active, reset system prompt
+                // Restore the full base system prompt (including tool instructions) in the live session
                 if (realtimeClientRef.current) {
-                  const modeConfig = getModeConfig('neutral');
                   realtimeClientRef.current.updateSession({
-                    systemPrompt: `${modeConfig.systemPrompt}\n\nYou are ${aiName}, an enterprise-grade AI companion. Respond naturally and conversationally.`,
+                    systemPrompt: getBaseSystemPrompt(),
                   });
                 }
               }}

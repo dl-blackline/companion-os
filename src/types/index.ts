@@ -37,7 +37,7 @@ export interface TalkTurn {
   /** URL of a generated media asset attached to this turn */
   mediaUrl?: string;
   /** Type of the attached media asset */
-  mediaType?: 'image' | 'video';
+  mediaType?: MediaType;
 }
 
 export interface MediaGeneration {

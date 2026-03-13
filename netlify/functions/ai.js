@@ -170,12 +170,33 @@ async function handleChat(data) {
       throw new Error("Orchestrator returned empty response");
     }
 
+    /* ---- Determine if this is a media response (image / video / music) ---- */
+
+    const isMediaResponse = result.isMedia &&
+      result.response &&
+      typeof result.response === "object" &&
+      result.response.url;
+
+    // Determine the media type label for the DB content field
+    const mediaTypeLabel = isMediaResponse
+      ? (result.response.type || "media")
+      : null;
+
+    // Normalise media_type to the values the DB/frontend understands: "image" | "video"
+    const dbMediaType = isMediaResponse
+      ? (result.response.type === "video" ? "video" : "image")
+      : null;
+
+    const assistantTextContent = isMediaResponse
+      ? `[${mediaTypeLabel} generated]`
+      : result.response;
+
     /* ----------------------------- SAFE EMBEDDING ---------------------------- */
 
     let assistantEmbedding = null;
 
     try {
-      assistantEmbedding = await generateEmbedding(result.response);
+      assistantEmbedding = await generateEmbedding(assistantTextContent);
     } catch (err) {
       console.warn("Embedding generation failed:", err.message);
     }
@@ -193,8 +214,10 @@ async function handleChat(data) {
         conversation_id,
         user_id,
         role: "assistant",
-        content: result.response,
+        content: assistantTextContent,
         embedding: assistantEmbedding,
+        ...(isMediaResponse && { media_url: result.response.url }),
+        ...(isMediaResponse && { media_type: dbMediaType }),
       }),
     ]);
 
@@ -229,7 +252,7 @@ async function handleChat(data) {
 
     /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
 
-    if (stream) {
+    if (stream && !isMediaResponse) {
       // True token streaming via the OpenAI streaming API
       const chunks = [];
       try {
@@ -262,6 +285,15 @@ async function handleChat(data) {
         },
         body: chunks.join(""),
       };
+    }
+
+    if (isMediaResponse) {
+      return response(200, {
+        response: assistantTextContent,
+        media_url: result.response.url,
+        media_type: dbMediaType,
+        intent: result.intent || { intent: "media_generation", confidence: 1 },
+      });
     }
 
     return response(200, {
@@ -587,6 +619,8 @@ async function handleLiveTalk(data) {
     mode = "neutral",
     ai_name = "Companion",
     roleplay_context,
+    intent_override,
+    task_type,
   } = data;
 
   if (!message) {
@@ -598,6 +632,24 @@ async function handleLiveTalk(data) {
     .slice(-6)
     .map((t) => `${t.role === "user" ? "User" : ai_name}: ${t.text}`)
     .join("\n");
+
+  // Fast-path: the realtime tool handler already resolved intent, so skip classification
+  if (intent_override === "run_task") {
+    const taskDesc = message;
+    const resolvedTaskType = task_type || "other";
+    const taskResponse = await runAI({
+      system: `You are ${ai_name}, an expert AI assistant. Complete the following task thoroughly. Write your response as flowing natural language suitable for voice output — no bullet points, no markdown headers. Be thorough but conversational.`,
+      user: `Task (${resolvedTaskType}): ${taskDesc}`,
+    });
+    return response(200, {
+      response: taskResponse,
+      action: {
+        type: "task_completed",
+        taskType: resolvedTaskType,
+        description: taskDesc,
+      },
+    });
+  }
 
   // If we are already in an active role-play, stay in character without
   // re-detecting intent — unless the user explicitly asks to stop.
@@ -613,6 +665,18 @@ async function handleLiveTalk(data) {
         character: roleplay_context.character,
         scenario: roleplay_context.scenario,
       },
+    });
+  }
+
+  // If there was an active role-play but the user asked to stop, exit it
+  if (roleplay_context && ROLEPLAY_EXIT_RE.test(message)) {
+    const exitResponse = await runAI({
+      system: liveTalkSystemPrompt(ai_name, mode),
+      user: `The user just ended a role-play as "${roleplay_context.character}". Acknowledge it briefly and warmly in one sentence.`,
+    });
+    return response(200, {
+      response: exitResponse,
+      action: { type: "roleplay_ended" },
     });
   }
 
