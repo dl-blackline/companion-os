@@ -505,24 +505,19 @@ async function handleRealtimeToken(data) {
     return response(500, { error: "OpenAI API key not configured" });
   }
 
-  const model = data.model || "gpt-realtime";
+  const model = data.model || "gpt-4o-realtime-preview";
   const voice = data.voice || "alloy";
 
   try {
-    const tokenRes = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+    const tokenRes = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        session: {
-          type: "realtime",
-          model,
-          audio: {
-            output: { voice },
-          },
-        },
+        model,
+        voice,
       }),
     });
 
@@ -536,7 +531,7 @@ async function handleRealtimeToken(data) {
 
     const sessionData = await tokenRes.json();
     return response(200, {
-      client_secret: sessionData.value,
+      client_secret: sessionData.client_secret?.value,
     });
   } catch (err) {
     console.error("Realtime token error:", err.message);
