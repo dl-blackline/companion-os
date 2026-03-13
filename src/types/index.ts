@@ -236,6 +236,7 @@ export interface Tool {
 export interface CompanionSettings {
   aiName: string;
   defaultMode: ConversationMode;
+  aiMood?: string;
   activePersonaId?: string;
   memorySettings: {
     autoCapture: boolean;

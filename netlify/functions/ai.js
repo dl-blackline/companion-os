@@ -86,7 +86,7 @@ async function saveMessage(
 /* -------------------------------------------------------------------------- */
 
 async function handleChat(data) {
-  const { conversation_id, user_id, message, model, stream, media_url, media_type } = data;
+  const { conversation_id, user_id, message, model, stream, media_url, media_type, ai_mood, custom_instructions } = data;
 
   if (!conversation_id || !user_id || !message) {
     return response(400, {
@@ -164,6 +164,8 @@ async function handleChat(data) {
       getRecentConversation: (convId) =>
         getRecentConversation(supabase, convId),
       model,
+      ai_mood,
+      custom_instructions,
     });
 
     if (!result || !result.response) {

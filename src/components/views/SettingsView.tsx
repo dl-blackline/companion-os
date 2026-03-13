@@ -33,6 +33,7 @@ import {
   CheckCircle,
   XCircle,
   ArrowsClockwise,
+  Smiley,
 } from '@phosphor-icons/react';
 import type { CompanionSettings, ConversationMode } from '@/types';
 import { motion } from 'framer-motion';
@@ -57,6 +58,17 @@ const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
   { value: 'neutral', label: 'Neutral' },
   { value: 'prompt-studio', label: 'Prompt Studio' },
   { value: 'custom', label: 'Custom' },
+];
+
+const AI_MOODS: { value: string; label: string; description: string }[] = [
+  { value: 'neutral', label: 'Neutral', description: 'Balanced and adaptive' },
+  { value: 'friendly', label: 'Friendly', description: 'Warm and approachable' },
+  { value: 'professional', label: 'Professional', description: 'Formal and precise' },
+  { value: 'playful', label: 'Playful', description: 'Fun and witty' },
+  { value: 'romantic', label: 'Romantic', description: 'Warm and intimate' },
+  { value: 'direct', label: 'Direct', description: 'Blunt and concise' },
+  { value: 'empathetic', label: 'Empathetic', description: 'Compassionate and nurturing' },
+  { value: 'creative', label: 'Creative', description: 'Imaginative and expressive' },
 ];
 
 interface ModelEntry {
@@ -426,6 +438,30 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                     {CONVERSATION_MODES.map((mode) => (
                       <SelectItem key={mode.value} value={mode.value}>
                         {mode.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              <Separator />
+
+              <SettingRow
+                icon={Smiley}
+                label="AI Mood"
+                description="Fine-tune the emotional tone and personality of your AI companion."
+              >
+                <Select
+                  value={settings.aiMood ?? 'neutral'}
+                  onValueChange={(value) => update({ aiMood: value })}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AI_MOODS.map((mood) => (
+                      <SelectItem key={mood.value} value={mood.value}>
+                        {mood.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

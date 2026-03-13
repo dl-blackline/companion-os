@@ -21,7 +21,7 @@ import {
   SpinnerGap,
   ArrowLeft,
 } from '@phosphor-icons/react';
-import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
+import type { Conversation, Message, ConversationMode, MediaType, CompanionSettings } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
 import { getModeConfig, getAllModes } from '@/lib/modes';
 import { getPromptGenerationAwareness } from '@/lib/prompt-studio';
@@ -66,6 +66,8 @@ export function ChatView() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [companionSettings] = useLocalStorage<CompanionSettings>('companion-settings', null as unknown as CompanionSettings);
+  const [memoryInstructions] = useLocalStorage<string>('memory-instructions', '');
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);
   const modes = getAllModes();
@@ -213,6 +215,8 @@ Please provide a helpful response.`;
             user_id: 'default-user',
             message: fullPrompt,
             model: activeChatModel(),
+            ai_mood: companionSettings?.aiMood ?? 'neutral',
+            custom_instructions: memoryInstructions || undefined,
             ...(mediaUrl && { media_url: mediaUrl }),
             ...(mediaType && { media_type: mediaType }),
           },

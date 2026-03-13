@@ -25,6 +25,8 @@ import {
   Shield,
   CheckCircle,
   X,
+  Terminal,
+  FloppyDisk,
 } from '@phosphor-icons/react';
 import type { Memory, MemoryCategory, PrivacyLevel } from '@/types';
 import { generateId, getRelativeTime, formatDateTime } from '@/lib/helpers';
@@ -83,8 +85,17 @@ export function MemoryView() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<MemoryFormState>(EMPTY_FORM);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [customInstructions, setCustomInstructions] = useLocalStorage<string>('memory-instructions', '');
+  const [instructionDraft, setInstructionDraft] = useState<string>(customInstructions ?? '');
+  const [instructionSaved, setInstructionSaved] = useState(false);
 
   const allMemories = memories || [];
+
+  const saveInstructions = () => {
+    setCustomInstructions(instructionDraft);
+    setInstructionSaved(true);
+    setTimeout(() => setInstructionSaved(false), 2000);
+  };
 
   const filteredMemories = allMemories.filter((m) => {
     const matchesCategory = activeCategory === 'all' || m.category === activeCategory;
@@ -411,7 +422,50 @@ export function MemoryView() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
+    <div className="flex flex-col h-full">
+      {/* Custom Instructions Banner */}
+      <div className="border-b border-border bg-card/50 p-4 shrink-0">
+        <div className="flex items-start gap-3">
+          <div className="mt-1">
+            <Terminal size={18} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-semibold">Custom Instructions</h3>
+              <span className="text-xs text-muted-foreground">
+                — Always followed by your AI companion
+              </span>
+            </div>
+            <Textarea
+              value={instructionDraft}
+              onChange={(e) => setInstructionDraft(e.target.value)}
+              placeholder="Enter instructions your AI must always follow (e.g. 'Always respond in a casual tone', 'Call me by my nickname', 'Remember I prefer concise answers')…"
+              className="min-h-[72px] resize-none text-sm mb-2"
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={saveInstructions}
+                disabled={instructionDraft === (customInstructions ?? '')}
+              >
+                <FloppyDisk size={14} className="mr-1.5" />
+                {instructionSaved ? 'Saved!' : 'Save Instructions'}
+              </Button>
+              {instructionDraft !== (customInstructions ?? '') && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setInstructionDraft(customInstructions ?? '')}
+                >
+                  Discard
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
       {/* Left panel — memory list */}
       <div className="w-full md:w-80 border-r border-border flex flex-col bg-card">
         <div className="p-4 border-b border-border">
@@ -557,6 +611,7 @@ export function MemoryView() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

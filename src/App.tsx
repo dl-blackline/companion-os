@@ -22,6 +22,7 @@ import type { CompanionSettings, CompanionState } from '@/types';
 const defaultSettings: CompanionSettings = {
   aiName: 'Companion OS',
   defaultMode: 'neutral',
+  aiMood: 'neutral',
   memorySettings: {
     autoCapture: true,
     requireApproval: false,
