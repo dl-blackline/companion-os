@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
 import { orchestrate } from "../../lib/orchestrator.js";
 import { buildSystemPrompt } from "../../lib/system-prompt.js";
+import { MOOD_DESCRIPTIONS } from "../../lib/ai-moods.js";
 import { runAI, streamAI } from "../../lib/ai-router.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
@@ -580,6 +581,238 @@ async function handleMultimodal(data) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                               LIVE TALK                                    */
+/* -------------------------------------------------------------------------- */
+
+const LIVE_TALK_INTENT_SYSTEM = `You are a voice assistant intent classifier. Return ONLY valid JSON with no markdown or code blocks.
+
+Classify the user's voice message into one of:
+- "chat": general conversation, questions, opinions, information requests
+- "generate_image": user wants to see, create, draw, generate, or visualize an image or picture
+- "roleplay": user wants the AI to play a character, persona, or act out a scenario
+- "run_task": user wants to automate a task or generate content (document, code, plan, summary)
+
+Return exactly this JSON structure (omit fields that don't apply):
+{
+  "type": "chat" | "generate_image" | "roleplay" | "run_task",
+  "imagePrompt": "detailed image description",
+  "character": "character or persona name",
+  "scenario": "scenario or context description",
+  "taskType": "document" | "plan" | "code" | "summary" | "other",
+  "taskDescription": "complete description of what needs to be done"
+}`;
+
+/**
+ * Detect the live talk intent using a fast, focused AI call.
+ */
+async function detectLiveTalkIntent(message, historyContext) {
+  try {
+    const raw = await runAI(
+      {
+        system: LIVE_TALK_INTENT_SYSTEM,
+        user: `Message: "${message}"\n\nRecent context:\n${historyContext}`,
+      },
+      "gpt-4o-mini"
+    );
+    // Strip potential markdown fences
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.warn("Live talk intent detection failed, defaulting to chat:", err.message);
+    return { type: "chat" };
+  }
+}
+
+/**
+ * Build a conversational system prompt for the given mode / AI name.
+ */
+function liveTalkSystemPrompt(aiName, mode, aiMood, customInstructions) {
+  const base = `You are ${aiName}, an enterprise-grade AI companion. Respond warmly and naturally — as if speaking aloud. Keep answers to 1-3 sentences unless the user explicitly asks for more detail. Never use bullet points or markdown; speak in flowing prose.`;
+
+  const modeAdditions = {
+    strategist: " Apply high-level strategic thinking to every response.",
+    operator: " Be direct, action-oriented, and concise.",
+    researcher: " Provide evidence-based, thorough answers.",
+    coach: " Be encouraging, motivating, and growth-focused.",
+    creative: " Be imaginative, expressive, and inventive.",
+  };
+
+  let prompt = base + (modeAdditions[mode] || "");
+
+  if (aiMood && aiMood !== "neutral") {
+    const moodDesc = MOOD_DESCRIPTIONS[aiMood];
+    if (moodDesc) prompt += `\n\nMOOD / TONE: ${moodDesc}`;
+  }
+
+  if (customInstructions) {
+    prompt += `\n\nUSER-DEFINED INSTRUCTIONS (apply whenever possible):\n${customInstructions}`;
+  }
+
+  return prompt;
+}
+
+/** Pattern that detects a user asking to stop/exit the current role-play. */
+const ROLEPLAY_EXIT_RE =
+  /\b(stop|end|exit|quit|cancel)\b.*\b(role.?play|character|scenario)\b/i;
+
+/**
+ * Handle enterprise-grade live talk requests:
+ * intent detection → image generation | role-play | task automation | chat
+ */
+async function handleLiveTalk(data) {
+  const {
+    message,
+    conversation_history = [],
+    mode = "neutral",
+    ai_name = "Companion",
+    roleplay_context,
+    intent_override,
+    task_type,
+    ai_mood,
+    custom_instructions,
+  } = data;
+
+  if (!message) {
+    return response(400, { error: "Missing required field: message" });
+  }
+
+  // Build recent history context string for intent detection
+  const historyContext = conversation_history
+    .slice(-6)
+    .map((t) => `${t.role === "user" ? "User" : ai_name}: ${t.text}`)
+    .join("\n");
+
+  // Fast-path: the realtime tool handler already resolved intent, so skip classification
+  if (intent_override === "run_task") {
+    const taskDesc = message;
+    const resolvedTaskType = task_type || "other";
+    const taskResponse = await runAI({
+      system: `You are ${ai_name}, an expert AI assistant. Complete the following task thoroughly. Write your response as flowing natural language suitable for voice output — no bullet points, no markdown headers. Be thorough but conversational.`,
+      user: `Task (${resolvedTaskType}): ${taskDesc}`,
+    });
+    return response(200, {
+      response: taskResponse,
+      action: {
+        type: "task_completed",
+        taskType: resolvedTaskType,
+        description: taskDesc,
+      },
+    });
+  }
+
+  // If we are already in an active role-play, stay in character without
+  // re-detecting intent — unless the user explicitly asks to stop.
+  if (roleplay_context && !ROLEPLAY_EXIT_RE.test(message)) {
+    const roleplayResponse = await runAI({
+      system: `You are ${roleplay_context.character}. ${roleplay_context.scenario}. Stay fully in character. Respond naturally as if speaking aloud. Keep answers to 1-3 sentences unless the user asks for more.`,
+      user: `${historyContext}\n\nUser: ${message}`,
+    });
+    return response(200, {
+      response: roleplayResponse,
+      action: {
+        type: "roleplay_continued",
+        character: roleplay_context.character,
+        scenario: roleplay_context.scenario,
+      },
+    });
+  }
+
+  // If there was an active role-play but the user asked to stop, exit it
+  if (roleplay_context && ROLEPLAY_EXIT_RE.test(message)) {
+    const exitResponse = await runAI({
+      system: liveTalkSystemPrompt(ai_name, mode, ai_mood, custom_instructions),
+      user: `The user just ended a role-play as "${roleplay_context.character}". Acknowledge it briefly and warmly in one sentence.`,
+    });
+    return response(200, {
+      response: exitResponse,
+      action: { type: "roleplay_ended" },
+    });
+  }
+
+  // Detect intent
+  const intent = await detectLiveTalkIntent(message, historyContext);
+
+  switch (intent.type) {
+    case "generate_image": {
+      const imagePrompt = intent.imagePrompt || message;
+      try {
+        const imageResult = await runMediaTask({
+          type: "image",
+          prompt: imagePrompt,
+        });
+        const voiceReply = await runAI(
+          {
+            system: `You are ${ai_name}, a voice AI. In exactly one warm, natural sentence acknowledge that you just created the image the user requested. Do not describe its contents in detail.`,
+            user: `I generated an image described as: "${imagePrompt}". Briefly acknowledge this.`,
+          },
+          "gpt-4o-mini"
+        );
+        return response(200, {
+          response: voiceReply,
+          action: {
+            type: "image_generated",
+            mediaUrl: imageResult.url,
+            mediaType: "image",
+            prompt: imagePrompt,
+          },
+        });
+      } catch (imgErr) {
+        console.error("Live talk image generation error:", imgErr);
+        // Fall back to a conversational response
+        const fallback = await runAI({
+          system: liveTalkSystemPrompt(ai_name, mode, ai_mood, custom_instructions),
+          user: `${historyContext}\n\nUser: ${message}`,
+        });
+        return response(200, { response: fallback });
+      }
+    }
+
+    case "roleplay": {
+      const character = intent.character || "a mysterious character";
+      const scenario =
+        intent.scenario || "an intriguing conversation with the user";
+      const roleplayResponse = await runAI({
+        system: `You are ${character}. ${scenario}. Stay fully in character from your very first word. Speak naturally as if talking aloud. Keep your opening to 1-2 sentences.`,
+        user: message,
+      });
+      return response(200, {
+        response: roleplayResponse,
+        action: {
+          type: "roleplay_started",
+          character,
+          scenario,
+        },
+      });
+    }
+
+    case "run_task": {
+      const taskDesc = intent.taskDescription || message;
+      const taskResponse = await runAI({
+        system: `You are ${ai_name}, an expert AI assistant. Complete the following task thoroughly. Write your response as flowing natural language suitable for voice output — no bullet points, no markdown headers. Be thorough but conversational.`,
+        user: `Task: ${taskDesc}`,
+      });
+      return response(200, {
+        response: taskResponse,
+        action: {
+          type: "task_completed",
+          taskType: intent.taskType || "other",
+          description: taskDesc,
+        },
+      });
+    }
+
+    default: {
+      // General conversational chat
+      const chatResponse = await runAI({
+        system: liveTalkSystemPrompt(ai_name, mode, ai_mood, custom_instructions),
+        user: `${historyContext}\n\nUser: ${message}`,
+      });
+      return response(200, { response: chatResponse });
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                   GATEWAY                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -632,6 +865,9 @@ export async function handler(event) {
 
       case "multimodal":
         return await handleMultimodal(payload);
+
+      case "live_talk":
+        return await handleLiveTalk(payload);
 
       default:
         return response(400, { error: "Invalid request type" });
