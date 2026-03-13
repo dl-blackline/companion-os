@@ -2,7 +2,7 @@
  * Realtime Voice Client — WebRTC-based connection to OpenAI Realtime API.
  *
  * Replaces the speech-to-text → AI → TTS pipeline with true bidirectional
- * streaming audio using WebRTC and the gpt-4o-realtime-preview model.
+ * streaming audio using WebRTC and the gpt-realtime model.
  *
  * Flow:
  *   1. Request an ephemeral key from the server
@@ -15,13 +15,14 @@
 
 export type RealtimeVoiceState = 'disconnected' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 
-export type RealtimeVoice = 'alloy' | 'aria' | 'nova' | 'verse';
+export type RealtimeVoice = 'alloy' | 'echo' | 'shimmer' | 'marin' | 'cedar';
 
 export const REALTIME_VOICES: { id: RealtimeVoice; label: string }[] = [
+  { id: 'marin', label: 'Marin' },
+  { id: 'cedar', label: 'Cedar' },
   { id: 'alloy', label: 'Alloy' },
-  { id: 'aria', label: 'Aria' },
-  { id: 'nova', label: 'Nova' },
-  { id: 'verse', label: 'Verse' },
+  { id: 'echo', label: 'Echo' },
+  { id: 'shimmer', label: 'Shimmer' },
 ];
 
 export interface RealtimeToolCall {
@@ -47,7 +48,7 @@ interface RealtimeVoiceClientOptions {
   model?: string;
 }
 
-const REALTIME_MODEL = 'gpt-4o-realtime-preview';
+const REALTIME_MODEL = 'gpt-realtime';
 
 /**
  * Function tools available during live talk sessions.
@@ -234,7 +235,7 @@ export class RealtimeVoiceClient {
 
       // 7. Send SDP to OpenAI Realtime endpoint
       const sdpResponse = await fetch(
-        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(this.model)}`,
+        `https://api.openai.com/v1/realtime/calls?model=${encodeURIComponent(this.model)}`,
         {
           method: 'POST',
           headers: {

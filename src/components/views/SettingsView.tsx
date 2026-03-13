@@ -870,10 +870,11 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="marin">Marin</SelectItem>
+                    <SelectItem value="cedar">Cedar</SelectItem>
                     <SelectItem value="alloy">Alloy</SelectItem>
-                    <SelectItem value="aria">Aria</SelectItem>
-                    <SelectItem value="nova">Nova</SelectItem>
-                    <SelectItem value="verse">Verse</SelectItem>
+                    <SelectItem value="echo">Echo</SelectItem>
+                    <SelectItem value="shimmer">Shimmer</SelectItem>
                   </SelectContent>
                 </Select>
               </SettingRow>
