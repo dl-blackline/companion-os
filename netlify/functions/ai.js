@@ -553,13 +553,15 @@ const LIVE_TALK_INTENT_SYSTEM = `You are a voice assistant intent classifier. Re
 Classify the user's voice message into one of:
 - "chat": general conversation, questions, opinions, information requests
 - "generate_image": user wants to see, create, draw, generate, or visualize an image or picture
+- "generate_video": user wants to create, generate, animate, or produce a video or motion clip
 - "roleplay": user wants the AI to play a character, persona, or act out a scenario
 - "run_task": user wants to automate a task or generate content (document, code, plan, summary)
 
 Return exactly this JSON structure (omit fields that don't apply):
 {
-  "type": "chat" | "generate_image" | "roleplay" | "run_task",
+  "type": "chat" | "generate_image" | "generate_video" | "roleplay" | "run_task",
   "imagePrompt": "detailed image description",
+  "videoPrompt": "detailed video description",
   "character": "character or persona name",
   "scenario": "scenario or context description",
   "taskType": "document" | "plan" | "code" | "summary" | "other",
@@ -621,6 +623,7 @@ async function handleLiveTalk(data) {
     roleplay_context,
     intent_override,
     task_type,
+    knowledge_refs,
   } = data;
 
   if (!message) {
@@ -632,6 +635,14 @@ async function handleLiveTalk(data) {
     .slice(-6)
     .map((t) => `${t.role === "user" ? "User" : ai_name}: ${t.text}`)
     .join("\n");
+
+  // Build knowledge context string if knowledge refs were provided
+  const knowledgeContext =
+    knowledge_refs && knowledge_refs.length > 0
+      ? `\n\nRelevant knowledge from user's personal knowledge base:\n${knowledge_refs
+          .map((ref) => `[${ref.type?.toUpperCase() ?? "NOTE"}] ${ref.title}: ${ref.content}`)
+          .join("\n\n")}`
+      : "";
 
   // Fast-path: the realtime tool handler already resolved intent, so skip classification
   if (intent_override === "run_task") {
@@ -718,6 +729,40 @@ async function handleLiveTalk(data) {
       }
     }
 
+    case "generate_video": {
+      const videoPrompt = intent.videoPrompt || message;
+      try {
+        const videoResult = await runMediaTask({
+          type: "video",
+          prompt: videoPrompt,
+        });
+        const voiceReply = await runAI(
+          {
+            system: `You are ${ai_name}, a voice AI. In exactly one warm, natural sentence acknowledge that you just created the video the user requested. Do not describe its contents in detail.`,
+            user: `I generated a video described as: "${videoPrompt}". Briefly acknowledge this.`,
+          },
+          "gpt-4o-mini"
+        );
+        return response(200, {
+          response: voiceReply,
+          action: {
+            type: "video_generated",
+            mediaUrl: videoResult.url || null,
+            mediaType: "video",
+            prompt: videoPrompt,
+          },
+        });
+      } catch (vidErr) {
+        console.error("Live talk video generation error:", vidErr);
+        // Fall back to a conversational response
+        const fallback = await runAI({
+          system: liveTalkSystemPrompt(ai_name, mode),
+          user: `${historyContext}\n\nUser: ${message}`,
+        });
+        return response(200, { response: fallback });
+      }
+    }
+
     case "roleplay": {
       const character = intent.character || "a mysterious character";
       const scenario =
@@ -753,9 +798,13 @@ async function handleLiveTalk(data) {
     }
 
     default: {
-      // General conversational chat
+      // General conversational chat — include knowledge context if available
       const chatResponse = await runAI({
-        system: liveTalkSystemPrompt(ai_name, mode),
+        system:
+          liveTalkSystemPrompt(ai_name, mode) +
+          (knowledgeContext
+            ? `\n\nWhen relevant, reference the user's personal knowledge base below to give more personalized answers.${knowledgeContext}`
+            : ""),
         user: `${historyContext}\n\nUser: ${message}`,
       });
       return response(200, { response: chatResponse });
