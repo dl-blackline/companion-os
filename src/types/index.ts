@@ -289,3 +289,203 @@ export interface DashboardData {
   focusRecommendation?: string;
   currentProjects: string[];
 }
+
+// ─── RBAC / Entitlement Types ─────────────────────────────────────────────────
+
+export type UserRole = 'admin' | 'user';
+
+export type EntitlementPlan = 'free' | 'pro' | 'enterprise' | 'admin_override';
+
+export type EntitlementStatus = 'active' | 'trial' | 'expired' | 'suspended' | 'none';
+
+export interface UserEntitlement {
+  id: string;
+  user_id: string;
+  plan: EntitlementPlan;
+  status: EntitlementStatus;
+  overridden_by?: string;
+  trial_ends_at?: string;
+  expires_at?: string;
+  features: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRoleRecord {
+  id: string;
+  user_id: string;
+  role: UserRole;
+  granted_by: string;
+  granted_at: string;
+}
+
+// ─── Feature Flags ────────────────────────────────────────────────────────────
+
+export interface FeatureFlag {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  rollout_percentage: number;
+  admin_only: boolean;
+  kill_switch: boolean;
+  category: FeatureFlagCategory;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FeatureFlagCategory =
+  | 'ai'
+  | 'media'
+  | 'voice'
+  | 'memory'
+  | 'billing'
+  | 'beta'
+  | 'ops'
+  | 'security';
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  actor_id: string;
+  actor_email?: string;
+  action: string;
+  target_type: string;
+  target_id?: string;
+  details?: Record<string, unknown>;
+  ip_address?: string;
+  created_at: string;
+}
+
+// ─── Support Tickets ──────────────────────────────────────────────────────────
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'escalated';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
+export type TicketCategory = 'billing' | 'technical' | 'account' | 'abuse' | 'feature_request' | 'other';
+
+export interface SupportTicket {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  assignee_id?: string;
+  title: string;
+  description: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  category: TicketCategory;
+  admin_notes?: string;
+  resolution?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── System Health ────────────────────────────────────────────────────────────
+
+export type ServiceStatus = 'healthy' | 'warning' | 'degraded' | 'down' | 'unknown';
+
+export interface ServiceHealth {
+  service: string;
+  label: string;
+  status: ServiceStatus;
+  latency_ms?: number;
+  message?: string;
+  checked_at: string;
+}
+
+export interface SystemHealthReport {
+  overall: ServiceStatus;
+  services: ServiceHealth[];
+  checked_at: string;
+}
+
+// ─── Admin User ───────────────────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  display_name?: string;
+  role: UserRole;
+  plan: EntitlementPlan;
+  status: 'active' | 'suspended' | 'deactivated';
+  created_at: string;
+  last_sign_in?: string;
+}
+
+// ─── User Preferences ─────────────────────────────────────────────────────────
+
+export interface UserPreferences {
+  // Profile
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
+  // AI Behavior
+  ai_personality: 'professional' | 'warm' | 'direct' | 'coach' | 'analytical';
+  ai_tone: 'formal' | 'conversational' | 'casual';
+  response_length: 'concise' | 'balanced' | 'detailed';
+  creativity_level: number; // 0-1
+  empathy_level: number; // 0-1
+  directness_level: number; // 0-1
+  memory_enabled: boolean;
+  memory_depth: 'session' | 'short_term' | 'long_term';
+  // Voice
+  preferred_voice: string;
+  voice_speed: number; // 0.5-2.0
+  voice_mode: 'push-to-talk' | 'continuous';
+  // Appearance
+  theme: 'dark' | 'light' | 'system';
+  accent_color?: string;
+  // Privacy
+  data_storage: boolean;
+  export_enabled: boolean;
+  audit_trail: boolean;
+  data_retention_days?: number;
+  // Notifications
+  notifications_enabled: boolean;
+  notification_email: boolean;
+  notification_in_app: boolean;
+  // Language
+  preferred_language: string;
+  // Media defaults
+  default_image_style: string;
+  default_video_quality: string;
+  // Chat
+  default_mode: string;
+  auto_title_conversations: boolean;
+  show_citations: boolean;
+  // Accessibility
+  reduce_motion: boolean;
+  high_contrast: boolean;
+  font_size: 'sm' | 'md' | 'lg';
+}
+
+export const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  ai_personality: 'warm',
+  ai_tone: 'conversational',
+  response_length: 'balanced',
+  creativity_level: 0.7,
+  empathy_level: 0.7,
+  directness_level: 0.6,
+  memory_enabled: true,
+  memory_depth: 'long_term',
+  preferred_voice: 'alloy',
+  voice_speed: 1.0,
+  voice_mode: 'push-to-talk',
+  theme: 'dark',
+  data_storage: true,
+  export_enabled: true,
+  audit_trail: true,
+  notifications_enabled: true,
+  notification_email: false,
+  notification_in_app: true,
+  preferred_language: 'en',
+  default_image_style: 'photorealistic',
+  default_video_quality: '720p',
+  default_mode: 'neutral',
+  auto_title_conversations: true,
+  show_citations: true,
+  reduce_motion: false,
+  high_contrast: false,
+  font_size: 'md',
+};
