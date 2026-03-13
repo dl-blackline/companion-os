@@ -54,6 +54,7 @@ import {
 } from '@/utils/model-cache';
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
+import { useVoice } from '@/context/voice-context';
 import { toast } from 'sonner';
 
 const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
@@ -240,18 +241,13 @@ export function SettingsView() {
     updatePreferencesDebounced: savePrefsDebounced,
   } = useSettings();
   const { user } = useAuth();
+  const { voice: realtimeVoice, setVoice: setRealtimeVoice } = useVoice();
 
   const update = (patch: Partial<typeof settings>) => {
     updateSettings(patch);
   };
 
-  const [voiceMode, setVoiceMode] = useState<'continuous' | 'push-to-talk'>(() => {
-    try {
-      return (localStorage.getItem('voice_mode') as 'continuous' | 'push-to-talk') || 'push-to-talk';
-    } catch {
-      return 'push-to-talk';
-    }
-  });
+  const voiceMode = prefs.voice_mode || 'push-to-talk';
 
   const [modelRegistry, setModelRegistry] = useState<ModelRegistry | null>(
     () => getCachedModels() as ModelRegistry | null
@@ -264,21 +260,12 @@ export function SettingsView() {
   }, []);
 
   const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
-    setVoiceMode(mode);
+    savePrefs({ voice_mode: mode });
     localStorage.setItem('voice_mode', mode);
   };
 
-  const [realtimeVoice, setRealtimeVoice] = useState<string>(() => {
-    try {
-      return localStorage.getItem('realtime_voice') || 'alloy';
-    } catch {
-      return 'alloy';
-    }
-  });
-
   const handleRealtimeVoiceChange = (voice: string) => {
-    setRealtimeVoice(voice);
-    localStorage.setItem('realtime_voice', voice);
+    setRealtimeVoice(voice as Parameters<typeof setRealtimeVoice>[0]);
   };
 
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult>(INITIAL_DIAGNOSTICS);
