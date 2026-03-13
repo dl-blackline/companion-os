@@ -176,6 +176,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsError, setPrefsError] = useState<string | null>(null);
 
+  // Ref to the latest prefs for rollback inside async callbacks (avoids stale closure)
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+
   // Save-sequence counter to prevent out-of-order responses overwriting newer state
   const saveSeq = useRef(0);
 
@@ -215,7 +219,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const updatePreferences = useCallback(
     async (patch: Partial<UserPreferences>) => {
-      const prevPrefs = prefs;
+      // Snapshot current prefs for rollback (from ref to avoid stale closure)
+      const prevPrefs = prefsRef.current;
       // Optimistic update
       setPrefs((prev) => ({ ...prev, ...patch }));
       setPrefsSaving(true);
@@ -260,7 +265,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (seq === saveSeq.current) setPrefsSaving(false);
       }
     },
-    [prefs, getToken],
+    [getToken],
   );
 
   // ── Debounced preference save (for sliders / rapid-fire controls) ──────────

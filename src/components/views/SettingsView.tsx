@@ -261,7 +261,6 @@ export function SettingsView() {
 
   const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
     savePrefs({ voice_mode: mode });
-    localStorage.setItem('voice_mode', mode);
   };
 
   const handleRealtimeVoiceChange = (voice: string) => {
