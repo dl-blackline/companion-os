@@ -49,7 +49,13 @@ export function useKnowledgeAnalyzer(): UseKnowledgeAnalyzerReturn {
   }, []);
 
   const quickAnalyze = useCallback(async (content: string, title?: string) => {
-    const inputType: KnowledgeInputType = content.startsWith('http') ? 'url' : 'text';
+    let inputType: KnowledgeInputType = 'text';
+    try {
+      new URL(content.trim());
+      inputType = 'url';
+    } catch {
+      // Not a valid URL — use 'text'
+    }
     const depth: AnalysisDepth = content.length > 5000 ? 'deep' : content.length > 500 ? 'standard' : 'quick';
 
     await analyze({

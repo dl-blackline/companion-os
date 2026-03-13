@@ -223,6 +223,7 @@ export function buildInjectionPlan(
   memories: readonly ScoredMemory[],
   sessionOverrides: readonly string[],
   maxApplied = 15,
+  userId = '',
 ): MemoryInjectionPlan {
   const applied: AppliedMemory[] = [];
   const ignored: IgnoredMemory[] = [];
@@ -285,14 +286,12 @@ export function buildInjectionPlan(
 
     // Apply memory
     if (applied.length < maxApplied) {
-      const layer: InjectionLayer = memory.isPinned ? 'saved_memory' : 'saved_memory';
-
       applied.push({
         memoryId: memory.id,
         title: memory.title,
         content: memory.content,
         memoryType: memory.memoryType,
-        layer,
+        layer: 'saved_memory',
         score: candidate.finalScore,
         reason: candidate.reason,
       });
@@ -315,7 +314,7 @@ export function buildInjectionPlan(
   }
 
   return {
-    userId: memories[0]?.memory.userId || '',
+    userId: userId || memories[0]?.memory.userId || '',
     appliedMemories: applied,
     ignoredMemories: ignored,
     activeInstructions,

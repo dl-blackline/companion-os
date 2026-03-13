@@ -37,6 +37,7 @@ export interface MemoryRecord {
   readonly priority: MemoryPriority;
   readonly source: MemorySource;
   readonly privacyLevel: PrivacyLevel;
+  /** Classification confidence score (0.0–1.0). Higher values indicate stronger certainty about the memory type and content. */
   readonly confidence: number;
   readonly tags: readonly string[];
   readonly relatedEntityIds: readonly string[];
