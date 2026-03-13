@@ -45,22 +45,16 @@ import {
   FloppyDisk,
   Spinner,
 } from '@phosphor-icons/react';
-import type { CompanionSettings, ConversationMode } from '@/types';
+import type { ConversationMode } from '@/types';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
-  setModelSetting,
   getCachedModels,
   preloadModels,
 } from '@/utils/model-cache';
-import { usePreferences } from '@/hooks/use-preferences';
+import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
 import { toast } from 'sonner';
-
-interface SettingsViewProps {
-  settings: CompanionSettings;
-  onSettingsChange: (settings: CompanionSettings) => void;
-}
 
 const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
   { value: 'strategist', label: 'Strategist' },
@@ -233,13 +227,23 @@ function SavingIndicator({ saving }: { saving: boolean }) {
   );
 }
 
-export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) {
-  const update = (patch: Partial<CompanionSettings>) => {
-    onSettingsChange({ ...settings, ...patch });
-  };
-
-  const { prefs, saving: prefsSaving, update: savePrefs } = usePreferences();
+export function SettingsView() {
+  const {
+    settings,
+    updateSettings,
+    updateModelSettings: updateModel,
+    updateMemorySettings: updateMemory,
+    updatePrivacySettings: updatePrivacy,
+    prefs,
+    prefsSaving,
+    updatePreferences: savePrefs,
+    updatePreferencesDebounced: savePrefsDebounced,
+  } = useSettings();
   const { user } = useAuth();
+
+  const update = (patch: Partial<typeof settings>) => {
+    updateSettings(patch);
+  };
 
   const [voiceMode, setVoiceMode] = useState<'continuous' | 'push-to-talk'>(() => {
     try {
@@ -319,42 +323,6 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
     } finally {
       setIsRunningTest(false);
     }
-  };
-
-  const updateMemory = (patch: Partial<CompanionSettings['memorySettings']>) => {
-    onSettingsChange({
-      ...settings,
-      memorySettings: { ...settings.memorySettings, ...patch },
-    });
-  };
-
-  const updateModel = (patch: Partial<CompanionSettings['modelSettings']>) => {
-    onSettingsChange({
-      ...settings,
-      modelSettings: { ...settings.modelSettings, ...patch },
-    });
-
-    const FIELD_TO_CACHE_TYPE: Record<string, string> = {
-      defaultModel: 'chat',
-      fallbackModel: 'fallback',
-      imageModel: 'image',
-      videoModel: 'video',
-      musicModel: 'music',
-      voiceModel: 'voice',
-    };
-
-    for (const [field, cacheType] of Object.entries(FIELD_TO_CACHE_TYPE)) {
-      if (field in patch) {
-        setModelSetting(cacheType, (patch as Record<string, string>)[field]);
-      }
-    }
-  };
-
-  const updatePrivacy = (patch: Partial<CompanionSettings['privacySettings']>) => {
-    onSettingsChange({
-      ...settings,
-      privacySettings: { ...settings.privacySettings, ...patch },
-    });
   };
 
   const [displayName, setDisplayName] = useState('');
@@ -591,7 +559,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                   value={Math.round(prefs.creativity_level * 100)}
                   min={0} max={100} step={5}
                   format={(v) => `${v}%`}
-                  onChange={(v) => savePrefs({ creativity_level: v / 100 })}
+                  onChange={(v) => savePrefsDebounced({ creativity_level: v / 100 })}
                 />
                 <Separator />
                 <SliderSetting
@@ -600,7 +568,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                   value={Math.round(prefs.empathy_level * 100)}
                   min={0} max={100} step={5}
                   format={(v) => `${v}%`}
-                  onChange={(v) => savePrefs({ empathy_level: v / 100 })}
+                  onChange={(v) => savePrefsDebounced({ empathy_level: v / 100 })}
                 />
                 <Separator />
                 <SliderSetting
@@ -609,7 +577,7 @@ export function SettingsView({ settings, onSettingsChange }: SettingsViewProps) 
                   value={Math.round(prefs.directness_level * 100)}
                   min={0} max={100} step={5}
                   format={(v) => `${v}%`}
-                  onChange={(v) => savePrefs({ directness_level: v / 100 })}
+                  onChange={(v) => savePrefsDebounced({ directness_level: v / 100 })}
                 />
               </Card>
             </motion.div>
