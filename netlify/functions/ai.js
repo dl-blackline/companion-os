@@ -22,6 +22,7 @@ import { runMediaTask } from "../../lib/media-engine.js";
 import { processVoiceTurn } from "../../lib/voice-engine.js";
 import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
 import { runTask } from "../../lib/multimodal-engine.js";
+import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -202,6 +203,18 @@ async function handleChat(data) {
 
     /* ----------------------- STANDARD ORCHESTRATION FLOW ----------------------- */
 
+    // Retrieve relevant media memories to augment context (non-blocking fallback)
+    let mediaMemoryContext = null;
+    try {
+      mediaMemoryContext = await getRelevantMediaContext({
+        message,
+        user_id,
+        limit: 3,
+      });
+    } catch (err) {
+      console.warn("Media memory context retrieval failed:", err.message);
+    }
+
     const result = await orchestrate({
       message,
       user_id,
@@ -209,6 +222,8 @@ async function handleChat(data) {
       getRecentConversation: (convId) =>
         getRecentConversation(supabase, convId),
       model,
+      // Inject media memories as additional context if available
+      ...(mediaMemoryContext && { mediaMemoryContext }),
     });
 
     if (!result || !result.response) {
