@@ -29,7 +29,7 @@ const defaultSettings: CompanionSettings = {
     summarization: true,
   },
   modelSettings: {
-    defaultModel: 'gpt-4.1',
+    defaultModel: 'gpt-5.4',
     fallbackModel: 'gpt-4.1-mini',
     imageModel: 'openai-image',
     videoModel: 'sora',
