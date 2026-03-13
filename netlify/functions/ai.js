@@ -100,20 +100,34 @@ async function handleChat(data) {
     /* -------------------- VISION ANALYSIS (if media attached) ------------------- */
 
     let visionAnalysis = null;
+    let recentHistory = [];
 
     if (media_url) {
       try {
+        // Load recent conversation history so the vision model has context
+        recentHistory = await getRecentConversation(supabase, conversation_id);
+
+        const visionSystemPrompt =
+          "You are an intelligent AI companion with the ability to analyze images and videos. " +
+          "Provide detailed, insightful analysis that connects to the ongoing conversation. " +
+          "Your observations help you better understand the user — treat each piece of media " +
+          "as an opportunity to learn and grow from what you see.";
+
         if (media_type === "video") {
           visionAnalysis = await describeVideo({
             video_url: media_url,
             prompt: message,
             model,
+            systemPrompt: visionSystemPrompt,
+            conversationHistory: recentHistory,
           });
         } else {
           visionAnalysis = await analyzeImage({
             image_url: media_url,
             prompt: message,
             model,
+            systemPrompt: visionSystemPrompt,
+            conversationHistory: recentHistory,
           });
         }
       } catch (visionErr) {
@@ -147,6 +161,37 @@ async function handleChat(data) {
           content: visionAnalysis,
           embedding: assistantEmbedding,
         }),
+      ]);
+
+      /* Non-blocking memory tasks so the AI learns from the media content */
+      const mediaContextMessage =
+        `User shared a ${media_type || "image"}. AI analysis: ${visionAnalysis}`;
+
+      const recentHistoryStr = recentHistory
+        .map((m) => `[${m.role}]: ${m.content}`)
+        .join("\n");
+
+      Promise.allSettled([
+        processMemory({
+          user_id,
+          conversation_id,
+          message: mediaContextMessage,
+          conversationHistory: recentHistoryStr,
+          messageCount: recentHistory.length,
+        }),
+
+        processKnowledgeGraph(user_id, mediaContextMessage),
+
+        detectEmotions(message)
+          .then((signals) =>
+            storeEmotionalSignals({
+              user_id,
+              conversation_id,
+              signals,
+              source_message: message,
+            })
+          )
+          .catch(() => {}),
       ]);
 
       return response(200, {
