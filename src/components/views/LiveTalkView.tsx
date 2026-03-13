@@ -17,7 +17,10 @@ import {
   Image as ImageIcon,
   Lightning,
   X,
+  VideoCamera,
+  Books,
 } from '@phosphor-icons/react';
+import type { KnowledgeItem } from '@/types';
 import type { CompanionState, TalkSession, TalkTurn } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { getModeConfig } from '@/lib/modes';
@@ -36,9 +39,39 @@ interface RoleplayContext {
   scenario: string;
 }
 
+/**
+ * Search the user's personal knowledge base stored in localStorage.
+ * Returns up to `limit` items whose title/content/tags/summary match any query word.
+ */
+function searchKnowledgeItems(
+  query: string,
+  limit = 3,
+): Array<{ title: string; type: string; content: string }> {
+  try {
+    const items = JSON.parse(localStorage.getItem('knowledge-items') || '[]') as KnowledgeItem[];
+    const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+    return items
+      .filter((item) => {
+        const searchTarget =
+          `${item.title} ${item.content} ${(item.tags ?? []).join(' ')} ${item.summary ?? ''}`.toLowerCase();
+        return queryWords.some((word) => searchTarget.includes(word));
+      })
+      .slice(0, limit)
+      .map((item) => ({
+        title: item.title,
+        type: item.type,
+        content: item.summary || item.content.slice(0, 300),
+      }));
+  } catch {
+    return [];
+  }
+}
+
 /** Example capability prompts shown in the empty-state hint bar */
 const CAPABILITY_HINTS = [
   'Generate an image of…',
+  'Generate a video of…',
+  'Search my docs for…',
   'Play the role of…',
   'Write a plan for…',
   'Summarize…',
@@ -213,6 +246,67 @@ export function LiveTalkView({
                 );
                 setCompanionState('listening');
               });
+          } else if (name === 'generate_video') {
+            // Show generating-video state immediately
+            setCompanionState('generating-video');
+            setStatusText('Generating video…');
+            triggerHaptic('light');
+
+            const videoPrompt = (toolArgs.prompt as string) || '';
+            const videoStyle = (toolArgs.style as string) || '';
+            const fullVideoPrompt = videoStyle ? `${videoPrompt}, style: ${videoStyle}` : videoPrompt;
+
+            fetch('/.netlify/functions/ai', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'media',
+                data: { type: 'video', prompt: fullVideoPrompt },
+              }),
+            })
+              .then((r) => r.json())
+              .then((vidData) => {
+                if (vidData.url) {
+                  const videoTurn: TalkTurn = {
+                    id: generateId(),
+                    role: 'assistant',
+                    text: '',
+                    timestamp: Date.now(),
+                    mediaUrl: vidData.url,
+                    mediaType: 'video',
+                  };
+                  setSession((prev) => ({
+                    ...prev,
+                    transcript: [...prev.transcript, videoTurn],
+                  }));
+                }
+                realtimeClientRef.current?.submitToolResult(
+                  callId,
+                  vidData.url
+                    ? 'Video generated and displayed to the user.'
+                    : 'Video generation failed — no URL returned.'
+                );
+              })
+              .catch(() => {
+                realtimeClientRef.current?.submitToolResult(
+                  callId,
+                  'Video generation failed due to a server error.'
+                );
+                setCompanionState('listening');
+              });
+          } else if (name === 'search_docs') {
+            const query = (toolArgs.query as string) || '';
+            triggerHaptic('light');
+
+            const results = searchKnowledgeItems(query);
+            const docsResult =
+              results.length > 0
+                ? results
+                    .map((item) => `[${item.type.toUpperCase()}] ${item.title}: ${item.content}`)
+                    .join('\n\n')
+                : 'No matching documents found in the knowledge base.';
+
+            realtimeClientRef.current?.submitToolResult(callId, docsResult);
           } else if (name === 'start_roleplay') {
             const character = (toolArgs.character as string) || 'a character';
             const scenario = (toolArgs.scenario as string) || '';
@@ -286,10 +380,12 @@ You are ${aiName}, an enterprise-grade real-time AI companion with powerful capa
 
 You have the following tools available — use them proactively when the user requests:
 - generate_image: Call this whenever the user wants to see, create, draw, or visualize anything.
+- generate_video: Call this whenever the user wants to create, animate, or produce a video or motion clip.
 - start_roleplay: Call this when the user wants you to play a character or act out a scenario.
 - run_task: Call this to generate documents, code, plans, or summaries the user requests.
+- search_docs: Call this when the user asks about their saved notes, documents, or knowledge base.
 
-Prefer using tools over just talking about doing something. If the user asks for an image, call generate_image. If they want role-play, call start_roleplay. Always follow safety guidelines.`;
+Prefer using tools over just talking about doing something. If the user asks for an image, call generate_image. If they want a video, call generate_video. If they want to search their knowledge, call search_docs. Always follow safety guidelines.`;
   }, [aiName]);
 
   const startRealtime = useCallback(async (): Promise<boolean> => {
@@ -441,6 +537,10 @@ Prefer using tools over just talking about doing something. If the user asks for
       setCompanionState('thinking');
       setStatusText('Thinking…');
 
+      // Build knowledge refs from localStorage for context
+      const knowledgeRefsRaw = searchKnowledgeItems(text.trim());
+      const knowledgeRefs = knowledgeRefsRaw.length > 0 ? knowledgeRefsRaw : undefined;
+
       try {
         const res = await fetch('/.netlify/functions/ai', {
           method: 'POST',
@@ -453,6 +553,7 @@ Prefer using tools over just talking about doing something. If the user asks for
               mode: 'neutral',
               ai_name: aiName,
               roleplay_context: roleplayRef.current || undefined,
+              knowledge_refs: knowledgeRefs,
             },
           }),
         });
@@ -466,7 +567,7 @@ Prefer using tools over just talking about doing something. If the user asks for
         const data = await res.json();
         const responseText = data.response || '';
 
-        // Handle action payloads (image generation, role-play, task)
+        // Handle action payloads (image generation, video generation, role-play, task)
         if (data.action) {
           if (
             (data.action.type === 'image_generated' || data.action.type === 'image') &&
@@ -484,6 +585,23 @@ Prefer using tools over just talking about doing something. If the user asks for
             setSession((prev) => ({
               ...prev,
               transcript: [...prev.transcript, imageTurn],
+            }));
+          } else if (
+            (data.action.type === 'video_generated' || data.action.type === 'video') &&
+            data.action.mediaUrl
+          ) {
+            triggerHaptic('light');
+            const videoTurn: TalkTurn = {
+              id: generateId(),
+              role: 'assistant',
+              text: '',
+              timestamp: Date.now(),
+              mediaUrl: data.action.mediaUrl,
+              mediaType: 'video',
+            };
+            setSession((prev) => ({
+              ...prev,
+              transcript: [...prev.transcript, videoTurn],
             }));
           } else if (
             data.action.type === 'roleplay_started' ||
@@ -720,7 +838,8 @@ Prefer using tools over just talking about doing something. If the user asks for
   const isSpeaking = companionState === 'speaking';
   const isThinking = companionState === 'thinking';
   const isGeneratingImage = companionState === 'generating-image';
-  const isActive = isListening || isSpeaking || isThinking || isGeneratingImage;
+  const isGeneratingVideo = companionState === 'generating-video';
+  const isActive = isListening || isSpeaking || isThinking || isGeneratingImage || isGeneratingVideo;
   const isSmallScreen = useIsMobile();
 
   return (
@@ -845,6 +964,27 @@ Prefer using tools over just talking about doing something. If the user asks for
                 </div>
               </motion.div>
             )}
+            {isGeneratingVideo && (
+              <motion.div
+                key="video-indicator"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: 'oklch(0.60 0.24 180)' }}
+                      animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+                      transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.22 }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
             {!isActive && (
               <motion.div
                 key="idle"
@@ -873,12 +1013,14 @@ Prefer using tools over just talking about doing something. If the user asks for
                 isSpeaking && 'bg-[oklch(0.65_0.22_145/0.15)] text-[oklch(0.65_0.22_145)]',
                 isThinking && 'bg-[oklch(0.60_0.22_310/0.15)] text-[oklch(0.60_0.22_310)]',
                 isGeneratingImage && 'bg-[oklch(0.65_0.22_60/0.15)] text-[oklch(0.65_0.22_60)]',
+                isGeneratingVideo && 'bg-[oklch(0.60_0.24_180/0.15)] text-[oklch(0.60_0.24_180)]',
               )}
             >
               {isListening && <><Microphone size={11} weight="fill" />Listening</>}
               {isSpeaking && <><SpeakerSimpleHigh size={11} weight="fill" />Speaking</>}
               {isThinking && <><Lightning size={11} weight="fill" />Thinking</>}
               {isGeneratingImage && <><ImageIcon size={11} weight="fill" />Generating image…</>}
+              {isGeneratingVideo && <><VideoCamera size={11} weight="fill" />Generating video…</>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -957,6 +1099,16 @@ Prefer using tools over just talking about doing something. If the user asks for
                         loading="lazy"
                       />
                     </div>
+                  ) : turn.mediaUrl && turn.mediaType === 'video' ? (
+                    /* Video turns */
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md overflow-hidden border border-border/40 bg-card shadow-sm">
+                      <video
+                        src={turn.mediaUrl}
+                        controls
+                        className="w-full max-h-72"
+                        preload="metadata"
+                      />
+                    </div>
                   ) : (
                     /* Text turns */
                     <div
@@ -993,15 +1145,27 @@ Prefer using tools over just talking about doing something. If the user asks for
                   Your conversation will appear here
                 </p>
                 <div className="flex flex-wrap justify-center gap-2 px-2">
-                  {CAPABILITY_HINTS.map((hint) => (
-                    <div
-                      key={hint}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/60 border border-border/60 text-[11px] text-muted-foreground opacity-70 select-none"
-                    >
-                      <Lightning size={10} className="shrink-0" />
-                      {hint}
-                    </div>
-                  ))}
+                  {CAPABILITY_HINTS.map((hint) => {
+                    const icon =
+                      hint.startsWith('Generate a video') ? (
+                        <VideoCamera size={10} className="shrink-0" />
+                      ) : hint.startsWith('Search my docs') ? (
+                        <Books size={10} className="shrink-0" />
+                      ) : hint.startsWith('Generate an image') ? (
+                        <ImageIcon size={10} className="shrink-0" />
+                      ) : (
+                        <Lightning size={10} className="shrink-0" />
+                      );
+                    return (
+                      <div
+                        key={hint}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/60 border border-border/60 text-[11px] text-muted-foreground opacity-70 select-none"
+                      >
+                        {icon}
+                        {hint}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -51,7 +51,7 @@ const REALTIME_MODEL = 'gpt-4o-realtime-preview';
 
 /**
  * Function tools available during live talk sessions.
- * The model calls these to generate images, start role-play, or automate tasks.
+ * The model calls these to generate images/videos, start role-play, automate tasks, or search docs.
  */
 const LIVE_TALK_TOOLS = [
   {
@@ -70,6 +70,27 @@ const LIVE_TALK_TOOLS = [
           type: 'string',
           description: 'Optional visual style',
           enum: ['photorealistic', 'artistic', 'cinematic', 'cartoon', 'abstract'],
+        },
+      },
+      required: ['prompt'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'generate_video',
+    description:
+      'Generate a short video when the user asks to create, animate, or produce a video or motion clip. Call this whenever the user requests any kind of video, animation, or moving visual.',
+    parameters: {
+      type: 'object',
+      properties: {
+        prompt: {
+          type: 'string',
+          description: 'Detailed description of the video to generate',
+        },
+        style: {
+          type: 'string',
+          description: 'Optional visual style',
+          enum: ['cinematic', 'documentary', 'animated', 'timelapse', 'abstract'],
         },
       },
       required: ['prompt'],
@@ -114,6 +135,22 @@ const LIVE_TALK_TOOLS = [
         },
       },
       required: ['taskType', 'description'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'search_docs',
+    description:
+      'Search the user\'s personal knowledge base and documents when they ask about their saved notes, documents, links, code snippets, or any stored information.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Keywords or phrase to search for in the knowledge base',
+        },
+      },
+      required: ['query'],
     },
   },
 ];
