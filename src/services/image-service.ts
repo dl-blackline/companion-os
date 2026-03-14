@@ -309,17 +309,37 @@ export async function generateImage(
 
 // ─── Image Analysis ───────────────────────────────────────────────────────────
 
+/**
+ * Analyze an image via the media-memory backend pipeline.
+ *
+ * The backend `media-memory` function requires `user_id`, `public_url`, and
+ * `filename` to be present in the request body.  Earlier versions of this
+ * helper sent only `media_url` (wrong key) and omitted `user_id` / `filename`,
+ * causing a 400 "Missing required field" error that surfaced as a
+ * "base table not found" confusion downstream.
+ */
 export async function analyzeImage(
   imageUrl: string,
+  userId: string,
+  filename: string,
   depth: 'quick' | 'standard' | 'deep' = 'standard',
 ): Promise<AsyncResult<MediaAnalysisResult>> {
+  if (!userId) {
+    return error(appError('validation', 'Missing required user_id for image analysis'));
+  }
+  if (!filename) {
+    return error(appError('validation', 'Missing required filename for image analysis'));
+  }
+
   try {
     const res = await fetch(`${API_BASE}/media-memory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'analyze',
-        media_url: imageUrl,
+        user_id: userId,
+        public_url: imageUrl,
+        filename,
         media_type: 'image',
         analysis_depth: depth,
       }),
@@ -330,8 +350,12 @@ export async function analyzeImage(
       return error(appError('server', (body as Record<string, string>).error || 'Image analysis failed', { retryable: true }));
     }
 
-    const data = await res.json() as { analysis: MediaAnalysisResult };
-    return success(data.analysis);
+    const data = await res.json() as { analysis_record?: MediaAnalysisResult; analysis?: MediaAnalysisResult };
+    const analysis = data.analysis_record || data.analysis;
+    if (!analysis) {
+      return error(appError('processing_failed', 'No analysis result returned from backend'));
+    }
+    return success(analysis);
   } catch (e) {
     return error(appError('network', (e as Error).message, { retryable: true }));
   }
