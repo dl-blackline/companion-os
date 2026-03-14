@@ -30,20 +30,12 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
-import { createClient } from '@supabase/supabase-js';
+import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 import { useAuth } from '@/context/auth-context';
 
 /** Return the currently selected chat model id. */
 function activeChatModel(): string {
   return getModelSetting('chat') || 'gpt-5.4';
-}
-
-/** Lazily initialise a Supabase client for storage uploads. */
-function getSupabase() {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key);
 }
 
 /** Convert a File to a base64-encoded data URL (works without server access). */
@@ -121,10 +113,9 @@ export function ChatView() {
 
   /** Upload a file to Supabase Storage and return its public URL. */
   const uploadToStorage = async (media: MediaFile): Promise<string | null> => {
-    const supabase = getSupabase();
     const userId = authUser?.id;
 
-    if (!supabase || !userId) {
+    if (!supabaseConfigured || !userId) {
       console.warn('Supabase not configured or user not authenticated — converting to base64 data URL');
       return fileToDataUrl(media.file);
     }
