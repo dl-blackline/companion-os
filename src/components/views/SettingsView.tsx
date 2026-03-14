@@ -55,6 +55,7 @@ import {
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
 import { useVoice } from '@/context/voice-context';
+import { EmojiOrbCustomizer } from '@/components/EmojiOrbCustomizer';
 import { toast } from 'sonner';
 
 const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
@@ -899,6 +900,16 @@ export function SettingsView() {
                 <SettingRow label="High Contrast" description="Increase color contrast to improve readability.">
                   <Switch checked={prefs.high_contrast} onCheckedChange={(checked) => savePrefs({ high_contrast: checked })} />
                 </SettingRow>
+              </Card>
+
+              {/* Emoji Orb Customizer */}
+              <Card className="p-6 mt-6">
+                <h3 className="font-semibold mb-1">Orb Appearance</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload an image to generate a personalized emoji-style orb. Your image is analyzed locally to create a custom orb skin.
+                </p>
+                <Separator className="mb-4" />
+                <EmojiOrbCustomizer />
               </Card>
             </motion.div>
           </TabsContent>
