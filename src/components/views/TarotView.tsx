@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useReadingStore } from '@/store/reading-store';
 import { ReadingIntakeForm } from '@/components/tarot/reading-intake-form';
@@ -11,10 +12,61 @@ import { OfferGrid } from '@/components/tarot/offer-grid';
 import { EmailCapture } from '@/components/tarot/email-capture';
 import { FooterDisclaimer } from '@/components/tarot/footer-disclaimer';
 import { READING_PREAMBLE } from '@/lib/copy/disclaimers';
+import { tarotTrack } from '@/lib/tarot/analytics';
 import { ArrowLeft } from '@phosphor-icons/react';
 
 export function TarotView() {
   const store = useReadingStore();
+
+  // ── Analytics: landing viewed (once per mount) ──────────────────────────
+  useEffect(() => {
+    if (!store.landingTrackedRef.current && store.phase === 'idle') {
+      store.landingTrackedRef.current = true;
+      tarotTrack.landingViewed();
+    }
+  }, [store.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Analytics: reading generated once session appears ───────────────────
+  useEffect(() => {
+    if (store.session && store.phase === 'revealing' && store.revealedCardCount === 0) {
+      tarotTrack.readingGenerated({
+        sessionId: store.session.id,
+        zodiacSign: store.session.zodiacSign,
+        energyTheme: store.session.energyTheme,
+      });
+    }
+  }, [store.session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Analytics: card reveal events ──────────────────────────────────────
+  useEffect(() => {
+    if (store.revealedCardCount > 0 && store.session) {
+      tarotTrack.cardRevealed(store.revealedCardCount - 1, {
+        sessionId: store.session.id,
+      });
+    }
+  }, [store.revealedCardCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Analytics: reading completed ────────────────────────────────────────
+  useEffect(() => {
+    if (store.phase === 'complete' && store.session) {
+      tarotTrack.readingCompleted({ sessionId: store.session.id });
+    }
+  }, [store.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleStart = () => {
+    tarotTrack.intakeStarted();
+    store.startIntake();
+  };
+
+  const handleIntakeSubmit = (values: Parameters<typeof store.submitIntake>[0]) => {
+    tarotTrack.intakeSubmitted({ sessionId: undefined });
+    store.submitIntake(values);
+  };
+
+  const handleReset = () => {
+    tarotTrack.restartClicked({ sessionId: store.session?.id });
+    store.reset();
+  };
 
   return (
     <div className="flex flex-col min-h-full bg-neutral-950">
@@ -105,7 +157,7 @@ export function TarotView() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}
-              onClick={store.startIntake}
+              onClick={handleStart}
               className="px-10 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-neutral-950"
               aria-label="Begin your tarot reading"
             >
@@ -128,7 +180,7 @@ export function TarotView() {
           >
             <div className="w-full max-w-sm space-y-8">
               <button
-                onClick={store.reset}
+                onClick={handleReset}
                 className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 transition focus:outline-none focus:underline"
                 aria-label="Go back to landing"
               >
@@ -145,7 +197,7 @@ export function TarotView() {
               </div>
 
               <ReadingIntakeForm
-                onSubmit={store.submitIntake}
+                onSubmit={handleIntakeSubmit}
                 isLoading={store.phase === 'shuffling'}
                 error={store.error}
               />
@@ -267,11 +319,12 @@ export function TarotView() {
                     <EmailCapture
                       sessionId={store.session.id}
                       firstName={store.session.firstName}
+                      zodiacSign={store.session.zodiacSign}
                     />
                   </div>
 
                   {/* Offers */}
-                  <OfferGrid />
+                  <OfferGrid sessionId={store.session.id} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -280,7 +333,7 @@ export function TarotView() {
             {store.phase === 'complete' && (
               <div className="text-center pb-4">
                 <button
-                  onClick={store.reset}
+                  onClick={handleReset}
                   className="text-xs text-neutral-600 hover:text-neutral-400 transition focus:outline-none focus:underline"
                 >
                   Begin a new reading

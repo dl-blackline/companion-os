@@ -2,15 +2,20 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { emailLeadSchema, type EmailLeadValues } from '@/lib/validation/reading';
+import { saveEmailLead } from '@/services/tarot-service';
+import { tarotTrack } from '@/lib/tarot/analytics';
 
 interface EmailCaptureProps {
   sessionId?: string;
   firstName?: string;
+  zodiacSign?: string;
   onSuccess?: () => void;
 }
 
-export function EmailCapture({ sessionId, firstName, onSuccess }: EmailCaptureProps) {
+export function EmailCapture({ sessionId, firstName, zodiacSign, onSuccess }: EmailCaptureProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [hasStarted, setHasStarted] = useState(false);
 
   const {
     register,
@@ -21,12 +26,30 @@ export function EmailCapture({ sessionId, firstName, onSuccess }: EmailCapturePr
     defaultValues: { sessionId, firstName },
   });
 
-  const onSubmit = async (_values: EmailLeadValues) => {
-    // In a full implementation, this would POST to /api/lead
-    // For now, simulate a save
-    await new Promise((r) => setTimeout(r, 800));
-    setIsSubmitted(true);
-    onSuccess?.();
+  const onFocus = () => {
+    if (!hasStarted) {
+      setHasStarted(true);
+      tarotTrack.emailCaptureStarted({ sessionId });
+    }
+  };
+
+  const onSubmit = async (values: EmailLeadValues) => {
+    setServerError(null);
+    const result = await saveEmailLead({
+      email: values.email,
+      firstName: values.firstName || firstName,
+      sessionId,
+      zodiacSign,
+    });
+
+    if (result.success) {
+      tarotTrack.emailCaptureSucceeded({ sessionId });
+      setIsSubmitted(true);
+      onSuccess?.();
+    } else {
+      tarotTrack.emailCaptureFailed({ sessionId, error: result.error });
+      setServerError(result.error ?? 'Something went wrong. Please try again.');
+    }
   };
 
   if (isSubmitted) {
@@ -56,6 +79,7 @@ export function EmailCapture({ sessionId, firstName, onSuccess }: EmailCapturePr
             placeholder="your@email.com"
             disabled={isSubmitting}
             {...register('email')}
+            onFocus={onFocus}
             className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/60 transition disabled:opacity-50"
             aria-label="Email address"
             aria-describedby={errors.email ? 'email-error' : undefined}
@@ -76,6 +100,12 @@ export function EmailCapture({ sessionId, firstName, onSuccess }: EmailCapturePr
           {isSubmitting ? 'Saving…' : 'Save'}
         </button>
       </form>
+
+      {serverError && (
+        <p className="text-xs text-red-400 text-center" role="alert">
+          {serverError}
+        </p>
+      )}
     </div>
   );
 }

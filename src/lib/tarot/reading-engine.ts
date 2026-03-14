@@ -1,4 +1,4 @@
-import type { DrawnCard, ReadingSession, SpreadType } from './tarot-types';
+import type { DrawnCard, ReadingSession } from './tarot-types';
 import { getTarotDeck } from './tarot-deck';
 import { sampleWithoutReplacement, randomBoolean } from './shuffle';
 import { THREE_CARD_SPREAD } from './spread-definitions';
@@ -8,7 +8,9 @@ import { getZodiacSign } from '@/lib/zodiac/get-zodiac-sign';
 export interface GenerateReadingOptions {
   firstName: string;
   dateOfBirth: string; // ISO date string "YYYY-MM-DD"
-  spreadType?: SpreadType;
+  // spreadType is intentionally absent: v1 is always a three-card spread.
+  // If additional spread types are added in a future version, this parameter
+  // will be re-introduced with full engine support at that time.
 }
 
 export interface GenerateReadingResult {
@@ -18,12 +20,13 @@ export interface GenerateReadingResult {
 /**
  * Generates a complete tarot reading session.
  *
- * - Card selection is fully random and server/system-controlled.
+ * - Card selection is fully random and system-controlled.
  * - Name and DOB do NOT influence which cards are drawn.
  * - DOB is used only for zodiac sign derivation and personalization copy.
+ * - v1 always uses the three-card (Past · Present · Future) spread.
  */
 export function generateReading(options: GenerateReadingOptions): GenerateReadingResult {
-  const { firstName, dateOfBirth, spreadType = 'three-card' } = options;
+  const { firstName, dateOfBirth } = options;
 
   // Zodiac — for display and interpretation overlay only, not for card selection
   const zodiac = getZodiacSign(dateOfBirth);
@@ -65,7 +68,7 @@ export function generateReading(options: GenerateReadingOptions): GenerateReadin
     zodiacSign: zodiac.sign,
     zodiacSymbol: zodiac.symbol,
     zodiacElement: zodiac.element,
-    spreadType,
+    spreadType: 'three-card',
     cards: drawnCards,
     summary,
     energyTheme,

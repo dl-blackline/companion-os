@@ -7,6 +7,8 @@ export interface OfferItem {
   ctaLabel: string;
   category: 'reading' | 'product' | 'subscription';
   badge?: string;
+  /** Internal section to navigate to when the CTA is clicked */
+  destinationSection: string;
 }
 
 export const OFFERS: OfferItem[] = [
@@ -20,6 +22,7 @@ export const OFFERS: OfferItem[] = [
     ctaLabel: 'Unlock My Chart',
     category: 'reading',
     badge: 'Most Popular',
+    destinationSection: 'tarot-offer-premium-chart',
   },
   {
     id: 'compatibility',
@@ -30,6 +33,7 @@ export const OFFERS: OfferItem[] = [
     price: '$19',
     ctaLabel: 'Explore the Connection',
     category: 'reading',
+    destinationSection: 'tarot-offer-compatibility',
   },
   {
     id: 'candle-kit',
@@ -40,6 +44,7 @@ export const OFFERS: OfferItem[] = [
     price: '$44',
     ctaLabel: 'Claim My Set',
     category: 'product',
+    destinationSection: 'tarot-offer-candle-kit',
   },
   {
     id: 'chakra-guide',
@@ -50,6 +55,7 @@ export const OFFERS: OfferItem[] = [
     price: '$12',
     ctaLabel: 'Begin Alignment',
     category: 'product',
+    destinationSection: 'tarot-offer-chakra-guide',
   },
   {
     id: 'cosmic-forecast',
@@ -61,5 +67,6 @@ export const OFFERS: OfferItem[] = [
     ctaLabel: 'Subscribe to the Cosmos',
     category: 'subscription',
     badge: 'New',
+    destinationSection: 'tarot-offer-cosmic-forecast',
   },
 ];

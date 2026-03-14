@@ -17,18 +17,24 @@ const POSITION_OPENERS: Record<string, string[]> = {
     'In the realm of what has been, there lies',
     'Your past holds the signature of',
     'The foundation of this moment was forged through',
+    'Beneath the ground you stand on, you will find',
+    'Looking back with clear eyes, what emerges is',
   ],
   Present: [
     'The currents moving through your life right now speak of',
     'In this very moment, you are navigating the energy of',
     'Your present state carries the unmistakable vibration of',
     'The living force in your current experience is',
+    'What you are being asked to meet directly is',
+    'The dominant energy surrounding you now is',
   ],
   Future: [
     'The horizon opens toward',
     'The energy taking shape ahead of you suggests',
     'What is being called into being carries the quality of',
     'The path unfolding before you holds the promise of',
+    'If you continue to align with your highest truth, you move toward',
+    'The current of possibility flowing toward you carries',
   ],
 };
 
@@ -37,6 +43,16 @@ const REVERSED_QUALIFIERS = [
   'though this energy is asking for deeper integration before it fully blooms',
   'though its gifts may require you to first release what no longer serves',
   'though the path to its fullest expression asks for inner work first',
+  'though the invitation here is to look within before reaching outward',
+  'though resistance to this energy may be part of the lesson itself',
+];
+
+const CLOSING_REFLECTIONS = [
+  'Trust what resonates most deeply.',
+  'Let this image sit with you.',
+  'Notice what stirs beneath the surface.',
+  'What arises as you hold this card is your truest signal.',
+  'Breathe into this energy rather than rushing past it.',
 ];
 
 const ZODIAC_OVERLAYS: Record<string, string> = {
@@ -79,11 +95,13 @@ export function generateInterpretation(opts: InterpretationOptions): string {
   const opener = pickFrom(openers);
   const qualifier = isReversed ? ` — ${pickFrom(REVERSED_QUALIFIERS)}` : '';
   const zodiacOverlay = ZODIAC_OVERLAYS[zodiacSign] ?? '';
+  const closing = pickFrom(CLOSING_REFLECTIONS);
 
   return [
     `${firstName}, ${opener.toLowerCase()} ${card.name}${isReversed ? ' (reversed)' : ''}.`,
     `${meaning}${qualifier}.`,
     zodiacOverlay,
+    closing,
   ]
     .filter(Boolean)
     .join(' ');
@@ -114,6 +132,11 @@ const ENERGY_THEMES: string[] = [
   'Courage & Authentic Expression',
   'Patience & Deepening',
   'Alignment & Purpose',
+  'Illumination & Truth',
+  'Surrender & Trust',
+  'Boundaries & Self-Sovereignty',
+  'Creativity & Flow',
+  'Healing & Restoration',
 ];
 
 const SUMMARY_THREADS = [
@@ -121,6 +144,16 @@ const SUMMARY_THREADS = [
   'A single current runs through this spread — it speaks of',
   'Taken together, your cards weave a story of',
   'The overarching energy of this reading points toward',
+  'What your spread reveals, at its deepest level, is a call toward',
+  'The three voices in this reading converge around a single truth:',
+];
+
+const CLOSING_LINES = [
+  'Allow yourself to sit with these images and meanings. What resonates most deeply is often the message meant most directly for you.',
+  'The wisdom here is not abstract — it is specific to this moment in your journey. Trust what stirs in you as you reflect.',
+  'These three cards do not predict a fixed outcome. They illuminate the living field of possibilities available to you now.',
+  'Hold these insights lightly, but don\'t dismiss what rings true. Your inner knowing will do the rest.',
+  'The card that unsettles you most often holds the most direct mirror. Approach it with openness rather than resistance.',
 ];
 
 export function generateSessionSummary(opts: SessionSummaryOptions): SessionSummary {
@@ -129,11 +162,12 @@ export function generateSessionSummary(opts: SessionSummaryOptions): SessionSumm
   const cardNames = cards.map((c) => c.card.name).join(', ');
   const energyTheme = pickFrom(ENERGY_THEMES);
   const summaryThread = pickFrom(SUMMARY_THREADS);
+  const closing = pickFrom(CLOSING_LINES);
 
   const summary = [
     `${firstName}, the cards have spoken. ${summaryThread} ${energyTheme.toLowerCase()}.`,
     `Through ${cardNames}, a coherent picture emerges — one that honors where you have been, acknowledges the truth of where you stand, and gently illuminates the direction your spirit is being called.`,
-    `Allow yourself to sit with these images and meanings. What resonates most deeply is often the message meant most directly for you.`,
+    closing,
   ].join(' ');
 
   const zodiacNote = [
