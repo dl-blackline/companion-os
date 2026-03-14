@@ -115,17 +115,34 @@ const PERMANENT_BAN_DURATION = "876600h";
       return res(200, { users: result, total: result.length });
     }
 
-    // POST /admin-users — create a new user
+    // POST /admin-users — create (or invite) a new user
     if (event.httpMethod === "POST" && (path === "" || path === "/")) {
-      const { email, password, role = "user", plan = "free" } = JSON.parse(event.body || "{}");
-      if (!email || !password) return res(400, { error: "email and password required" });
+      const { email, password, role = "user", plan = "free", invite = false } = JSON.parse(event.body || "{}");
 
-      const { data: { user: newUser }, error: createErr } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-      if (createErr) return res(422, { error: createErr.message });
+      // Resolve the site URL for email redirects (Netlify provides URL automatically)
+      const siteUrl = process.env.URL || process.env.SITE_URL;
+
+      let newUser;
+      if (invite) {
+        // Send an invitation email — no password required
+        if (!email) return res(400, { error: "email required" });
+        if (!siteUrl) return res(500, { error: "SITE_URL not configured — cannot send invite emails" });
+        const { data, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
+          redirectTo: siteUrl,
+        });
+        if (inviteErr) return res(422, { error: inviteErr.message });
+        newUser = data.user;
+      } else {
+        // Direct create — password required, email auto-confirmed
+        if (!email || !password) return res(400, { error: "email and password required" });
+        const { data: { user }, error: createErr } = await supabase.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+        });
+        if (createErr) return res(422, { error: createErr.message });
+        newUser = user;
+      }
 
       // Assign role and entitlement
       await Promise.all([
