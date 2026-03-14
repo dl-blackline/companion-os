@@ -240,7 +240,7 @@ export function SettingsView() {
     updatePreferences: savePrefs,
     updatePreferencesDebounced: savePrefsDebounced,
   } = useSettings();
-  const { user, logout } = useAuth();
+  const { user, logout, configured: authConfigured } = useAuth();
   const { voice: realtimeVoice, setVoice: setRealtimeVoice } = useVoice();
 
   const update = (patch: Partial<typeof settings>) => {
@@ -373,9 +373,11 @@ export function SettingsView() {
               <TabsTrigger value="notifications" className="gap-1.5">
                 <Bell size={16} /> Notifications
               </TabsTrigger>
-              <TabsTrigger value="security" className="gap-1.5">
-                <Lock size={16} /> Security
-              </TabsTrigger>
+              {authConfigured && (
+                <TabsTrigger value="security" className="gap-1.5">
+                  <Lock size={16} /> Security
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -437,17 +439,23 @@ export function SettingsView() {
                     className="min-h-[80px] resize-none"
                   />
                 </div>
+                {authConfigured && (
+                <>
                 <Separator />
                 <SettingRow icon={Lock} label="Email" description="Linked account email. Managed by your auth provider.">
                   <Input value={user?.email ?? '—'} readOnly className="w-56 opacity-60 cursor-default" />
                 </SettingRow>
+                </>
+                )}
               </Card>
+              {authConfigured && (
               <Card className="p-6">
                 <h3 className="font-semibold mb-1">Password</h3>
                 <p className="text-sm text-muted-foreground">
                   Password changes are handled via email. Use the "Forgot password" flow on the login screen to receive a reset link.
                 </p>
               </Card>
+              )}
             </motion.div>
           </TabsContent>
 
@@ -919,6 +927,7 @@ export function SettingsView() {
             </motion.div>
           </TabsContent>
 
+          {authConfigured && (
           <TabsContent value="security">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-6">
               <Card className="p-6">
@@ -964,6 +973,7 @@ export function SettingsView() {
               </Card>
             </motion.div>
           </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
