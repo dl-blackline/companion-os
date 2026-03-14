@@ -191,15 +191,26 @@ export async function generateVideo(
 
 export async function analyzeVideo(
   videoUrl: string,
+  userId: string,
+  filename: string,
   depth: 'quick' | 'standard' | 'deep' = 'standard',
 ): Promise<AsyncResult<MediaAnalysisResult>> {
+  if (!userId) {
+    return error(appError('validation', 'Missing required user_id for video analysis'));
+  }
+  if (!filename) {
+    return error(appError('validation', 'Missing required filename for video analysis'));
+  }
+
   try {
     const res = await fetch(`${API_BASE}/media-memory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'analyze',
-        media_url: videoUrl,
+        user_id: userId,
+        public_url: videoUrl,
+        filename,
         media_type: 'video',
         analysis_depth: depth,
       }),
@@ -210,8 +221,12 @@ export async function analyzeVideo(
       return error(appError('server', (body as Record<string, string>).error || 'Video analysis failed', { retryable: true }));
     }
 
-    const data = await res.json() as { analysis: MediaAnalysisResult };
-    return success(data.analysis);
+    const data = await res.json() as { analysis_record?: MediaAnalysisResult; analysis?: MediaAnalysisResult };
+    const analysis = data.analysis_record || data.analysis;
+    if (!analysis) {
+      return error(appError('processing_failed', 'No analysis result returned from backend'));
+    }
+    return success(analysis);
   } catch (e) {
     return error(appError('network', (e as Error).message, { retryable: true }));
   }
