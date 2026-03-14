@@ -342,6 +342,56 @@ export interface AuthErrorInfo {
   recoverable: boolean;
 }
 
+export interface LogoutResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface SessionRestoreResult {
+  status: 'restored' | 'no_session' | 'error';
+  userId?: string;
+  email?: string;
+  error?: string;
+}
+
+export interface ProtectedApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  statusCode: number;
+}
+
+export interface PersistedPreferencePayload {
+  userId: string;
+  prefs: Partial<UserPreferences>;
+  timestamp: number;
+}
+
+export interface PersistedMemoryPayload {
+  userId: string;
+  memoryId?: string;
+  title: string;
+  content: string;
+  category: MemoryCategory;
+  tags: string[];
+  timestamp: number;
+}
+
+export interface SaveOperationResult {
+  success: boolean;
+  error?: string;
+  retryable: boolean;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  error?: string;
+}
+
 // ─── RBAC / Entitlement Types ─────────────────────────────────────────────────
 
 export type UserRole = 'admin' | 'user';

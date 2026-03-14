@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import React, { type ReactNode } from 'react';
-import { AuthProvider, useAuth } from '@/context/auth-context';
+import { AuthProvider, useAuth, useRequireAuth, useSessionRestore } from '@/context/auth-context';
 
 // ── Supabase mock state ─────────────────────────────────────────────────────
 let authChangeCallback: ((event: string, session: unknown) => void) | null = null;
@@ -15,6 +15,7 @@ const mockGetSession = vi.fn();
 const mockSignIn = vi.fn();
 const mockSignUp = vi.fn();
 const mockSignOut = vi.fn();
+const mockResetPasswordForEmail = vi.fn();
 const mockOnAuthStateChange = vi.fn((cb: (event: string, session: unknown) => void) => {
   authChangeCallback = cb;
   return { data: { subscription: { unsubscribe } } };
@@ -30,6 +31,7 @@ vi.mock('@/lib/supabase-client', () => ({
       signInWithPassword: (...args: unknown[]) => mockSignIn(...args),
       signUp: (...args: unknown[]) => mockSignUp(...args),
       signOut: (...args: unknown[]) => mockSignOut(...args),
+      resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
       onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
     },
     from: (...args: unknown[]) => mockFrom(...args),
@@ -54,6 +56,7 @@ beforeEach(() => {
   mockSignIn.mockResolvedValue({ error: null });
   mockSignUp.mockResolvedValue({ error: null });
   mockSignOut.mockResolvedValue({ error: null });
+  mockResetPasswordForEmail.mockResolvedValue({ error: null });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -290,5 +293,141 @@ describe('Error handling', () => {
       renderHook(() => useAuth());
     }).toThrow('useAuth must be used within an AuthProvider');
     spy.mockRestore();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Password reset
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Password reset', () => {
+  it('calls supabase.auth.resetPasswordForEmail with the email', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockResetPasswordForEmail.mockResolvedValue({ error: null });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let resetResult: { error: unknown } | undefined;
+    await act(async () => {
+      resetResult = await result.current.resetPassword('reset@test.com');
+    });
+
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('reset@test.com');
+    expect(resetResult?.error).toBeNull();
+  });
+
+  it('returns error when password reset fails', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const resetError = { message: 'Rate limit exceeded' };
+    mockResetPasswordForEmail.mockResolvedValue({ error: resetError });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let resetResult: { error: unknown } | undefined;
+    await act(async () => {
+      resetResult = await result.current.resetPassword('reset@test.com');
+    });
+
+    expect(resetResult?.error).toEqual(resetError);
+  });
+
+  it('returns error for invalid email without calling API', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let resetResult: { error: unknown } | undefined;
+    await act(async () => {
+      resetResult = await result.current.resetPassword('not-an-email');
+    });
+
+    expect(resetResult?.error).toEqual(expect.objectContaining({ message: expect.stringContaining('valid email') }));
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// useRequireAuth hook
+// ─────────────────────────────────────────────────────────────────────────────
+describe('useRequireAuth', () => {
+  it('returns isReady=false and isAuthenticated=false during initialization', () => {
+    mockGetSession.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useRequireAuth(), { wrapper });
+
+    expect(result.current.isReady).toBe(false);
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.userId).toBeNull();
+  });
+
+  it('returns isReady=true and isAuthenticated=false when no session exists', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const { result } = renderHook(() => useRequireAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.userId).toBeNull();
+    expect(result.current.email).toBeNull();
+  });
+
+  it('returns isReady=true and isAuthenticated=true when session exists', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: fakeSession } });
+    const { result } = renderHook(() => useRequireAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.userId).toBe('user-123');
+    expect(result.current.email).toBe('test@example.com');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// useSessionRestore hook
+// ─────────────────────────────────────────────────────────────────────────────
+describe('useSessionRestore', () => {
+  it('returns isRestoring=true during initialization', () => {
+    mockGetSession.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useSessionRestore(), { wrapper });
+
+    expect(result.current.isRestoring).toBe(true);
+    expect(result.current.isRestored).toBe(false);
+    expect(result.current.status).toBe('initializing');
+  });
+
+  it('returns isRestored=true after session restore completes', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const { result } = renderHook(() => useSessionRestore(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isRestored).toBe(true);
+    });
+
+    expect(result.current.isRestoring).toBe(false);
+    expect(result.current.status).toBe('unauthenticated');
+  });
+
+  it('returns isRestored=true with authenticated status when session exists', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: fakeSession } });
+    const { result } = renderHook(() => useSessionRestore(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isRestored).toBe(true);
+    });
+
+    expect(result.current.isRestoring).toBe(false);
+    expect(result.current.status).toBe('authenticated');
   });
 });
