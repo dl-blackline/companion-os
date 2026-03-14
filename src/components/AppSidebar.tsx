@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react';
-import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, Microphone, Images, Robot, ShieldCheck, SignOut } from '@phosphor-icons/react';
+import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, Microphone, Images, Robot, ShieldCheck, SignOut, MoonStars } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
@@ -21,6 +21,7 @@ export type NavSection =
   | 'insights'
   | 'agents'
   | 'settings'
+  | 'tarot'
   | 'admin-console';
 
 interface AppSidebarProps {
@@ -42,6 +43,7 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
   { id: 'insights',      label: 'Insights',  icon: Lightbulb,   group: 'tools' },
   { id: 'agents',        label: 'Agents',    icon: Robot,       group: 'tools' },
   { id: 'settings',      label: 'Settings',  icon: Gear,        group: 'system' },
+  { id: 'tarot',         label: 'Tarot AI',  icon: MoonStars,   group: 'system' },
   { id: 'admin-console', label: 'Admin',     icon: ShieldCheck, group: 'admin' },
 ];
 
