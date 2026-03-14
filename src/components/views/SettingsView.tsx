@@ -330,15 +330,15 @@ export function SettingsView() {
   // Compute the auth display view-model for the Account tab
   const accountVM: SettingsAccountViewModel = (() => {
     if (authLoading || authState.status === 'initializing') {
-      return { display: 'loading' as const };
+      return { display: 'loading' };
     }
     if (authState.status === 'error') {
-      return { display: 'error' as const, error: authState.error, configured: authConfigured };
+      return { display: 'error', error: authState.error, configured: authConfigured };
     }
     if (authState.status === 'authenticated' || authState.status === 'refreshing') {
-      return { display: 'signed-in' as const, email: authState.email, userId: authState.userId };
+      return { display: 'signed-in', email: authState.email, userId: authState.userId };
     }
-    return { display: 'signed-out' as const, configured: authConfigured };
+    return { display: 'signed-out', configured: authConfigured };
   })();
 
   return (
