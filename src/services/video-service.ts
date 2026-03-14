@@ -189,6 +189,14 @@ export async function generateVideo(
 
 // ─── Video Analysis ───────────────────────────────────────────────────────────
 
+/**
+ * Analyze a video via the media-memory backend pipeline.
+ *
+ * The backend `media-memory` function requires `user_id`, `public_url`, and
+ * `filename` to be present in the request body.  Earlier versions of this
+ * helper sent only `media_url` (wrong key) and omitted `user_id` / `filename`,
+ * causing a 400 "Missing required field" error from the backend.
+ */
 export async function analyzeVideo(
   videoUrl: string,
   userId: string,
