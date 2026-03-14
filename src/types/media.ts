@@ -110,8 +110,8 @@ export interface ImageEditorState {
   readonly originalUrl: string;
   readonly currentUrl: string;
   readonly transforms: readonly ImageTransformOp[];
-  readonly undoStack: readonly ImageTransformOp[][];
-  readonly redoStack: readonly ImageTransformOp[][];
+  readonly undoStack: readonly (readonly ImageTransformOp[])[];
+  readonly redoStack: readonly (readonly ImageTransformOp[])[];
   readonly isDirty: boolean;
 }
 

@@ -14,6 +14,7 @@ import { idle, loading, error, appError } from '@/types';
 import { validateVideoFile, generateVideo, analyzeVideo, extractVideoMetadata, extractVideoThumbnail } from '@/services/video-service';
 import { validateImageFile, generateImage, analyzeImage, extractImageMetadata } from '@/services/image-service';
 import type { VideoMetadata, ImageMetadata } from '@/types';
+import { useAuth } from '@/context/auth-context';
 
 interface UseMediaProcessingReturn {
   /** Current generation state. */
@@ -27,9 +28,9 @@ interface UseMediaProcessingReturn {
   /** Generate a video from a prompt. */
   requestVideoGeneration: (request: VideoGenerationRequest) => Promise<void>;
   /** Analyze an image by URL. */
-  requestImageAnalysis: (url: string, userId: string, filename: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
+  requestImageAnalysis: (url: string, filename: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
   /** Analyze a video by URL. */
-  requestVideoAnalysis: (url: string, userId: string, filename: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
+  requestVideoAnalysis: (url: string, filename: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
   /** Extract metadata from a local file. */
   extractMetadata: (file: File) => Promise<VideoMetadata | ImageMetadata>;
   /** Extract a video thumbnail. */
@@ -39,6 +40,7 @@ interface UseMediaProcessingReturn {
 }
 
 export function useMediaProcessing(): UseMediaProcessingReturn {
+  const { user: authUser } = useAuth();
   const [generationState, setGenerationState] = useState<AsyncResult<MediaGenerationResult>>(idle());
   const [analysisState, setAnalysisState] = useState<AsyncResult<MediaAnalysisResult>>(idle());
   const abortRef = useRef<AbortController | null>(null);
@@ -66,17 +68,27 @@ export function useMediaProcessing(): UseMediaProcessingReturn {
     setGenerationState(result);
   }, []);
 
-  const requestImageAnalysis = useCallback(async (url: string, userId: string, filename: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
+  const requestImageAnalysis = useCallback(async (url: string, filename: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
+    const userId = authUser?.id;
+    if (!userId) {
+      setAnalysisState(error(appError('validation', 'User must be authenticated to analyze media')));
+      return;
+    }
     setAnalysisState(loading());
     const result = await analyzeImage(url, userId, filename, depth);
     setAnalysisState(result);
-  }, []);
+  }, [authUser?.id]);
 
-  const requestVideoAnalysis = useCallback(async (url: string, userId: string, filename: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
+  const requestVideoAnalysis = useCallback(async (url: string, filename: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
+    const userId = authUser?.id;
+    if (!userId) {
+      setAnalysisState(error(appError('validation', 'User must be authenticated to analyze media')));
+      return;
+    }
     setAnalysisState(loading());
     const result = await analyzeVideo(url, userId, filename, depth);
     setAnalysisState(result);
-  }, []);
+  }, [authUser?.id]);
 
   const extractMetadata = useCallback(async (file: File): Promise<VideoMetadata | ImageMetadata> => {
     if (file.type.startsWith('video/')) {

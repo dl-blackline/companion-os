@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 /** Return the currently selected chat model id. */
 function activeChatModel(): string {
@@ -56,6 +57,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 export function ChatView() {
+  const { user: authUser } = useAuth();
   const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
   const [activeConvId, setActiveConvId] = useState<string | null>(
     (conversations && conversations.length > 0) ? conversations[0].id : null
@@ -120,12 +122,13 @@ export function ChatView() {
   /** Upload a file to Supabase Storage and return its public URL. */
   const uploadToStorage = async (media: MediaFile): Promise<string | null> => {
     const supabase = getSupabase();
-    if (!supabase) {
-      console.warn('Supabase not configured — converting to base64 data URL');
+    const userId = authUser?.id;
+
+    if (!supabase || !userId) {
+      console.warn('Supabase not configured or user not authenticated — converting to base64 data URL');
       return fileToDataUrl(media.file);
     }
 
-    const userId = 'default-user';
     const ext = media.file.name.split('.').pop() || 'bin';
     const path = `${userId}/${generateId()}.${ext}`;
 
