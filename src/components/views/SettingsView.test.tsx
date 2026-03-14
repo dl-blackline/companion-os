@@ -4,7 +4,7 @@
  * that Sign Out / Sign In controls are visible.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 // ── Mutable mock state ──────────────────────────────────────────────────────
@@ -153,5 +153,16 @@ describe('SettingsView — Auth section in Account tab', () => {
     mockAuthState = { status: 'unauthenticated' };
     await renderSettings();
     expect(screen.getByText(/supabase is not configured/i)).toBeInTheDocument();
+  });
+
+  it('lists Leonardo AI in the Diagnostics tab service labels', async () => {
+    mockAuthState = { status: 'unauthenticated' };
+    await renderSettings();
+    // Radix UI Tabs v1 activates via mouseDown; fire that to switch to diagnostics tab
+    const diagTab = screen.getByRole('tab', { name: /diagnostics/i });
+    fireEvent.mouseDown(diagTab);
+    await waitFor(() => {
+      expect(screen.getByText('Leonardo AI')).toBeInTheDocument();
+    });
   });
 });

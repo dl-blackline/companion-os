@@ -87,6 +87,23 @@ async function checkMedia() {
   }
 }
 
+async function checkLeonardo() {
+  try {
+    if (!process.env.LEONARDO_API_KEY) {
+      return "error";
+    }
+    // Lightweight connectivity check — fetch the user info endpoint
+    const res = await fetch("https://cloud.leonardo.ai/api/rest/v1/me", {
+      headers: {
+        Authorization: `Bearer ${process.env.LEONARDO_API_KEY}`,
+      },
+    });
+    return res.ok ? "ok" : "error";
+  } catch {
+    return "error";
+  }
+}
+
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS_HEADERS, body: "" };
@@ -97,14 +114,15 @@ export async function handler(event) {
   }
 
   try {
-    const [openai, supabase, vector_search, media] = await Promise.all([
+    const [openai, supabase, vector_search, media, leonardo] = await Promise.all([
       checkOpenAI(),
       checkSupabase(),
       checkVectorSearch(),
       checkMedia(),
+      checkLeonardo(),
     ]);
 
-    return result(200, { openai, supabase, vector_search, media });
+    return result(200, { openai, supabase, vector_search, media, leonardo });
   } catch (err) {
     console.error("System health check error:", err);
     return result(500, { error: err.message });
