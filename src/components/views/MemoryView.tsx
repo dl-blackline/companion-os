@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useImageMemory } from '@/hooks/use-image-memory';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,12 +37,11 @@ import {
   ThumbsDown,
   ImageSquare,
 } from '@phosphor-icons/react';
-import type { Memory, MemoryCategory, PrivacyLevel, MemoryCandidate, UploadedMedia, MediaType } from '@/types';
+import type { Memory, MemoryCategory, PrivacyLevel, MemoryCandidate, UploadedMedia } from '@/types';
 import { generateId, getRelativeTime, formatDateTime } from '@/lib/helpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { createClient } from '@supabase/supabase-js';
 
 const CATEGORIES: { value: MemoryCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -78,52 +78,6 @@ const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 /** Fallback user ID used when auth is not available. */
 const MEMORY_LOCAL_USER_ID = 'local-user';
 
-function getSupabase() {
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-  if (!url || !key) return null;
-  return createClient(url, key);
-}
-
-async function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error('File read failed'));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function uploadMedia(
-  file: File,
-  userId: string,
-  onProgress: (n: number) => void,
-): Promise<{ url: string; path: string }> {
-  const supabase = getSupabase();
-  const ext = file.name.split('.').pop() || 'bin';
-  const path = `${userId}/memory/${generateId()}.${ext}`;
-  onProgress(15);
-
-  if (supabase) {
-    const { data, error } = await supabase.storage
-      .from('media_uploads')
-      .upload(path, file, { cacheControl: '3600', upsert: false });
-    onProgress(80);
-    if (!error && data) {
-      const { data: pub } = supabase.storage
-        .from('media_uploads')
-        .getPublicUrl(data.path);
-      onProgress(100);
-      return { url: pub.publicUrl, path: data.path };
-    }
-  }
-
-  // Fall back to base64 if Supabase not configured
-  const dataUrl = await fileToDataUrl(file);
-  onProgress(100);
-  return { url: dataUrl, path };
-}
-
 interface MemoryFormState {
   title: string;
   content: string;
@@ -156,26 +110,46 @@ export function MemoryView() {
   // Main tab: 'memories' | 'media' | 'candidates'
   const [mainTab, setMainTab] = useState<'memories' | 'media' | 'candidates'>('memories');
 
-  // Media upload state
-  const [uploadedMediaList, setUploadedMediaList] = useLocalStorage<UploadedMedia[]>('memory-media', []);
+  // ── Image-memory pipeline (upload → AI analysis → candidate approval) ───────
+  const {
+    uploadState,
+    analysisResult: latestAnalysis,
+    candidates: hookCandidates,
+    uploadAndAnalyze,
+    approve: approveFromHook,
+    reject: rejectFromHook,
+    reset: resetImageMemory,
+  } = useImageMemory();
+
+  // Local file selection state (for the drop-zone preview)
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
-  const [mediaFileType, setMediaFileType] = useState<MediaType | null>(null);
   const [userTitle, setUserTitle] = useState('');
   const [userNote, setUserNote] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Memory candidates (pending approval) stored locally
-  const [candidates, setCandidates] = useLocalStorage<MemoryCandidate[]>('memory-candidates', []);
+  // Derived upload state flags for the UI
+  const isUploading = uploadState.status === 'uploading';
+  const isAnalyzing = uploadState.status === 'processing';
+  const uploadProgress = uploadState.status === 'uploading' ? uploadState.progress : 0;
+
+  // Persisted media list and candidates (kept in localStorage for display)
+  const [uploadedMediaList, setUploadedMediaList] = useLocalStorage<UploadedMedia[]>('memory-media', []);
+  const [persistedCandidates, setPersistedCandidates] = useLocalStorage<MemoryCandidate[]>('memory-candidates', []);
+
   const [selectedMedia, setSelectedMedia] = useState<UploadedMedia | null>(null);
 
+  // Merge hook candidates (from last analysis) with persisted candidates from previous sessions
+  // Use a Set for O(n+m) deduplication
+  const hookCandidateIds = new Set(hookCandidates.map((c) => c.id));
+  const candidates: MemoryCandidate[] = [
+    ...hookCandidates,
+    ...(persistedCandidates || []).filter((pc) => !hookCandidateIds.has(pc.id)),
+  ];
   const allMemories = memories || [];
   const allMedia = uploadedMediaList || [];
-  const pendingCandidates = (candidates || []).filter((c) => c.status === 'pending');
+  const pendingCandidates = candidates.filter((c) => c.status === 'pending');
 
   const filteredMemories = allMemories.filter((m) => {
     const matchesCategory = activeCategory === 'all' || m.category === activeCategory;
@@ -312,7 +286,6 @@ export function MemoryView() {
     const preview = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaPreviewUrl(preview);
-    setMediaFileType(isImage ? 'image' : 'video');
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -322,143 +295,85 @@ export function MemoryView() {
     if (file) handleMediaFile(file);
   }, [handleMediaFile]);
 
-  const clearMediaUpload = () => {
+  const clearMediaUpload = useCallback(() => {
     if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
     setMediaFile(null);
     setMediaPreviewUrl(null);
-    setMediaFileType(null);
     setUserTitle('');
     setUserNote('');
-    setUploadProgress(0);
+    resetImageMemory();
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, [mediaPreviewUrl, resetImageMemory]);
 
   const handleAnalyzeMedia = async () => {
-    if (!mediaFile || !mediaFileType) return;
+    if (!mediaFile) return;
 
-    setIsUploading(true);
-    setUploadProgress(0);
+    await uploadAndAnalyze(mediaFile, {
+      userTitle: userTitle.trim() || undefined,
+      userNote: userNote.trim() || undefined,
+    });
+  };
 
-    let mediaUrl: string;
-    let storagePath: string;
+  // Sync hook analysis result into persistent localStorage lists
+  // so the media list and candidates survive page refreshes
+  const prevAnalysisRef = useRef<string | null>(null);
 
-    try {
-      const userId = memoryUserId;
-      const result = await uploadMedia(mediaFile, userId, setUploadProgress);
-      mediaUrl = result.url;
-      storagePath = result.path;
-    } catch (e) {
-      toast.error('Upload failed. Please try again.');
-      setIsUploading(false);
-      return;
-    }
+  useEffect(() => {
+    if (uploadState.status === 'complete' && latestAnalysis) {
+      if (latestAnalysis.id === prevAnalysisRef.current) return;
+      prevAnalysisRef.current = latestAnalysis.id;
 
-    setIsUploading(false);
-    setIsAnalyzing(true);
-
-    try {
-      const res = await fetch('/.netlify/functions/media-memory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'analyze',
-          user_id: memoryUserId,
-          public_url: mediaUrl,
-          storage_path: storagePath,
-          filename: mediaFile.name,
-          media_type: mediaFileType,
-          mime_type: mediaFile.type,
-          file_size_bytes: mediaFile.size,
-          user_title: userTitle.trim() || undefined,
-          user_note: userNote.trim() || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errData.error || 'Analysis failed');
-      }
-
-      const data = await res.json();
-      const { media_record, analysis_record, candidates: newCandidates } = data;
-
-      // Store locally as well for UI display
-      const localRecord: UploadedMedia = {
-        id: media_record?.id || generateId(),
-        user_id: memoryUserId,
-        storage_path: storagePath,
-        public_url: mediaUrl,
-        filename: mediaFile.name,
-        media_type: mediaFileType,
-        mime_type: mediaFile.type,
-        file_size_bytes: mediaFile.size,
-        user_title: userTitle.trim() || null,
-        user_note: userNote.trim() || null,
-        processing_state: 'done',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        media_analysis: analysis_record ? [analysis_record] : [],
-        memory_candidates: newCandidates || [],
-      };
-
-      setUploadedMediaList((prev) => [localRecord, ...(prev || [])]);
-
-      // Save candidates locally for approval workflow
-      if (newCandidates && newCandidates.length > 0) {
-        setCandidates((prev) => [...newCandidates, ...(prev || [])]);
-        toast.success(`Analysis complete! ${newCandidates.length} memory candidate${newCandidates.length > 1 ? 's' : ''} found.`);
+      setUploadedMediaList((prev) => [latestAnalysis, ...(prev || [])]);
+      const newCandidates = latestAnalysis.memory_candidates || [];
+      if (newCandidates.length > 0) {
+        const newCandidateIds = new Set(newCandidates.map((nc) => nc.id));
+        setPersistedCandidates((prev) => [
+          ...newCandidates,
+          ...(prev || []).filter((pc) => !newCandidateIds.has(pc.id)),
+        ]);
+        toast.success(
+          `Analysis complete! ${newCandidates.length} memory candidate${newCandidates.length > 1 ? 's' : ''} found.`,
+        );
         setMainTab('candidates');
       } else {
         toast.success('Media analyzed and saved to knowledge.');
       }
-
-      clearMediaUpload();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Analysis failed';
-      // If backend not available, do a local-only fallback
-      const fallbackRecord: UploadedMedia = {
-        id: generateId(),
-        user_id: memoryUserId,
-        storage_path: storagePath,
-        public_url: mediaUrl,
-        filename: mediaFile.name,
-        media_type: mediaFileType,
-        mime_type: mediaFile.type,
-        file_size_bytes: mediaFile.size,
-        user_title: userTitle.trim() || null,
-        user_note: userNote.trim() || null,
-        processing_state: 'failed',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        media_analysis: [],
-        memory_candidates: [],
-      };
-      setUploadedMediaList((prev) => [fallbackRecord, ...(prev || [])]);
-      toast.error(`Analysis failed: ${msg}. Media saved without analysis.`);
-      clearMediaUpload();
+      // Clear file selection after successful analysis
+      setMediaFile((prev) => {
+        if (prev && mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
+        return null;
+      });
+      setMediaPreviewUrl(null);
+      setUserTitle('');
+      setUserNote('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
 
-    setIsAnalyzing(false);
-  };
+    if (uploadState.status === 'error' && latestAnalysis?.processing_state === 'failed') {
+      if (latestAnalysis.id === prevAnalysisRef.current) return;
+      prevAnalysisRef.current = latestAnalysis.id;
+
+      setUploadedMediaList((prev) => [latestAnalysis, ...(prev || [])]);
+      toast.error('Analysis failed. Media saved without AI analysis.');
+      setMediaFile((prev) => {
+        if (prev && mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl);
+        return null;
+      });
+      setMediaPreviewUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadState.status, latestAnalysis?.id]);
 
   // ── Candidate approval handlers ───────────────────────────────────────────
 
   const approveCandidate = async (candidate: MemoryCandidate) => {
-    try {
-      await fetch('/.netlify/functions/media-memory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'approve',
-          user_id: memoryUserId,
-          candidate_id: candidate.id,
-        }),
-      });
-    } catch {
-      // Best effort — continue with local update
-    }
+    // Persist to the backend memory pipeline via the hook.
+    // The hook calls media-memory?action=approve which stores the memory in
+    // episodic_memory or relationship_memory (retrievable by the AI in future sessions).
+    await approveFromHook(candidate);
 
-    // Store as a local memory entry
+    // Also add to the local memory list for immediate display in the Memories tab
     const newMemory: Memory = {
       id: generateId(),
       title: candidate.title,
@@ -476,33 +391,22 @@ export function MemoryView() {
     };
 
     setMemories((prev) => [newMemory, ...(prev || [])]);
-    setCandidates((prev) =>
+    // Sync approval status into persisted candidates
+    setPersistedCandidates((prev) =>
       (prev || []).map((c) =>
         c.id === candidate.id ? { ...c, status: 'approved' as const } : c
-      )
+      ),
     );
     toast.success('Memory saved!');
   };
 
   const rejectCandidate = async (candidateId: string) => {
-    try {
-      await fetch('/.netlify/functions/media-memory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reject',
-          user_id: memoryUserId,
-          candidate_id: candidateId,
-        }),
-      });
-    } catch {
-      // Best effort
-    }
-
-    setCandidates((prev) =>
+    await rejectFromHook(candidateId);
+    // Sync rejection status into persisted candidates
+    setPersistedCandidates((prev) =>
       (prev || []).map((c) =>
         c.id === candidateId ? { ...c, status: 'rejected' as const } : c
-      )
+      ),
     );
   };
 
@@ -1166,7 +1070,7 @@ export function MemoryView() {
                   {/* Preview */}
                   {mediaFile && mediaPreviewUrl && (
                     <div className="rounded-xl overflow-hidden bg-black/5 mb-4 relative">
-                      {mediaFileType === 'image' ? (
+                      {mediaFile.type.startsWith('image/') ? (
                         <img
                           src={mediaPreviewUrl}
                           alt="Preview"
