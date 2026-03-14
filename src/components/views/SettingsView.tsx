@@ -240,7 +240,7 @@ export function SettingsView() {
     updatePreferences: savePrefs,
     updatePreferencesDebounced: savePrefsDebounced,
   } = useSettings();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { voice: realtimeVoice, setVoice: setRealtimeVoice } = useVoice();
 
   const update = (patch: Partial<typeof settings>) => {
@@ -930,11 +930,21 @@ export function SettingsView() {
                 </SettingRow>
                 <Separator />
                 <div className="py-4">
-                  <Button variant="outline" className="gap-2" onClick={() => toast.info('Sign out of all devices is not yet available.')}>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={async () => {
+                      try {
+                        await logout();
+                      } catch {
+                        toast.error('Failed to sign out. Please try again.');
+                      }
+                    }}
+                  >
                     <SignOut size={16} />
-                    Sign Out of All Devices
+                    Sign Out
                   </Button>
-                  <p className="text-xs text-muted-foreground mt-2">This will invalidate all active sessions across every device.</p>
+                  <p className="text-xs text-muted-foreground mt-2">You will be returned to the login screen.</p>
                 </div>
               </Card>
               <Card className="p-6 border-destructive/40">
