@@ -120,12 +120,13 @@ const PERMANENT_BAN_DURATION = "876600h";
       const { email, password, role = "user", plan = "free", invite = false } = JSON.parse(event.body || "{}");
 
       // Resolve the site URL for email redirects (Netlify provides URL automatically)
-      const siteUrl = process.env.URL || process.env.SITE_URL || "";
+      const siteUrl = process.env.URL || process.env.SITE_URL;
 
       let newUser;
       if (invite) {
         // Send an invitation email — no password required
         if (!email) return res(400, { error: "email required" });
+        if (!siteUrl) return res(500, { error: "SITE_URL not configured — cannot send invite emails" });
         const { data, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
           redirectTo: siteUrl,
         });
