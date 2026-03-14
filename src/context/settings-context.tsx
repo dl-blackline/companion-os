@@ -186,16 +186,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // Use the auth context's synchronous token getter.  This reads from the
   // session kept in memory by onAuthStateChange — no extra async round-trip
   // and no race with Supabase's internal session hydration.
-  const { getAccessToken, user: authUser } = useAuth();
+  const { getAccessToken, user: authUser, loading: authLoading, authState } = useAuth();
 
   const getToken = useCallback((): string | null => {
     return getAccessToken();
   }, [getAccessToken]);
 
+  // True once auth initialisation has completed (session restored or no session).
+  const authResolved = !authLoading && authState.status !== 'initializing';
+
   // Load preferences from backend when the authenticated user changes
   // (login, logout, token refresh).  Using authUser?.id as the dependency
-  // ensures we re-fetch whenever the identity changes.
+  // ensures we re-fetch whenever the identity changes.  We also wait until
+  // auth has finished initialising so we do not skip the load because the
+  // token is transiently null during hydration.
   useEffect(() => {
+    if (!authResolved) return;
     let cancelled = false;
     async function load() {
       const token = getToken();
@@ -222,9 +228,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
     // getToken is intentionally excluded — it is memoized via useCallback and
     // only depends on getAccessToken which is itself stable.  We re-fetch
-    // preferences when the authenticated user identity changes (authUser?.id).
+    // preferences when the authenticated user identity changes (authUser?.id)
+    // and when auth finishes resolving (authResolved).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authUser?.id]);
+  }, [authUser?.id, authResolved]);
 
   const updatePreferences = useCallback(
     async (patch: Partial<UserPreferences>) => {

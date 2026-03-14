@@ -393,6 +393,15 @@ export interface ResetPasswordResponse {
   error?: string;
 }
 
+// ─── Settings Account View Model ──────────────────────────────────────────────
+
+/** Computed view-model for the auth section inside the Settings Account tab. */
+export type SettingsAccountViewModel =
+  | { display: 'loading' }
+  | { display: 'signed-out'; configured: boolean }
+  | { display: 'signed-in'; email: string; userId: string }
+  | { display: 'error'; error: string; configured: boolean };
+
 // ─── RBAC / Entitlement Types ─────────────────────────────────────────────────
 
 export type UserRole = 'admin' | 'user';

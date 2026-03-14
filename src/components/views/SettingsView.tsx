@@ -45,7 +45,7 @@ import {
   FloppyDisk,
   Spinner,
 } from '@phosphor-icons/react';
-import type { ConversationMode } from '@/types';
+import type { ConversationMode, SettingsAccountViewModel } from '@/types';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
@@ -241,7 +241,7 @@ export function SettingsView() {
     updatePreferences: savePrefs,
     updatePreferencesDebounced: savePrefsDebounced,
   } = useSettings();
-  const { user, logout, configured: authConfigured } = useAuth();
+  const { user, logout, configured: authConfigured, authState, loading: authLoading } = useAuth();
   const { voice: realtimeVoice, setVoice: setRealtimeVoice } = useVoice();
 
   const update = (patch: Partial<typeof settings>) => {
@@ -326,6 +326,20 @@ export function SettingsView() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  // Compute the auth display view-model for the Account tab
+  const accountVM: SettingsAccountViewModel = (() => {
+    if (authLoading || authState.status === 'initializing') {
+      return { display: 'loading' as const };
+    }
+    if (authState.status === 'error') {
+      return { display: 'error' as const, error: authState.error, configured: authConfigured };
+    }
+    if (authState.status === 'authenticated' || authState.status === 'refreshing') {
+      return { display: 'signed-in' as const, email: authState.email, userId: authState.userId };
+    }
+    return { display: 'signed-out' as const, configured: authConfigured };
+  })();
 
   return (
     <div className="settings-panel p-4 md:p-8 max-w-3xl mx-auto">
@@ -453,10 +467,72 @@ export function SettingsView() {
               <Card className="p-6">
                 <h3 className="font-semibold mb-1">Password</h3>
                 <p className="text-sm text-muted-foreground">
-                  Password changes are handled via email. Use the "Forgot password" flow on the login screen to receive a reset link.
+                  Password changes are handled via email. Use the &quot;Forgot password&quot; flow on the login screen to receive a reset link.
                 </p>
               </Card>
               )}
+
+              {/* ── Auth / Account Status — always visible ── */}
+              <Card className="p-6">
+                <h3 className="font-semibold mb-1">Authentication</h3>
+                <p className="text-sm text-muted-foreground mb-4">Your current sign-in status and account controls.</p>
+                <Separator />
+
+                {accountVM.display === 'loading' && (
+                  <div className="flex items-center gap-3 py-4">
+                    <Spinner size={18} className="animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Restoring session…</span>
+                  </div>
+                )}
+
+                {accountVM.display === 'signed-in' && (
+                  <>
+                    <SettingRow icon={User} label="Signed in as" description="The account currently logged in.">
+                      <span className="text-sm text-muted-foreground">{accountVM.email}</span>
+                    </SettingRow>
+                    <Separator />
+                    <div className="py-4">
+                      <Button
+                        variant="outline"
+                        className="gap-2"
+                        onClick={async () => {
+                          try {
+                            await logout();
+                          } catch {
+                            toast.error('Failed to sign out. Please try again.');
+                          }
+                        }}
+                      >
+                        <SignOut size={16} />
+                        Sign Out
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">You will be returned to the login screen.</p>
+                    </div>
+                  </>
+                )}
+
+                {accountVM.display === 'signed-out' && (
+                  <div className="py-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">You are not signed in.</p>
+                    {accountVM.configured ? (
+                      <p className="text-xs text-muted-foreground">Sign out and back in from the login screen, or reload the app to re-authenticate.</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Supabase is not configured. Set <code className="text-xs">VITE_SUPABASE_URL</code> and <code className="text-xs">VITE_SUPABASE_ANON_KEY</code> to enable authentication.</p>
+                    )}
+                  </div>
+                )}
+
+                {accountVM.display === 'error' && (
+                  <div className="py-4 space-y-3">
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                      {accountVM.error}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+              </Card>
             </motion.div>
           </TabsContent>
 
