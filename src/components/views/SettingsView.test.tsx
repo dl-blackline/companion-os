@@ -39,7 +39,7 @@ vi.mock('@/context/settings-context', () => ({
       defaultMode: 'neutral',
       memorySettings: { autoCapture: true, requireApproval: false, summarization: true },
       modelSettings: {
-        defaultModel: 'gpt-5.4', fallbackModel: 'gpt-4.1-mini', imageModel: 'openai-image',
+        defaultModel: 'gpt-4.1', fallbackModel: 'gpt-4.1-mini', imageModel: 'openai-image',
         videoModel: 'sora', musicModel: 'suno', voiceModel: 'elevenlabs',
         temperature: 0.7, maxLength: 2000, citationPreference: 'when-available',
         toolUseAggressiveness: 0.5, memoryRetrievalIntensity: 0.7,

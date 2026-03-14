@@ -35,7 +35,7 @@ import { useAuth } from '@/context/auth-context';
 
 /** Return the currently selected chat model id. */
 function activeChatModel(): string {
-  return getModelSetting('chat') || 'gpt-5.4';
+  return getModelSetting('chat') || 'gpt-4.1';
 }
 
 /** Convert a File to a base64-encoded data URL (works without server access). */
@@ -232,7 +232,7 @@ Please provide a helpful response.`;
           type: 'chat',
           data: {
             conversation_id: activeConversation.id,
-            user_id: 'default-user',
+            user_id: authUser?.id || 'default-user',
             message: fullPrompt,
             model: activeChatModel(),
             stream: !mediaUrl, // Streaming is disabled for vision requests: the backend processes the full image before generating a response, so streaming adds no UX value and complicates the response handling.

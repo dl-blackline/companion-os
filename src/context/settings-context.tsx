@@ -24,7 +24,7 @@ import {
 import { toast } from 'sonner';
 import type { CompanionSettings, ConversationMode, UserPreferences } from '@/types';
 import { DEFAULT_USER_PREFERENCES } from '@/types';
-import { setModelSetting } from '@/utils/model-cache';
+import { setModelSetting, getModelSetting } from '@/utils/model-cache';
 import { useAuth } from '@/context/auth-context';
 
 // ── Default CompanionSettings ────────────────────────────────────────────────
@@ -37,7 +37,7 @@ export const DEFAULT_SETTINGS: CompanionSettings = {
     summarization: true,
   },
   modelSettings: {
-    defaultModel: 'gpt-5.4',
+    defaultModel: 'gpt-4.1',
     fallbackModel: 'gpt-4.1-mini',
     imageModel: 'openai-image',
     videoModel: 'sora',
@@ -111,6 +111,22 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children }: { children: ReactNode }) {
   // ── CompanionSettings (localStorage) ───────────────────────────────────────
   const [settings, setSettingsState] = useState<CompanionSettings>(loadSettingsFromStorage);
+
+  // Sync model settings to the model-cache on mount so that components
+  // reading getModelSetting() always see the persisted value even before the
+  // user explicitly opens Settings. Runs only once on mount — subsequent
+  // model changes are synced via updateModelSettings().
+  useEffect(() => {
+    for (const [field, cacheType] of Object.entries(FIELD_TO_CACHE_TYPE)) {
+      // Only write to the cache when no value is already cached, to avoid
+      // overwriting an explicit preference the user set outside this provider.
+      if (getModelSetting(cacheType) == null) {
+        const value = (settings.modelSettings as Record<string, string>)[field];
+        if (value) setModelSetting(cacheType, value);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateSettings = useCallback((patch: Partial<CompanionSettings>) => {
     setSettingsState((prev) => {
