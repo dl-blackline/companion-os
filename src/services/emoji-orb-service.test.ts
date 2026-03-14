@@ -20,7 +20,7 @@ function makeTraits(overrides: Partial<ImageAnalysisTraits> = {}): ImageAnalysis
     subjectType: 'person',
     emotion: 'happy',
     visualComplexity: 'moderate',
-    hasface: true,
+    hasFace: true,
     colorfulness: 0.5,
     confidence: 0.8,
     ...overrides,

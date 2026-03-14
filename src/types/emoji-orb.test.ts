@@ -65,13 +65,13 @@ describe('emoji-orb types', () => {
         subjectType: 'person',
         emotion: 'happy',
         visualComplexity: 'moderate',
-        hasface: true,
+        hasFace: true,
         colorfulness: 0.5,
         confidence: 0.8,
       };
       expect(traits.subjectType).toBe('person');
       expect(traits.emotion).toBe('happy');
-      expect(traits.hasface).toBe(true);
+      expect(traits.hasFace).toBe(true);
     });
 
     it('should allow creating a valid EmojiOrbFeatureSet', () => {
@@ -111,7 +111,7 @@ describe('emoji-orb types', () => {
           subjectType: 'unknown',
           emotion: 'neutral',
           visualComplexity: 'moderate',
-          hasface: false,
+          hasFace: false,
           colorfulness: 0.4,
           confidence: 0.6,
         },
@@ -159,7 +159,7 @@ describe('emoji-orb types', () => {
             subjectType: 'unknown',
             emotion: 'neutral',
             visualComplexity: 'simple',
-            hasface: false,
+            hasFace: false,
             colorfulness: 0.3,
             confidence: 0.5,
           },

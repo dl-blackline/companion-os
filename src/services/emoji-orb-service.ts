@@ -210,12 +210,12 @@ export async function analyzeImageForOrb(file: File): Promise<ImageAnalysisTrait
   const colorfulness = computeColorfulness(data);
   const visualComplexity = estimateComplexity(data);
   const skinRatio = detectSkinToneRatio(data);
-  const hasface = skinRatio > 0.15;
+  const hasFace = skinRatio > 0.15;
   const subjectType = inferSubjectType(skinRatio, brightness, colorfulness, visualComplexity);
   const emotion = inferEmotion(brightness, warmth, colorfulness, subjectType);
 
   // Confidence based on how decisive the analysis was
-  const confidence = Math.min(1, 0.5 + colorfulness * 0.2 + contrast * 0.15 + (hasface ? 0.15 : 0));
+  const confidence = Math.min(1, 0.5 + colorfulness * 0.2 + contrast * 0.15 + (hasFace ? 0.15 : 0));
 
   return {
     dominantColors,
@@ -225,7 +225,7 @@ export async function analyzeImageForOrb(file: File): Promise<ImageAnalysisTrait
     subjectType,
     emotion,
     visualComplexity,
-    hasface,
+    hasFace,
     colorfulness,
     confidence,
   };

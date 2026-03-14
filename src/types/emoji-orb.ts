@@ -73,7 +73,7 @@ export interface ImageAnalysisTraits {
   readonly subjectType: SubjectType;
   readonly emotion: EmotionTone;
   readonly visualComplexity: VisualComplexity;
-  readonly hasface: boolean;
+  readonly hasFace: boolean;
   readonly colorfulness: number;     // 0-1
   readonly confidence: number;       // 0-1 overall confidence
 }
