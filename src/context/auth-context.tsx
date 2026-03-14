@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react"
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase, supabaseConfigured } from "@/lib/supabase-client"
 import type { UserRole, EntitlementPlan, AuthState } from "@/types"
@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signup: (email: string, password: string) => Promise<{ error: AuthError | null }>
   logout: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   refreshRole: () => Promise<void>
   /** Returns the current access token, or null if not authenticated.  Uses
    *  the in-memory session cached by onAuthStateChange — avoids an extra
@@ -130,8 +131,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthState({ status: 'unauthenticated' })
   }
 
+  const resetPassword = async (email: string) => {
+    if (!supabaseConfigured) {
+      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." } as AuthError }
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    return { error }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, configured: supabaseConfigured, role, plan, isAdmin, authState, login, signup, logout, refreshRole, getAccessToken }}>
+    <AuthContext.Provider value={{ user, session, loading, configured: supabaseConfigured, role, plan, isAdmin, authState, login, signup, logout, resetPassword, refreshRole, getAccessToken }}>
       {children}
     </AuthContext.Provider>
   )
@@ -143,4 +152,40 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
+}
+
+/**
+ * Hook for components that require an authenticated user.
+ * Returns the auth context only when auth state is resolved.
+ * `isReady` is true once auth initialization is complete.
+ * `isAuthenticated` is true only when a valid user session exists.
+ */
+export function useRequireAuth() {
+  const auth = useAuth()
+  const isReady = !auth.loading && auth.authState.status !== 'initializing'
+  const isAuthenticated = isReady && auth.authState.status === 'authenticated' && auth.user !== null
+
+  return useMemo(() => ({
+    ...auth,
+    isReady,
+    isAuthenticated,
+    userId: auth.user?.id ?? null,
+    email: auth.user?.email ?? null,
+  }), [auth, isReady, isAuthenticated])
+}
+
+/**
+ * Hook that exposes the current session restore state.
+ * Useful for gating UI that should not render until auth is resolved.
+ */
+export function useSessionRestore() {
+  const { loading, authState } = useAuth()
+  const isRestoring = loading || authState.status === 'initializing'
+  const isRestored = !isRestoring
+
+  return useMemo(() => ({
+    isRestoring,
+    isRestored,
+    status: authState.status,
+  }), [isRestoring, isRestored, authState.status])
 }

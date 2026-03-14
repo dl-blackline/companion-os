@@ -3,8 +3,9 @@ import { useAuth } from "@/context/auth-context"
 import { supabaseConfigured } from "@/lib/supabase-client"
 import Login from "@/pages/Login"
 import Signup from "@/pages/Signup"
+import ForgotPassword from "@/pages/ForgotPassword"
 
-type AuthPage = "login" | "signup"
+type AuthPage = "login" | "signup" | "forgot-password"
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading, authState } = useAuth()
@@ -30,7 +31,15 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     if (authPage === "signup") {
       return <Signup onNavigateToLogin={() => setAuthPage("login")} />
     }
-    return <Login onNavigateToSignup={() => setAuthPage("signup")} />
+    if (authPage === "forgot-password") {
+      return <ForgotPassword onNavigateToLogin={() => setAuthPage("login")} />
+    }
+    return (
+      <Login
+        onNavigateToSignup={() => setAuthPage("signup")}
+        onNavigateToForgotPassword={() => setAuthPage("forgot-password")}
+      />
+    )
   }
 
   return <>{children}</>
