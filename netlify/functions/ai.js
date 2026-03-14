@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
 import { orchestrate } from "../../lib/orchestrator.js";
-import { runAI, streamAI } from "../../lib/ai-router.js";
+import { runAI } from "../../lib/ai-router.js";
 import { processMemory } from "../../lib/memory-manager.js";
 import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
 import {
@@ -314,26 +314,18 @@ async function handleChat(data) {
     /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
 
     if (stream && !isMediaResponse) {
-      // True token streaming via the OpenAI streaming API
+      // Stream the already-orchestrated response word-by-word.
+      // The orchestrator built the full system prompt (including unfiltered
+      // instructions for NoFilter models) and already computed the final
+      // response — re-using it here ensures the streamed output is identical
+      // to the non-streaming path and that model-specific system prompts are
+      // always respected.
       const chunks = [];
-      try {
-        for await (const token of streamAI(
-          [{ role: "user", content: message }],
-          model
-        )) {
-          chunks.push(
-            JSON.stringify({ token, done: false }) + "\n"
-          );
-        }
-      } catch (streamErr) {
-        // If streaming fails, fall back to word-splitting the already-fetched result
-        console.warn("Streaming fallback: splitting orchestrator response:", streamErr.message);
-        const tokens = result.response.split(" ");
-        for (let i = 0; i < tokens.length; i++) {
-          chunks.push(
-            JSON.stringify({ token: i < tokens.length - 1 ? tokens[i] + " " : tokens[i], done: false }) + "\n"
-          );
-        }
+      const tokens = result.response.split(" ");
+      for (let i = 0; i < tokens.length; i++) {
+        chunks.push(
+          JSON.stringify({ token: i < tokens.length - 1 ? tokens[i] + " " : tokens[i], done: false }) + "\n"
+        );
       }
       chunks.push(JSON.stringify({ token: "", done: true }) + "\n");
 

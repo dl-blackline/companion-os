@@ -61,10 +61,12 @@ export async function handler(event) {
   }
 
   let message;
+  let model;
 
   try {
     const body = JSON.parse(event.body);
-    const { conversation_id, user_id, model } = body;
+    const { conversation_id, user_id } = body;
+    model = body.model;
     message = body.message;
 
     if (!conversation_id || !user_id || !message) {
@@ -157,7 +159,7 @@ export async function handler(event) {
         const response = await runAI({
           system: FALLBACK_SYSTEM_PROMPT,
           user: message,
-        });
+        }, model);
         return {
           statusCode: 200,
           body: JSON.stringify({ response }),

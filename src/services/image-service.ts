@@ -271,6 +271,7 @@ export async function generateImage(
       body: JSON.stringify({
         type: 'image',
         prompt: request.prompt,
+        model: request.model,
         options: {
           style: request.style,
           aspect_ratio: request.aspectRatio,
