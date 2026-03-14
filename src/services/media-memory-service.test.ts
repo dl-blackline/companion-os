@@ -384,6 +384,82 @@ describe('analyzeImage service', () => {
       expect(result.error.message).toContain('filename');
     }
   });
+
+  it('accepts legacy "analysis" field when "analysis_record" is absent', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          analysis: {
+            summary: 'legacy image',
+            description: 'legacy desc',
+            extractedText: null,
+            transcript: null,
+            tags: ['legacy'],
+            entities: [],
+            emotionalCues: [],
+            objects: [],
+            scenes: [],
+            contentClassification: { primaryCategory: 'test', subcategories: [], isSafe: true, sensitivityFlags: [] },
+            qualityScore: 0.7,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    const { analyzeImage } = await import('@/services/image-service');
+    const result = await analyzeImage('https://example.com/img.jpg', 'user-123', 'test.jpg');
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.data.summary).toBe('legacy image');
+    }
+  });
+
+  it('returns error when neither "analysis_record" nor "analysis" is present', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+
+    const { analyzeImage } = await import('@/services/image-service');
+    const result = await analyzeImage('https://example.com/img.jpg', 'user-123', 'test.jpg');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toContain('No analysis result');
+    }
+  });
+
+  it('returns server error on non-OK HTTP response', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const { analyzeImage } = await import('@/services/image-service');
+    const result = await analyzeImage('https://example.com/img.jpg', 'user-123', 'test.jpg');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toBe('Internal server error');
+    }
+  });
+
+  it('returns network error when fetch throws', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('Network unreachable');
+    });
+
+    const { analyzeImage } = await import('@/services/image-service');
+    const result = await analyzeImage('https://example.com/img.jpg', 'user-123', 'test.jpg');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toBe('Network unreachable');
+    }
+  });
 });
 
 // ─── analyzeVideo Service Fix ─────────────────────────────────────────────────
@@ -450,6 +526,82 @@ describe('analyzeVideo service', () => {
     expect(result.status).toBe('error');
     if (result.status === 'error') {
       expect(result.error.message).toContain('filename');
+    }
+  });
+
+  it('accepts legacy "analysis" field when "analysis_record" is absent', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          analysis: {
+            summary: 'legacy video',
+            description: 'legacy video desc',
+            extractedText: null,
+            transcript: 'hello world',
+            tags: ['legacy'],
+            entities: [],
+            emotionalCues: [],
+            objects: [],
+            scenes: [],
+            contentClassification: { primaryCategory: 'test', subcategories: [], isSafe: true, sensitivityFlags: [] },
+            qualityScore: 0.7,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    const { analyzeVideo } = await import('@/services/video-service');
+    const result = await analyzeVideo('https://example.com/vid.mp4', 'user-456', 'clip.mp4');
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.data.summary).toBe('legacy video');
+    }
+  });
+
+  it('returns error when neither "analysis_record" nor "analysis" is present', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({}), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+
+    const { analyzeVideo } = await import('@/services/video-service');
+    const result = await analyzeVideo('https://example.com/vid.mp4', 'user-456', 'clip.mp4');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toContain('No analysis result');
+    }
+  });
+
+  it('returns server error on non-OK HTTP response', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const { analyzeVideo } = await import('@/services/video-service');
+    const result = await analyzeVideo('https://example.com/vid.mp4', 'user-456', 'clip.mp4');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toBe('Internal server error');
+    }
+  });
+
+  it('returns network error when fetch throws', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('Network unreachable');
+    });
+
+    const { analyzeVideo } = await import('@/services/video-service');
+    const result = await analyzeVideo('https://example.com/vid.mp4', 'user-456', 'clip.mp4');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toBe('Network unreachable');
     }
   });
 });
