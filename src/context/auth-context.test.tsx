@@ -197,6 +197,33 @@ describe('Login', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Signup
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Signup', () => {
+  it('calls supabase.auth.signUp with email, password, and emailRedirectTo', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockSignUp.mockResolvedValue({ error: null });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let signupResult: { error: unknown } | undefined;
+    await act(async () => {
+      signupResult = await result.current.signup('new@example.com', 'password123');
+    });
+
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'new@example.com',
+      password: 'password123',
+      options: { emailRedirectTo: window.location.origin },
+    });
+    expect(signupResult?.error).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Logout
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Logout', () => {
@@ -300,7 +327,7 @@ describe('Error handling', () => {
 // Password reset
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Password reset', () => {
-  it('calls supabase.auth.resetPasswordForEmail with the email', async () => {
+  it('calls supabase.auth.resetPasswordForEmail with the email and redirectTo', async () => {
     mockGetSession.mockResolvedValue({ data: { session: null } });
     mockResetPasswordForEmail.mockResolvedValue({ error: null });
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -314,7 +341,9 @@ describe('Password reset', () => {
       resetResult = await result.current.resetPassword('reset@test.com');
     });
 
-    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('reset@test.com');
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('reset@test.com', {
+      redirectTo: window.location.origin,
+    });
     expect(resetResult?.error).toBeNull();
   });
 
