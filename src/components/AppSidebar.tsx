@@ -1,11 +1,12 @@
 import type { Icon } from '@phosphor-icons/react';
-import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, Microphone, Images, Robot, ShieldCheck } from '@phosphor-icons/react';
+import { House, ChatCircle, Brain, Books, Target, Lightning, Lightbulb, Gear, Microphone, Images, Robot, ShieldCheck, SignOut } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { DynamicIcon } from '@/components/ui/dynamic-icon';
 import { triggerHaptic } from '@/utils/haptics';
 import { useAuth } from '@/context/auth-context';
+import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
 
 export type NavSection =
@@ -45,7 +46,7 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
 ];
 
 export function AppSidebar({ activeSection, onSectionChange, aiName, companionState }: AppSidebarProps) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, logout } = useAuth();
   const mainItems  = navItems.filter((i) => i.group === 'main');
   const toolItems  = navItems.filter((i) => i.group === 'tools');
   const sysItems   = navItems.filter((i) => i.group === 'system');
@@ -135,6 +136,30 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
             <span className="w-2 h-2 bg-accent rounded-full" />
           </div>
         </div>
+        {user && (
+          <div className="border-t border-border/50 pt-2 mt-1">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {user.email?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">{user.email}</span>
+              <button
+                onClick={async () => {
+                  triggerHaptic('selection');
+                  try {
+                    await logout();
+                  } catch {
+                    toast.error('Failed to sign out. Please try again.');
+                  }
+                }}
+                title="Sign out"
+                className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <SignOut size={15} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
