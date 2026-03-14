@@ -631,3 +631,106 @@ export const DEFAULT_MEMORY_PREFERENCES: UserMemoryPreferences = {
   media_learning_enabled: true,
   retention_days: null,
 };
+
+// ─── Database Row Types ───────────────────────────────────────────────────────
+// Direct 1:1 mappings of database table columns from migration 011_media_memory.sql.
+// Use these when working with raw database rows (no joins / no frontend enrichment).
+
+/** Row type for the `uploaded_media` table. */
+export interface UploadedMediaRow {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  public_url: string | null;
+  filename: string;
+  media_type: 'image' | 'video';
+  mime_type: string | null;
+  file_size_bytes: number | null;
+  user_title: string | null;
+  user_note: string | null;
+  processing_state: MediaProcessingState;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Row type for the `media_analysis` table. */
+export interface MediaAnalysisRow {
+  id: string;
+  media_id: string;
+  user_id: string;
+  summary: string | null;
+  description: string | null;
+  extracted_text: string | null;
+  transcript: string | null;
+  tags: string[];
+  entities: MediaEntity[];
+  emotional_cues: string[];
+  timestamped_moments: TimestampedMoment[];
+  model_used: string | null;
+  embedding: number[] | null;
+  created_at: string;
+}
+
+/** Row type for the `memory_candidates` table. */
+export interface MemoryCandidateRow {
+  id: string;
+  user_id: string;
+  media_id: string | null;
+  title: string;
+  content: string;
+  category: string;
+  confidence: number;
+  privacy_level: string;
+  tags: string[];
+  status: MemoryCandidateStatus;
+  decided_at: string | null;
+  created_at: string;
+}
+
+/** Row type for the `media_knowledge_entries` table. */
+export interface MediaKnowledgeEntryRow {
+  id: string;
+  user_id: string;
+  media_id: string;
+  title: string;
+  content: string;
+  item_type: 'document' | 'note' | 'link' | 'snippet' | 'media';
+  category: string;
+  tags: string[];
+  summary: string | null;
+  embedding: number[] | null;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Row type for the `media_memory_links` table. */
+export interface MediaMemoryLinkRow {
+  id: string;
+  user_id: string;
+  media_id: string;
+  memory_type: 'episodic' | 'relationship' | 'summary';
+  memory_id: string;
+  created_at: string;
+}
+
+/** Payload for creating a new uploaded_media record. */
+export interface CreateUploadedMediaPayload {
+  user_id: string;
+  storage_path: string;
+  public_url?: string;
+  filename: string;
+  media_type: 'image' | 'video';
+  mime_type?: string;
+  file_size_bytes?: number;
+  user_title?: string;
+  user_note?: string;
+  processing_state?: MediaProcessingState;
+}
+
+/** Payload for updating an uploaded_media processing state. */
+export interface UpdateMediaStatePayload {
+  processing_state: MediaProcessingState;
+  updated_at?: string;
+}
