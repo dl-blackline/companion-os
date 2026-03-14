@@ -135,6 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) {
       return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." } as AuthError }
     }
+    if (!email || !email.includes('@')) {
+      return { error: { message: "Please enter a valid email address." } as AuthError }
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email)
     return { error }
   }

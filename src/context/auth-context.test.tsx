@@ -335,6 +335,23 @@ describe('Password reset', () => {
 
     expect(resetResult?.error).toEqual(resetError);
   });
+
+  it('returns error for invalid email without calling API', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let resetResult: { error: unknown } | undefined;
+    await act(async () => {
+      resetResult = await result.current.resetPassword('not-an-email');
+    });
+
+    expect(resetResult?.error).toEqual(expect.objectContaining({ message: expect.stringContaining('valid email') }));
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
