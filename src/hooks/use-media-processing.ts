@@ -27,9 +27,9 @@ interface UseMediaProcessingReturn {
   /** Generate a video from a prompt. */
   requestVideoGeneration: (request: VideoGenerationRequest) => Promise<void>;
   /** Analyze an image by URL. */
-  requestImageAnalysis: (url: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
+  requestImageAnalysis: (url: string, userId: string, filename: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
   /** Analyze a video by URL. */
-  requestVideoAnalysis: (url: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
+  requestVideoAnalysis: (url: string, userId: string, filename: string, depth?: 'quick' | 'standard' | 'deep') => Promise<void>;
   /** Extract metadata from a local file. */
   extractMetadata: (file: File) => Promise<VideoMetadata | ImageMetadata>;
   /** Extract a video thumbnail. */
@@ -66,15 +66,15 @@ export function useMediaProcessing(): UseMediaProcessingReturn {
     setGenerationState(result);
   }, []);
 
-  const requestImageAnalysis = useCallback(async (url: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
+  const requestImageAnalysis = useCallback(async (url: string, userId: string, filename: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
     setAnalysisState(loading());
-    const result = await analyzeImage(url, depth);
+    const result = await analyzeImage(url, userId, filename, depth);
     setAnalysisState(result);
   }, []);
 
-  const requestVideoAnalysis = useCallback(async (url: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
+  const requestVideoAnalysis = useCallback(async (url: string, userId: string, filename: string, depth: 'quick' | 'standard' | 'deep' = 'standard') => {
     setAnalysisState(loading());
-    const result = await analyzeVideo(url, depth);
+    const result = await analyzeVideo(url, userId, filename, depth);
     setAnalysisState(result);
   }, []);
 
