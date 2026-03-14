@@ -156,7 +156,7 @@ export interface VideoGenerationRequest {
   readonly prompt: string;
   readonly style: MediaGenerationStyle;
   readonly durationSeconds: number;
-  readonly model: 'sora' | 'runway-gen3';
+  readonly model: 'sora' | 'runway-gen3' | 'kling-3.0' | 'kling-omni' | 'hailuo-2.3' | 'veo-3.1' | 'nofilter-video';
   readonly enhancePrompt: boolean;
 }
 
