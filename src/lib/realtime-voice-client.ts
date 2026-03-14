@@ -191,14 +191,14 @@ export class RealtimeVoiceClient {
     };
   }
 
-  /** Connect to the OpenAI Realtime API via WebRTC. */
+  /** Connect to the Realtime API via WebRTC. */
   async connect(): Promise<void> {
     if (this._state !== 'disconnected') return;
     this.setState('connecting');
 
     try {
-      // 1. Get ephemeral key from our server
-      const ephemeralKey = await this.fetchEphemeralKey();
+      // 1. Get ephemeral key and realtime endpoint from our server
+      const { key: ephemeralKey, endpoint: realtimeEndpoint } = await this.fetchEphemeralKey();
 
       // 2. Create peer connection
       this.pc = new RTCPeerConnection();
@@ -238,9 +238,9 @@ export class RealtimeVoiceClient {
       const offer = await this.pc.createOffer();
       await this.pc.setLocalDescription(offer);
 
-      // 7. Send SDP to OpenAI Realtime endpoint
+      // 7. Send SDP to the Realtime endpoint (OpenAI or NoFilter)
       const sdpResponse = await fetch(
-        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(this.model)}`,
+        `${realtimeEndpoint}?model=${encodeURIComponent(this.model)}`,
         {
           method: 'POST',
           headers: {
@@ -376,7 +376,7 @@ export class RealtimeVoiceClient {
 
   // ── Private ──
 
-  private async fetchEphemeralKey(): Promise<string> {
+  private async fetchEphemeralKey(): Promise<{ key: string; endpoint: string }> {
     const res = await fetch('/.netlify/functions/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -395,7 +395,10 @@ export class RealtimeVoiceClient {
     }
 
     const data = await res.json();
-    return data.client_secret;
+    return {
+      key: data.client_secret,
+      endpoint: data.realtime_endpoint || 'https://api.openai.com/v1/realtime',
+    };
   }
 
   private setupDataChannel(): void {
