@@ -23,6 +23,7 @@ import { processVoiceTurn, createRealtimeSession } from "../../lib/voice-engine.
 import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
 import { runTask } from "../../lib/multimodal-engine.js";
 import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
+import { isNofilterModel } from "../../lib/nofilter-client.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -516,16 +517,25 @@ async function handleRealtime(data) {
 /* -------------------------------------------------------------------------- */
 
 async function handleRealtimeToken(data) {
-  if (!process.env.OPENAI_API_KEY) {
-    return response(500, { error: "OpenAI API key not configured" });
-  }
-
   const model = data.model;
   const voice = data.voice;
 
+  // Validate that the required API key is present for the requested provider.
+  // When a NoFilter model is requested, only NOFILTER_GPT_API_KEY is checked
+  // here; OPENAI_API_KEY is still required for other functions in this file
+  // (chat memory embeddings, vision analysis, etc.) but is not needed for the
+  // realtime token endpoint itself.
+  if (isNofilterModel(model)) {
+    if (!process.env.NOFILTER_GPT_API_KEY) {
+      return response(500, { error: "NOFILTER_GPT_API_KEY is not configured" });
+    }
+  } else if (!process.env.OPENAI_API_KEY) {
+    return response(500, { error: "OpenAI API key not configured" });
+  }
+
   try {
-    const { client_secret } = await createRealtimeSession({ model, voice });
-    return response(200, { client_secret });
+    const { client_secret, realtime_endpoint } = await createRealtimeSession({ model, voice });
+    return response(200, { client_secret, realtime_endpoint });
   } catch (err) {
     console.error("Realtime token error:", err.message);
     return response(500, { error: "Failed to create realtime session" });
