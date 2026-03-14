@@ -520,7 +520,11 @@ async function handleRealtimeToken(data) {
   const model = data.model;
   const voice = data.voice;
 
-  // Determine provider from model prefix — nofilter models need NoFilter credentials
+  // Validate that the required API key is present for the requested provider.
+  // When a NoFilter model is requested, only NOFILTER_GPT_API_KEY is checked
+  // here; OPENAI_API_KEY is still required for other functions in this file
+  // (chat memory embeddings, vision analysis, etc.) but is not needed for the
+  // realtime token endpoint itself.
   if (isNofilterModel(model)) {
     if (!process.env.NOFILTER_GPT_API_KEY) {
       return response(500, { error: "NOFILTER_GPT_API_KEY is not configured" });
