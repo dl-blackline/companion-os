@@ -172,6 +172,7 @@ interface DiagnosticsResult {
   supabase: ServiceStatus;
   vector_search: ServiceStatus;
   media: ServiceStatus;
+  leonardo: ServiceStatus;
   realtime_voice: ServiceStatus;
 }
 
@@ -180,6 +181,7 @@ const INITIAL_DIAGNOSTICS: DiagnosticsResult = {
   supabase: 'idle',
   vector_search: 'idle',
   media: 'idle',
+  leonardo: 'idle',
   realtime_voice: 'idle',
 };
 
@@ -216,6 +218,7 @@ const SERVICE_LABELS: Record<keyof DiagnosticsResult, string> = {
   supabase: 'Supabase',
   vector_search: 'Vector Search',
   media: 'Media APIs',
+  leonardo: 'Leonardo AI',
   realtime_voice: 'Realtime Voice',
 };
 
@@ -278,6 +281,7 @@ export function SettingsView() {
       supabase: 'checking',
       vector_search: 'checking',
       media: 'checking',
+      leonardo: 'checking',
       realtime_voice: 'checking',
     });
 
@@ -297,6 +301,7 @@ export function SettingsView() {
         supabase: data.supabase === 'ok' ? 'ok' : 'error',
         vector_search: data.vector_search === 'ok' ? 'ok' : 'error',
         media: data.media === 'ok' ? 'ok' : 'error',
+        leonardo: data.leonardo === 'ok' ? 'ok' : 'error',
         realtime_voice: hasVoice ? 'ok' : 'error',
       });
     } catch {
@@ -305,6 +310,7 @@ export function SettingsView() {
         supabase: 'error',
         vector_search: 'error',
         media: 'error',
+        leonardo: 'error',
         realtime_voice: 'error',
       });
     } finally {
