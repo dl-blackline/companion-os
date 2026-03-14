@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { CompanionState } from '@/types';
+import type { EmojiOrbFeatureSet } from '@/types/emoji-orb';
+import { useOrbAppearance } from '@/context/orb-appearance-context';
 
 interface CompanionOrbProps {
   state: CompanionState;
@@ -8,6 +10,8 @@ interface CompanionOrbProps {
   onClick?: () => void;
   className?: string;
   showRipples?: boolean;
+  /** Override emoji orb features for preview (bypasses context). */
+  previewFeatures?: EmojiOrbFeatureSet | null;
 }
 
 const sizeConfig = {
@@ -112,19 +116,48 @@ function getRingAnimationClass(state: CompanionState, ring: 'inner' | 'mid' | 'o
   return ring === 'inner' ? 'ring-slow' : ring === 'mid' ? 'ring-medium' : '';
 }
 
+/** Font sizes for the emoji character relative to the orb size. */
+const emojiFontSize: Record<string, string> = {
+  sm: 'text-2xl',
+  md: 'text-4xl',
+  lg: 'text-5xl',
+  xl: 'text-6xl',
+};
+
 export function CompanionOrb({
   state,
   size = 'lg',
   onClick,
   className,
   showRipples = true,
+  previewFeatures,
 }: CompanionOrbProps) {
+  const orbAppearance = useOrbAppearance();
   const sizes = sizeConfig[size];
-  const colors = getStateColors(state);
+  const defaultColors = getStateColors(state);
   const isListening = state === 'listening';
   const isSpeaking = state === 'speaking';
   const isThinking = state === 'thinking';
   const isActive = state !== 'idle';
+
+  // Determine active emoji features: preview prop > context > null
+  const activeFeatures = previewFeatures !== undefined
+    ? previewFeatures
+    : orbAppearance.emojiFeatures;
+
+  // When emoji mode is active, use feature colors; otherwise default state colors
+  const colors = activeFeatures
+    ? {
+        coreFrom: activeFeatures.gradientFrom,
+        coreMid: activeFeatures.gradientMid,
+        coreTo: activeFeatures.gradientTo,
+        ringColor: activeFeatures.ringColor,
+        highlightColor: activeFeatures.highlightColor,
+        orbClass: defaultColors.orbClass, // Keep animation class for pulsing
+      }
+    : defaultColors;
+
+  const activeEmoji = activeFeatures?.emoji ?? null;
 
   return (
     <div
@@ -154,22 +187,25 @@ export function CompanionOrb({
               className={cn(
                 'absolute rounded-full pointer-events-none border',
                 sizes.ring3,
-                isListening ? 'border-[oklch(0.65_0.20_230/0.50)] ripple-1' : 'border-[oklch(0.70_0.18_65/0.45)] ripple-1'
+                'ripple-1'
               )}
+              style={{ borderColor: colors.ringColor }}
             />
             <div
               className={cn(
                 'absolute rounded-full pointer-events-none border',
                 sizes.ring3,
-                isListening ? 'border-[oklch(0.65_0.20_230/0.40)] ripple-2' : 'border-[oklch(0.70_0.18_65/0.35)] ripple-2'
+                'ripple-2'
               )}
+              style={{ borderColor: colors.ringColor }}
             />
             <div
               className={cn(
                 'absolute rounded-full pointer-events-none border',
                 sizes.ring3,
-                isListening ? 'border-[oklch(0.65_0.20_230/0.30)] ripple-3' : 'border-[oklch(0.70_0.18_65/0.25)] ripple-3'
+                'ripple-3'
               )}
+              style={{ borderColor: colors.ringColor }}
             />
           </>
         )}
@@ -229,6 +265,22 @@ export function CompanionOrb({
           style={{ background: colors.highlightColor }}
         />
 
+        {/* Emoji character overlay — shown when emoji orb is active */}
+        {activeEmoji && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <span
+              className={cn(
+                emojiFontSize[size] ?? 'text-4xl',
+                'leading-none drop-shadow-lg select-none'
+              )}
+              role="img"
+              aria-label="Orb emoji"
+            >
+              {activeEmoji}
+            </span>
+          </div>
+        )}
+
         {/* Thinking: orbiting particle */}
         {isThinking && (
           <div className="absolute inset-0 rounded-full ring-fast pointer-events-none">
@@ -240,7 +292,7 @@ export function CompanionOrb({
         )}
 
         {/* Speaking: small inner pulse dot */}
-        {isSpeaking && (
+        {isSpeaking && !activeEmoji && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <motion.div
               className="w-2 h-2 rounded-full"

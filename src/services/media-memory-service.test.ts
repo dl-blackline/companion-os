@@ -385,3 +385,71 @@ describe('analyzeImage service', () => {
     }
   });
 });
+
+// ─── analyzeVideo Service Fix ─────────────────────────────────────────────────
+
+describe('analyzeVideo service', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('sends correct fields to the backend API', async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+
+    globalThis.fetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(init?.body as string);
+      return new Response(
+        JSON.stringify({
+          analysis_record: {
+            summary: 'test video',
+            description: 'test video desc',
+            extractedText: null,
+            transcript: 'hello world',
+            tags: ['video'],
+            entities: [],
+            emotionalCues: [],
+            objects: [],
+            scenes: [],
+            contentClassification: { primaryCategory: 'test', subcategories: [], isSafe: true, sensitivityFlags: [] },
+            qualityScore: 0.8,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    });
+
+    const { analyzeVideo } = await import('@/services/video-service');
+    await analyzeVideo('https://example.com/vid.mp4', 'user-456', 'clip.mp4', 'standard');
+
+    expect(capturedBody).not.toBeNull();
+    expect(capturedBody!.action).toBe('analyze');
+    expect(capturedBody!.user_id).toBe('user-456');
+    expect(capturedBody!.public_url).toBe('https://example.com/vid.mp4');
+    expect(capturedBody!.filename).toBe('clip.mp4');
+    expect(capturedBody!.media_type).toBe('video');
+    // Verify old incorrect field is NOT sent
+    expect(capturedBody!.media_url).toBeUndefined();
+  });
+
+  it('returns validation error when user_id is missing', async () => {
+    const { analyzeVideo } = await import('@/services/video-service');
+    const result = await analyzeVideo('https://example.com/vid.mp4', '', 'clip.mp4');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toContain('user_id');
+    }
+  });
+
+  it('returns validation error when filename is missing', async () => {
+    const { analyzeVideo } = await import('@/services/video-service');
+    const result = await analyzeVideo('https://example.com/vid.mp4', 'user-456', '');
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.error.message).toContain('filename');
+    }
+  });
+});

@@ -3,6 +3,7 @@ export * from './async';
 export * from './media';
 export * from './knowledge';
 export * from './memory';
+export * from './emoji-orb';
 
 export type ConversationMode = 
   | 'strategist' 
@@ -538,6 +539,8 @@ export interface UserPreferences {
   // Appearance
   theme: 'dark' | 'light' | 'system';
   accent_color?: string;
+  /** Orb appearance preference (emoji orb configuration). Stored as nested JSONB. */
+  orb_appearance?: OrbPreferencePayload;
   // Privacy
   data_storage: boolean;
   export_enabled: boolean;

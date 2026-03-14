@@ -6,6 +6,7 @@ import { ErrorFallback } from './ErrorFallback.tsx'
 import { AuthProvider } from './context/auth-context'
 import { SettingsProvider } from './context/settings-context'
 import { VoiceProvider } from './context/voice-context'
+import { OrbAppearanceProvider } from './context/orb-appearance-context'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import "./main.css"
@@ -17,9 +18,11 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <ProtectedRoute>
         <SettingsProvider>
-          <VoiceProvider>
-            <App />
-          </VoiceProvider>
+          <OrbAppearanceProvider>
+            <VoiceProvider>
+              <App />
+            </VoiceProvider>
+          </OrbAppearanceProvider>
         </SettingsProvider>
       </ProtectedRoute>
     </AuthProvider>
