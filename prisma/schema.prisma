@@ -1,0 +1,222 @@
+// Tarot AI — Prisma Schema
+// Run: npx prisma migrate dev --name init
+// DB:  postgresql (set DATABASE_URL in .env)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User / Identity ──────────────────────────────────────────────────────────
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  firstName   String
+  email       String?  @unique
+  dateOfBirth DateTime
+  zodiacSign  String
+
+  sessions    ReadingSession[]
+  spiritProfile SpiritProfile?
+  emailLeads  EmailLead[]
+
+  @@map("user_profiles")
+}
+
+// ─── Reading Session ──────────────────────────────────────────────────────────
+
+model ReadingSession {
+  id          String        @id @default(cuid())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  userId      String?
+  user        UserProfile?  @relation(fields: [userId], references: [id])
+
+  // Captured intake data (denormalized for stateless lookups)
+  firstName   String
+  dateOfBirth DateTime
+  zodiacSign  String
+
+  spreadType  String        @default("three-card") // past/present/future
+  status      ReadingStatus @default(PENDING)
+
+  cards       ReadingCardResult[]
+  summary     String?       // generated spread summary text
+  energyTheme String?       // e.g. "transformation & clarity"
+  analyticsEvents AnalyticsEvent[]
+  recommendations ProductRecommendation[]
+
+  @@map("reading_sessions")
+}
+
+enum ReadingStatus {
+  PENDING
+  GENERATED
+  VIEWED
+  COMPLETED
+}
+
+// ─── Tarot Card Catalog ───────────────────────────────────────────────────────
+
+model TarotCard {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  slug          String   @unique // e.g. "the-fool", "ace-of-cups"
+  name          String
+  arcana        Arcana
+  suit          String?  // null for Major Arcana
+  numeralIndex  Int      // 0–77 for ordering
+
+  uprightMeaning  String @db.Text
+  reversedMeaning String @db.Text
+  uprightKeywords String[] // ["beginnings", "freedom", "innocence"]
+  reversedKeywords String[]
+
+  imageUrl      String?
+  symbolism     String?  @db.Text
+  element       String?  // Fire, Water, Air, Earth, Spirit
+  astrologicalCorrespondence String?
+
+  results ReadingCardResult[]
+
+  @@map("tarot_cards")
+}
+
+enum Arcana {
+  MAJOR
+  MINOR
+}
+
+// ─── Reading Card Results ─────────────────────────────────────────────────────
+
+model ReadingCardResult {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  sessionId   String
+  session     ReadingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  cardId      String
+  card        TarotCard @relation(fields: [cardId], references: [id])
+
+  position    Int      // 0 = past, 1 = present, 2 = future
+  positionLabel String // "Past", "Present", "Future"
+  isReversed  Boolean
+
+  interpretation String @db.Text // generated interpretation text
+
+  @@unique([sessionId, position])
+  @@map("reading_card_results")
+}
+
+// ─── Offers ───────────────────────────────────────────────────────────────────
+
+model Offer {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slug        String   @unique
+  title       String
+  description String   @db.Text
+  price       Float    // in USD
+  currency    String   @default("USD")
+  ctaLabel    String   @default("Get It Now")
+  imageUrl    String?
+  category    String   // "reading", "product", "subscription"
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  recommendations ProductRecommendation[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@map("offers")
+}
+
+// ─── Email Leads ──────────────────────────────────────────────────────────────
+
+model EmailLead {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  email       String   @unique
+  firstName   String?
+  source      String   @default("reading-save") // "reading-save" | "newsletter" | etc.
+  zodiacSign  String?
+  sessionId   String?
+
+  userId      String?
+  user        UserProfile? @relation(fields: [userId], references: [id])
+
+  @@map("email_leads")
+}
+
+// ─── Spirit / Energetic Profile ───────────────────────────────────────────────
+
+model SpiritProfile {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String   @unique
+  user        UserProfile @relation(fields: [userId], references: [id])
+
+  zodiacSign      String
+  element         String?  // Fire, Earth, Air, Water
+  modality        String?  // Cardinal, Fixed, Mutable
+  dominantThemes  String[] // ["transformation", "clarity", "love"]
+  readingCount    Int      @default(0)
+  lastReadAt      DateTime?
+
+  notes           String?  @db.Text
+
+  @@map("spirit_profiles")
+}
+
+// ─── Product Recommendations ─────────────────────────────────────────────────
+
+model ProductRecommendation {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  sessionId   String
+  session     ReadingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  offerId     String
+  offer       Offer @relation(fields: [offerId], references: [id])
+
+  reason      String?  // why recommended (e.g. "suits your transformation theme")
+  score       Float    @default(1.0)
+  position    Int      @default(0)
+
+  @@map("product_recommendations")
+}
+
+// ─── Analytics Events ─────────────────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  eventName   String   // e.g. "landing_view", "offer_clicked"
+  sessionId   String?
+  session     ReadingSession? @relation(fields: [sessionId], references: [id])
+
+  offerId     String?
+  offer       Offer?   @relation(fields: [offerId], references: [id])
+
+  userId      String?
+  properties  Json?    // arbitrary event properties
+
+  @@map("analytics_events")
+}

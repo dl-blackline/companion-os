@@ -15,6 +15,7 @@ import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AgentsView } from '@/components/views/AgentsView';
 import { AdminConsoleView } from '@/components/views/AdminConsoleView';
+import { TarotView } from '@/components/views/TarotView';
 import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
 import { useVoice } from '@/context/voice-context';
 import { useAuth } from '@/context/auth-context';
@@ -92,6 +93,8 @@ function App() {
         return <AgentsView />;
       case 'settings':
         return <SettingsView />;
+      case 'tarot':
+        return <TarotView />;
       case 'admin-console':
         return isAdmin ? <AdminConsoleView /> : (
           <HomeDashboard
