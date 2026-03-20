@@ -10,6 +10,11 @@ import {
   dailyPlan,
   researchTask,
   contextAwareChat,
+  liveTalkSystem,
+  liveTalkIntentClassification,
+  liveTalkRoleplay,
+  liveTalkTask,
+  liveTalkMediaAck,
   getTemplate,
   listTemplates,
   templates,
@@ -234,6 +239,102 @@ describe('template registry', () => {
     expect(names).toContain('dailyPlan');
     expect(names).toContain('researchTask');
     expect(names).toContain('contextAwareChat');
+    expect(names).toContain('liveTalkSystem');
+    expect(names).toContain('liveTalkIntentClassification');
+    expect(names).toContain('liveTalkRoleplay');
+    expect(names).toContain('liveTalkTask');
+    expect(names).toContain('liveTalkMediaAck');
     expect(names).toHaveLength(Object.keys(templates).length);
+  });
+});
+
+// ─── liveTalkSystem ─────────────────────────────────────────────────────────
+
+describe('liveTalkSystem', () => {
+  it('returns a system prompt string with the AI name', () => {
+    const result = liveTalkSystem({ aiName: 'Aria', mode: 'neutral' });
+    expect(typeof result).toBe('string');
+    expect(result).toContain('Aria');
+  });
+
+  it('appends mode-specific instructions for known modes', () => {
+    expect(liveTalkSystem({ aiName: 'AI', mode: 'strategist' })).toContain('strategic');
+    expect(liveTalkSystem({ aiName: 'AI', mode: 'coach' })).toContain('encouraging');
+  });
+
+  it('uses defaults when params are omitted', () => {
+    const result = liveTalkSystem({});
+    expect(result).toContain('Companion');
+  });
+});
+
+// ─── liveTalkIntentClassification ───────────────────────────────────────────
+
+describe('liveTalkIntentClassification', () => {
+  it('returns { system, user } prompt pair', () => {
+    const result = liveTalkIntentClassification({
+      message: 'draw me a sunset',
+      historyContext: 'User: hello',
+    });
+    expect(result).toHaveProperty('system');
+    expect(result).toHaveProperty('user');
+    expect(result.system).toContain('intent classifier');
+    expect(result.user).toContain('draw me a sunset');
+  });
+});
+
+// ─── liveTalkRoleplay ───────────────────────────────────────────────────────
+
+describe('liveTalkRoleplay', () => {
+  it('includes character, scenario, and message', () => {
+    const result = liveTalkRoleplay({
+      character: 'Sherlock',
+      scenario: 'solving a mystery',
+      historyContext: 'User: Hi',
+      message: 'What do you see?',
+    });
+    expect(result.system).toContain('Sherlock');
+    expect(result.system).toContain('solving a mystery');
+    expect(result.user).toContain('What do you see?');
+  });
+});
+
+// ─── liveTalkTask ───────────────────────────────────────────────────────────
+
+describe('liveTalkTask', () => {
+  it('includes task type and description', () => {
+    const result = liveTalkTask({
+      aiName: 'Genie',
+      taskType: 'summary',
+      taskDescription: 'Summarize the meeting',
+    });
+    expect(result.system).toContain('Genie');
+    expect(result.user).toContain('summary');
+    expect(result.user).toContain('Summarize the meeting');
+  });
+});
+
+// ─── liveTalkMediaAck ───────────────────────────────────────────────────────
+
+describe('liveTalkMediaAck', () => {
+  it('acknowledges image generation', () => {
+    const result = liveTalkMediaAck({
+      aiName: 'Aria',
+      mediaType: 'image',
+      prompt: 'a sunset over the ocean',
+    });
+    expect(result.system).toContain('Aria');
+    expect(result.system).toContain('image');
+    expect(result.user).toContain('sunset over the ocean');
+  });
+
+  it('acknowledges video generation', () => {
+    const result = liveTalkMediaAck({
+      aiName: 'AI',
+      mediaType: 'video',
+      prompt: 'dancing cat',
+    });
+    expect(result.system).toContain('video');
+    expect(result.user).toContain('a video');
   });
 });

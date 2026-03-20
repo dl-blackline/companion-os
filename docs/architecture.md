@@ -56,6 +56,9 @@ to domain-specific sub-capabilities.
 │ • chatJSON()         │ │ • summarizeCtx() │ │ • storeLongTerm()     │
 │ • chatStream()       │ │ • formatBlock()  │ │ • searchAll()         │
 │ • embed()            │ │                  │ │ • ingest()            │
+│ • onCost() / offCost │ │                  │ │ • saveInteraction()   │
+│ • retry + timeout    │ │                  │ │ • getRecentContext()  │
+│                      │ │                  │ │ • summarizeMemory()   │
 └─────────┬────────────┘ └────────┬─────────┘ └───────────┬───────────┘
           │                       │                        │
           ▼                       ▼                        ▼
@@ -88,10 +91,11 @@ to domain-specific sub-capabilities.
 companion-os/
 ├── lib/                              # Core backend logic
 │   ├── companion-brain.js            # ★ Unified orchestrator — think()
-│   ├── ai-client.js                  # ★ Centralized AI client
+│   ├── ai-client.js                  # ★ Centralized AI client (retry, timeout, cost hooks)
 │   ├── context-engine.js             # ★ Context aggregation engine
 │   ├── memory-layer.js               # ★ Unified memory (short-term + long-term)
-│   ├── prompt-templates.js           # ★ Centralized prompt templates
+│   ├── prompt-templates.js           # ★ Centralized prompt templates (incl. live-talk)
+│   ├── _responses.js                 # ★ Unified response contract helpers
 │   ├── orchestrator.js               # Legacy orchestrator (still works)
 │   ├── context-builder.js            # Hierarchical context assembly
 │   ├── system-prompt.js              # System prompt construction
@@ -113,9 +117,9 @@ companion-os/
 │   └── ...                           # Other engines & providers
 │
 ├── netlify/functions/                # Serverless API
-│   ├── companion-brain.js            # ★ Unified AI endpoint
-│   ├── ai.js                         # Legacy AI gateway (still works)
-│   ├── chat.js                       # Legacy chat endpoint
+│   ├── companion-brain.js            # ★ Unified AI endpoint (response contract)
+│   ├── ai.js                         # Legacy AI gateway (uses think() + ai-client)
+│   ├── chat.js                       # Legacy chat endpoint (uses think())
 │   └── ...                           # Other endpoints
 │
 ├── src/services/                     # Frontend services
@@ -288,7 +292,11 @@ endpoints. The migration path is:
 
 1. **Phase 1 (Current):** New `companion-brain` endpoint added alongside
    existing `ai.js` and `chat.js` endpoints. All existing endpoints continue
-   to work unchanged.
+   to work unchanged. The legacy `ai.js` (handleChat) and `chat.js` endpoints
+   now route through `think()` from the Companion Brain instead of calling the
+   old `orchestrate()` pipeline directly, ensuring consistent behavior across
+   all entry points. All AI calls in `ai.js` (including live-talk) now go
+   through the centralized `ai-client.js` instead of direct `runAI()` calls.
 
 2. **Phase 2 (Future):** Frontend services (`companion-service.ts`) updated to
    call `companion-brain` instead of `ai.js`. The old `ai.js` endpoint can add
@@ -315,11 +323,15 @@ endpoints. The migration path is:
 
 1. **Single AI Client** (`ai-client.js`): All modules call `chat()`, `chatJSON()`,
    `embed()` instead of importing OpenAI directly. This gives a single
-   chokepoint for logging, rate-limiting, and provider switching.
+   chokepoint for logging, rate-limiting, and provider switching. Includes
+   automatic retry with exponential back-off, per-request timeout, and
+   pluggable cost-tracking hooks (`onCost()` / `offCost()`).
 
 2. **Prompt Templates** (`prompt-templates.js`): All prompts are centralized,
    composable functions. Each template accepts a context object and returns a
-   `{ system, user }` pair.
+   `{ system, user }` pair. Includes templates for live-talk voice interactions
+   (`liveTalkSystem`, `liveTalkIntentClassification`, `liveTalkRoleplay`,
+   `liveTalkTask`, `liveTalkMediaAck`).
 
 3. **Context Engine** (`context-engine.js`): Aggregates all context layers
    (profile, memory, goals, session) before every AI call. Returns both raw
@@ -327,7 +339,14 @@ endpoints. The migration path is:
 
 4. **Memory Layer** (`memory-layer.js`): Unified short-term + long-term memory
    via the `brain_memory` table. Wraps and extends the existing memory-manager.
+   Convenience wrappers: `saveInteraction()`, `getRecentContext()`,
+   `summarizeMemory()`.
 
-5. **Domain Handlers**: Intent-specific handlers (roleplay, planning, research)
+5. **Response Contract** (`_responses.js`): All endpoints use a unified response
+   envelope — `ok(data)` returns `{ success: true, data }` and `fail(error, code)`
+   returns `{ success: false, error, code }`. The `preflight()` helper handles
+   CORS OPTIONS requests consistently.
+
+6. **Domain Handlers**: Intent-specific handlers (roleplay, planning, research)
    use purpose-built prompt templates with full context injection. New
    capabilities are added by registering a handler + template.
