@@ -80,7 +80,17 @@ export async function handler(event) {
   const { action, user_id } = body;
 
   if (!action) return err(400, "Missing required field: action");
-  if (!user_id) return err(400, "Missing required field: user_id");
+
+  // Actions that operate on a specific resource by ID don't require user_id.
+  const RESOURCE_ACTIONS = new Set([
+    "goals.update", "goals.delete",
+    "constraints.update", "constraints.delete",
+    "initiatives.update",
+  ]);
+
+  if (!user_id && !RESOURCE_ACTIONS.has(action)) {
+    return err(400, "Missing required field: user_id");
+  }
 
   try {
     // ── Goals ───────────────────────────────────────────────────────────────

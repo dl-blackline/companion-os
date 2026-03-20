@@ -199,7 +199,6 @@ export async function updateUserGoal(
 ): Promise<AsyncResult<UserGoal>> {
   const result = await post<{ goal: GoalRow }>({
     action: 'goals.update',
-    user_id: '', // not used by the API for updates, but required by the schema
     goal_id: goalId,
     ...updates,
     target_date: updates.targetDate,
@@ -209,10 +208,8 @@ export async function updateUserGoal(
 }
 
 export async function deleteUserGoal(goalId: string): Promise<AsyncResult<boolean>> {
-  // user_id is required by the API validator but not used for delete — send empty
   const result = await post<{ deleted: boolean }>({
     action: 'goals.delete',
-    user_id: '',
     goal_id: goalId,
   });
   if (!result.ok) return result;
@@ -251,7 +248,6 @@ export async function createUserConstraint(
 export async function deleteUserConstraint(constraintId: string): Promise<AsyncResult<boolean>> {
   const result = await post<{ deleted: boolean }>({
     action: 'constraints.delete',
-    user_id: '',
     constraint_id: constraintId,
   });
   if (!result.ok) return result;
@@ -279,7 +275,6 @@ export async function updateInitiative(
 ): Promise<AsyncResult<CompanionInitiative>> {
   const result = await post<{ initiative: InitiativeRow }>({
     action: 'initiatives.update',
-    user_id: '',
     initiative_id: initiativeId,
     status: payload.status,
   });
