@@ -285,7 +285,10 @@ async function handleChat(data) {
 
     try {
       const aiResponse = await aiChat({
-        prompt: { system: "", user: message },
+        prompt: {
+          system: "You are a helpful, mature AI companion. Respond naturally and warmly.",
+          user: message,
+        },
         model,
       });
 
