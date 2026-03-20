@@ -4,6 +4,7 @@ export * from './media';
 export * from './knowledge';
 export * from './memory';
 export * from './emoji-orb';
+export * from './companion';
 
 export type ConversationMode = 
   | 'strategist' 
