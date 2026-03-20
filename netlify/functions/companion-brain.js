@@ -1,5 +1,6 @@
 import { think, listCapabilities } from "../../lib/companion-brain.js";
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -30,54 +31,39 @@ const supabase = createClient(
  *   → Returns list of supported capabilities.
  */
 export async function handler(event) {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  };
-
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers, body: "" };
+    return preflight();
   }
 
   // GET — list capabilities
   if (event.httpMethod === "GET") {
     const params = event.queryStringParameters || {};
     if (params.action === "capabilities") {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ capabilities: listCapabilities() }),
-      };
+      return ok({ capabilities: listCapabilities() });
     }
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Unknown action. Use ?action=capabilities" }),
-    };
+    return fail("Unknown action. Use ?action=capabilities", "ERR_UNKNOWN_ACTION", 400);
   }
 
   // POST — process AI interaction
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   let body;
   try {
     body = JSON.parse(event.body || "{}");
   } catch {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: "Invalid JSON body" }) };
+    return fail("Invalid JSON body", "ERR_PARSE", 400);
   }
 
   const { message, user_id, conversation_id } = body;
 
   if (!message || !user_id || !conversation_id) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Missing required fields: message, user_id, conversation_id" }),
-    };
+    return fail(
+      "Missing required fields: message, user_id, conversation_id",
+      "ERR_VALIDATION",
+      400,
+    );
   }
 
   // Build a getRecentConversation callback from Supabase
@@ -111,21 +97,13 @@ export async function handler(event) {
       extra: body.extra,
     });
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        response: result.response,
-        intent: result.intent,
-        isMedia: result.isMedia,
-      }),
-    };
+    return ok({
+      response: result.response,
+      intent: result.intent,
+      isMedia: result.isMedia,
+    });
   } catch (err) {
     console.error("companion-brain error:", err);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: "Internal brain error", message: err.message }),
-    };
+    return fail("Internal brain error", "ERR_BRAIN", 500);
   }
 }

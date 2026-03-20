@@ -1,13 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
-import { orchestrate } from "../../lib/orchestrator.js";
-import { runAI } from "../../lib/ai-router.js";
-import { processMemory } from "../../lib/memory-manager.js";
-import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
+import { think } from "../../lib/companion-brain.js";
+import { chat as aiChat } from "../../lib/ai-client.js";
 import {
-  detectEmotions,
-  storeEmotionalSignals,
-} from "../../lib/emotion-detector.js";
+  liveTalkSystem,
+  liveTalkIntentClassification,
+  liveTalkRoleplay,
+  liveTalkTask,
+  liveTalkMediaAck,
+} from "../../lib/prompt-templates.js";
 import {
   createSession,
   endSession,
@@ -24,6 +25,7 @@ import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
 import { runTask } from "../../lib/multimodal-engine.js";
 import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 import { isNofilterModel } from "../../lib/nofilter-client.js";
+import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -165,70 +167,25 @@ async function handleChat(data) {
         }),
       ]);
 
-      /* Non-blocking memory tasks so the AI learns from the media content */
-      const mediaContextMessage =
-        `User shared a ${media_type || "image"}. AI analysis: ${visionAnalysis}`;
-
-      const recentHistoryStr = recentHistory
-        .map((m) => `[${m.role}]: ${m.content}`)
-        .join("\n");
-
-      Promise.allSettled([
-        processMemory({
-          user_id,
-          conversation_id,
-          message: mediaContextMessage,
-          conversationHistory: recentHistoryStr,
-          messageCount: recentHistory.length,
-        }),
-
-        processKnowledgeGraph(user_id, mediaContextMessage),
-
-        detectEmotions(message)
-          .then((signals) =>
-            storeEmotionalSignals({
-              user_id,
-              conversation_id,
-              signals,
-              source_message: message,
-            })
-          )
-          .catch(() => {}),
-      ]);
-
       return response(200, {
         response: visionAnalysis,
         intent: { intent: "vision_analysis", confidence: 1 },
       });
     }
 
-    /* ----------------------- STANDARD ORCHESTRATION FLOW ----------------------- */
+    /* ----------------------- COMPANION BRAIN ORCHESTRATION -------------------- */
 
-    // Retrieve relevant media memories to augment context (non-blocking fallback)
-    let mediaMemoryContext = null;
-    try {
-      mediaMemoryContext = await getRelevantMediaContext({
-        message,
-        user_id,
-        limit: 3,
-      });
-    } catch (err) {
-      console.warn("Media memory context retrieval failed:", err.message);
-    }
-
-    const result = await orchestrate({
+    const result = await think({
       message,
       user_id,
       conversation_id,
+      model,
       getRecentConversation: (convId) =>
         getRecentConversation(supabase, convId),
-      model,
-      // Inject media memories as additional context if available
-      ...(mediaMemoryContext && { mediaMemoryContext }),
     });
 
     if (!result || !result.response) {
-      throw new Error("Orchestrator returned empty response");
+      throw new Error("Companion Brain returned empty response");
     }
 
     /* ---- Determine if this is a media response (image / video / music) ---- */
@@ -268,7 +225,7 @@ async function handleChat(data) {
         user_id,
         role: "user",
         content: message,
-        embedding: result.embedding || null,
+        embedding: result.context?.embedding || null,
       }),
 
       saveMessage(supabase, {
@@ -282,44 +239,9 @@ async function handleChat(data) {
       }),
     ]);
 
-    /* ------------------------ NON BLOCKING MEMORY TASKS ---------------------- */
-
-    const conversationHistory = (result.context?.recentConversation || [])
-      .map((m) => `[${m.role}]: ${m.content}`)
-      .join("\n");
-
-    Promise.allSettled([
-      processMemory({
-        user_id,
-        conversation_id,
-        message,
-        conversationHistory,
-        messageCount: result.context?.recentConversation?.length || 0,
-      }),
-
-      processKnowledgeGraph(user_id, message),
-
-      detectEmotions(message)
-        .then((signals) =>
-          storeEmotionalSignals({
-            user_id,
-            conversation_id,
-            signals,
-            source_message: message,
-          })
-        )
-        .catch(() => {}),
-    ]);
-
     /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
 
     if (stream && !isMediaResponse) {
-      // Stream the already-orchestrated response word-by-word.
-      // The orchestrator built the full system prompt (including unfiltered
-      // instructions for NoFilter models) and already computed the final
-      // response — re-using it here ensures the streamed output is identical
-      // to the non-streaming path and that model-specific system prompts are
-      // always respected.
       const chunks = [];
       const tokens = result.response.split(" ");
       for (let i = 0; i < tokens.length; i++) {
@@ -353,19 +275,22 @@ async function handleChat(data) {
       response: result.response,
       intent: result.intent || { intent: "chat", confidence: 1 },
     });
-  } catch (orchestratorError) {
+  } catch (brainError) {
     console.warn(
-      "Orchestrator failed, falling back to direct AI:",
-      orchestratorError.message
+      "Companion Brain failed, falling back to direct AI:",
+      brainError.message
     );
 
     /* --------------------------- ROUTER FALLBACK ---------------------------- */
 
     try {
-      const aiResponse = await runAI(
-        [{ role: "user", content: message }],
-        model
-      );
+      const aiResponse = await aiChat({
+        prompt: {
+          system: "You are a helpful, mature AI companion. Respond naturally and warmly.",
+          user: message,
+        },
+        model,
+      });
 
       return response(200, {
         response: aiResponse,
@@ -587,38 +512,13 @@ async function handleMultimodal(data) {
 /*                               LIVE TALK                                    */
 /* -------------------------------------------------------------------------- */
 
-const LIVE_TALK_INTENT_SYSTEM = `You are a voice assistant intent classifier. Return ONLY valid JSON with no markdown or code blocks.
-
-Classify the user's voice message into one of:
-- "chat": general conversation, questions, opinions, information requests
-- "generate_image": user wants to see, create, draw, generate, or visualize an image or picture
-- "generate_video": user wants to create, generate, animate, or produce a video or motion clip
-- "roleplay": user wants the AI to play a character, persona, or act out a scenario
-- "run_task": user wants to automate a task or generate content (document, code, plan, summary)
-
-Return exactly this JSON structure (omit fields that don't apply):
-{
-  "type": "chat" | "generate_image" | "generate_video" | "roleplay" | "run_task",
-  "imagePrompt": "detailed image description",
-  "videoPrompt": "detailed video description",
-  "character": "character or persona name",
-  "scenario": "scenario or context description",
-  "taskType": "document" | "plan" | "code" | "summary" | "other",
-  "taskDescription": "complete description of what needs to be done"
-}`;
-
 /**
- * Detect the live talk intent using a fast, focused AI call.
+ * Detect the live talk intent using a fast, focused AI call via centralized client.
  */
 async function detectLiveTalkIntent(message, historyContext) {
   try {
-    const raw = await runAI(
-      {
-        system: LIVE_TALK_INTENT_SYSTEM,
-        user: `Message: "${message}"\n\nRecent context:\n${historyContext}`,
-      },
-      "gpt-4.1-mini"
-    );
+    const prompt = liveTalkIntentClassification({ message, historyContext });
+    const raw = await aiChat({ prompt, model: "gpt-4.1-mini", task: "live_talk_intent" });
     // Strip potential markdown fences
     const cleaned = raw.replace(/```json|```/g, "").trim();
     return JSON.parse(cleaned);
@@ -626,23 +526,6 @@ async function detectLiveTalkIntent(message, historyContext) {
     console.warn("Live talk intent detection failed, defaulting to chat:", err.message);
     return { type: "chat" };
   }
-}
-
-/**
- * Build a conversational system prompt for the given mode / AI name.
- */
-function liveTalkSystemPrompt(aiName, mode) {
-  const base = `You are ${aiName}, an enterprise-grade AI companion. Respond warmly and naturally — as if speaking aloud. Keep answers to 1-3 sentences unless the user explicitly asks for more detail. Never use bullet points or markdown; speak in flowing prose.`;
-
-  const modeAdditions = {
-    strategist: " Apply high-level strategic thinking to every response.",
-    operator: " Be direct, action-oriented, and concise.",
-    researcher: " Provide evidence-based, thorough answers.",
-    coach: " Be encouraging, motivating, and growth-focused.",
-    creative: " Be imaginative, expressive, and inventive.",
-  };
-
-  return base + (modeAdditions[mode] || "");
 }
 
 /** Pattern that detects a user asking to stop/exit the current role-play. */
@@ -687,10 +570,8 @@ async function handleLiveTalk(data) {
   if (intent_override === "run_task") {
     const taskDesc = message;
     const resolvedTaskType = task_type || "other";
-    const taskResponse = await runAI({
-      system: `You are ${ai_name}, an expert AI assistant. Complete the following task thoroughly. Write your response as flowing natural language suitable for voice output — no bullet points, no markdown headers. Be thorough but conversational.`,
-      user: `Task (${resolvedTaskType}): ${taskDesc}`,
-    });
+    const prompt = liveTalkTask({ aiName: ai_name, taskType: resolvedTaskType, taskDescription: taskDesc });
+    const taskResponse = await aiChat({ prompt, task: "live_talk_task" });
     return response(200, {
       response: taskResponse,
       action: {
@@ -704,10 +585,13 @@ async function handleLiveTalk(data) {
   // If we are already in an active role-play, stay in character without
   // re-detecting intent — unless the user explicitly asks to stop.
   if (roleplay_context && !ROLEPLAY_EXIT_RE.test(message)) {
-    const roleplayResponse = await runAI({
-      system: `You are ${roleplay_context.character}. ${roleplay_context.scenario}. Stay fully in character. Respond naturally as if speaking aloud. Keep answers to 1-3 sentences unless the user asks for more.`,
-      user: `${historyContext}\n\nUser: ${message}`,
+    const prompt = liveTalkRoleplay({
+      character: roleplay_context.character,
+      scenario: roleplay_context.scenario,
+      historyContext,
+      message,
     });
+    const roleplayResponse = await aiChat({ prompt, task: "live_talk_roleplay" });
     return response(200, {
       response: roleplayResponse,
       action: {
@@ -720,9 +604,13 @@ async function handleLiveTalk(data) {
 
   // If there was an active role-play but the user asked to stop, exit it
   if (roleplay_context && ROLEPLAY_EXIT_RE.test(message)) {
-    const exitResponse = await runAI({
-      system: liveTalkSystemPrompt(ai_name, mode),
-      user: `The user just ended a role-play as "${roleplay_context.character}". Acknowledge it briefly and warmly in one sentence.`,
+    const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
+    const exitResponse = await aiChat({
+      prompt: {
+        system: systemPrompt,
+        user: `The user just ended a role-play as "${roleplay_context.character}". Acknowledge it briefly and warmly in one sentence.`,
+      },
+      task: "live_talk_exit",
     });
     return response(200, {
       response: exitResponse,
@@ -741,13 +629,8 @@ async function handleLiveTalk(data) {
           type: "image",
           prompt: imagePrompt,
         });
-        const voiceReply = await runAI(
-          {
-            system: `You are ${ai_name}, a voice AI. In exactly one warm, natural sentence acknowledge that you just created the image the user requested. Do not describe its contents in detail.`,
-            user: `I generated an image described as: "${imagePrompt}". Briefly acknowledge this.`,
-          },
-          "gpt-4.1-mini"
-        );
+        const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "image", prompt: imagePrompt });
+        const voiceReply = await aiChat({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
         return response(200, {
           response: voiceReply,
           action: {
@@ -759,10 +642,10 @@ async function handleLiveTalk(data) {
         });
       } catch (imgErr) {
         console.error("Live talk image generation error:", imgErr);
-        // Fall back to a conversational response
-        const fallback = await runAI({
-          system: liveTalkSystemPrompt(ai_name, mode),
-          user: `${historyContext}\n\nUser: ${message}`,
+        const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
+        const fallback = await aiChat({
+          prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
+          task: "live_talk_fallback",
         });
         return response(200, { response: fallback });
       }
@@ -775,13 +658,8 @@ async function handleLiveTalk(data) {
           type: "video",
           prompt: videoPrompt,
         });
-        const voiceReply = await runAI(
-          {
-            system: `You are ${ai_name}, a voice AI. In exactly one warm, natural sentence acknowledge that you just created the video the user requested. Do not describe its contents in detail.`,
-            user: `I generated a video described as: "${videoPrompt}". Briefly acknowledge this.`,
-          },
-          "gpt-4.1-mini"
-        );
+        const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "video", prompt: videoPrompt });
+        const voiceReply = await aiChat({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
         return response(200, {
           response: voiceReply,
           action: {
@@ -793,10 +671,10 @@ async function handleLiveTalk(data) {
         });
       } catch (vidErr) {
         console.error("Live talk video generation error:", vidErr);
-        // Fall back to a conversational response
-        const fallback = await runAI({
-          system: liveTalkSystemPrompt(ai_name, mode),
-          user: `${historyContext}\n\nUser: ${message}`,
+        const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
+        const fallback = await aiChat({
+          prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
+          task: "live_talk_fallback",
         });
         return response(200, { response: fallback });
       }
@@ -806,10 +684,8 @@ async function handleLiveTalk(data) {
       const character = intent.character || "a mysterious character";
       const scenario =
         intent.scenario || "an intriguing conversation with the user";
-      const roleplayResponse = await runAI({
-        system: `You are ${character}. ${scenario}. Stay fully in character from your very first word. Speak naturally as if talking aloud. Keep your opening to 1-2 sentences.`,
-        user: message,
-      });
+      const prompt = liveTalkRoleplay({ character, scenario, historyContext: "", message });
+      const roleplayResponse = await aiChat({ prompt, task: "live_talk_roleplay" });
       return response(200, {
         response: roleplayResponse,
         action: {
@@ -822,10 +698,8 @@ async function handleLiveTalk(data) {
 
     case "run_task": {
       const taskDesc = intent.taskDescription || message;
-      const taskResponse = await runAI({
-        system: `You are ${ai_name}, an expert AI assistant. Complete the following task thoroughly. Write your response as flowing natural language suitable for voice output — no bullet points, no markdown headers. Be thorough but conversational.`,
-        user: `Task: ${taskDesc}`,
-      });
+      const prompt = liveTalkTask({ aiName: ai_name, taskType: intent.taskType || "other", taskDescription: taskDesc });
+      const taskResponse = await aiChat({ prompt, task: "live_talk_task" });
       return response(200, {
         response: taskResponse,
         action: {
@@ -838,13 +712,13 @@ async function handleLiveTalk(data) {
 
     default: {
       // General conversational chat — include knowledge context if available
-      const chatResponse = await runAI({
-        system:
-          liveTalkSystemPrompt(ai_name, mode) +
-          (knowledgeContext
-            ? `\n\nWhen relevant, reference the user's personal knowledge base below to give more personalized answers.${knowledgeContext}`
-            : ""),
-        user: `${historyContext}\n\nUser: ${message}`,
+      const systemPrompt = liveTalkSystem({ aiName: ai_name, mode }) +
+        (knowledgeContext
+          ? `\n\nWhen relevant, reference the user's personal knowledge base below to give more personalized answers.${knowledgeContext}`
+          : "");
+      const chatResponse = await aiChat({
+        prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
+        task: "live_talk_chat",
       });
       return response(200, { response: chatResponse });
     }

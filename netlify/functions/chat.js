@@ -1,10 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateEmbedding } from "../../lib/openai-client.js";
-import { runAI } from "../../lib/ai-router.js";
-import { orchestrate } from "../../lib/orchestrator.js";
-import { processMemory } from "../../lib/memory-manager.js";
-import { processKnowledgeGraph } from "../../lib/knowledge-graph.js";
-import { detectEmotions, storeEmotionalSignals } from "../../lib/emotion-detector.js";
+import { think } from "../../lib/companion-brain.js";
+import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -45,19 +42,13 @@ async function saveMessage({ conversation_id, user_id, role, content, embedding 
   }
 }
 
-const FALLBACK_SYSTEM_PROMPT =
-  "You are a mature, emotionally intelligent companion assistant. " +
-  "You can comfortably engage in harmless adult conversation, including explicit sexual topics, flirting, sensuality, desire, kink, dating, and intimate relationship dynamics, as long as everything is clearly consensual and between adults. " +
-  "Speak naturally, without judgment, awkward censorship, or canned disclaimers. " +
-  "Never include minors, coercion, non-consent, exploitation, abuse, incest, bestiality, illegal sexual content, or encouragement of real-world harm. " +
-  "If a request crosses a boundary, respond briefly, stay composed, and guide the conversation back to allowed adult content.";
-
 export async function handler(event) {
+  if (event.httpMethod === "OPTIONS") {
+    return preflight();
+  }
+
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   let message;
@@ -70,36 +61,32 @@ export async function handler(event) {
     message = body.message;
 
     if (!conversation_id || !user_id || !message) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Missing required fields: conversation_id, user_id, message" }),
-      };
+      return fail(
+        "Missing required fields: conversation_id, user_id, message",
+        "ERR_VALIDATION",
+        400,
+      );
     }
 
-    // 1. Run the orchestrator pipeline
-    //    message → intent detection → context retrieval → planning
-    //    → tool execution → AI router → critic agent → final response
-    const result = await orchestrate({
+    // Route through Companion Brain — unified orchestration pipeline
+    const result = await think({
       message,
       user_id,
       conversation_id,
-      getRecentConversation,
       model,
+      getRecentConversation: (convId) => getRecentConversation(convId),
     });
 
-    // 2. For media results, return the media payload directly
+    // For media results, return the media payload directly
     if (result.isMedia) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          response: result.response,
-          intent: result.intent,
-        }),
-      };
+      return ok({
+        response: result.response,
+        intent: result.intent,
+      });
     }
 
-    // 3. Save both the user message and the assistant response
-    const assistantEmbedding = await generateEmbedding(result.response);
+    // Save both the user message and the assistant response
+    const assistantEmbedding = await generateEmbedding(result.response).catch(() => null);
 
     await Promise.all([
       saveMessage({
@@ -107,7 +94,7 @@ export async function handler(event) {
         user_id,
         role: "user",
         content: message,
-        embedding: result.embedding,
+        embedding: result.context?.embedding || null,
       }),
       saveMessage({
         conversation_id,
@@ -118,60 +105,17 @@ export async function handler(event) {
       }),
     ]);
 
-    // 4. Post-response memory processing (non-blocking)
-    const conversationHistory = (result.context.recentConversation || [])
-      .map((m) => `[${m.role}]: ${m.content}`)
-      .join("\n");
-
-    Promise.allSettled([
-      processMemory({
-        user_id,
-        conversation_id,
-        message,
-        conversationHistory,
-        messageCount: (result.context.recentConversation || []).length,
-      }),
-      processKnowledgeGraph(user_id, message),
-      detectEmotions(message).then((signals) =>
-        storeEmotionalSignals({
-          user_id,
-          conversation_id,
-          signals,
-          source_message: message,
-        })
-      ).catch((err) => {
-        console.error("Emotion processing error:", err.message);
-      }),
-    ]);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        response: result.response,
-        intent: result.intent,
-      }),
-    };
+    return ok({
+      response: result.response,
+      intent: result.intent,
+    });
   } catch (err) {
-    // Orchestration failed — attempt a direct AI response via the resilient
-    // router so the user still receives a meaningful reply.
-    if (message) {
-      try {
-        const response = await runAI({
-          system: FALLBACK_SYSTEM_PROMPT,
-          user: message,
-        }, model);
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ response }),
-        };
-      } catch (fallbackErr) {
-        console.error("Fallback AI call also failed:", fallbackErr.message);
-      }
-    }
+    console.error("Chat endpoint error:", err.message);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "AI provider temporarily unavailable" }),
-    };
+    // Backward compatibility: return a soft-fail 200 with a human-friendly
+    // message so the frontend doesn't surface a raw error.
+    return raw(200, {
+      response: "I'm having trouble connecting to the AI service right now.",
+    });
   }
 }
