@@ -159,6 +159,7 @@ export interface VideoGenerationRequest {
   readonly durationSeconds: number;
   readonly model: 'sora' | 'runway-gen3' | 'kling-3.0' | 'kling-omni' | 'hailuo-2.3' | 'veo-3.1' | 'nofilter-video';
   readonly enhancePrompt: boolean;
+  readonly audioMode?: VideoAudioMode;
 }
 
 export interface MediaGenerationResult {
@@ -238,6 +239,141 @@ export interface VideoExportOptions {
   readonly resolution: '480p' | '720p' | '1080p';
   readonly includeAudio: boolean;
 }
+
+// ─── Video Audio Mode ─────────────────────────────────────────────────────────
+
+/** Whether the video generation request should include audio. */
+export type VideoAudioMode = 'silent' | 'with-audio' | 'audio-only';
+
+// ─── Media Asset (unified wrapper) ────────────────────────────────────────────
+
+export interface MediaAsset {
+  readonly id: string;
+  readonly userId: string;
+  readonly type: 'image' | 'video';
+  readonly sourceUrl: string;
+  readonly filename: string;
+  readonly mimeType: string;
+  readonly sizeBytes: number;
+  readonly createdAt: number;
+  readonly metadata?: ImageMetadata | VideoMetadata;
+}
+
+// ─── Refinement Types ─────────────────────────────────────────────────────────
+
+export type RefinementAction =
+  | 'enhance'
+  | 'upscale'
+  | 'stylize'
+  | 'denoise'
+  | 'colorize'
+  | 'restore'
+  | 'background-remove'
+  | 'super-resolution'
+  | 'custom';
+
+export interface MediaRefinementRequest {
+  readonly mediaUrl: string;
+  readonly mediaType: 'image' | 'video';
+  readonly action: RefinementAction;
+  readonly prompt?: string;
+  readonly model?: string;
+  readonly options?: Record<string, unknown>;
+}
+
+export interface MediaRefinementResult {
+  readonly id: string;
+  readonly originalUrl: string;
+  readonly refinedUrl: string;
+  readonly action: RefinementAction;
+  readonly model: string;
+  readonly provider: string;
+  readonly createdAt: number;
+}
+
+// ─── Media Processing Job ─────────────────────────────────────────────────────
+
+export type MediaJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+export interface MediaProcessingJob {
+  readonly id: string;
+  readonly type: 'generation' | 'refinement';
+  readonly mediaType: 'image' | 'video';
+  readonly status: MediaJobStatus;
+  readonly progress?: number;
+  readonly resultUrl?: string;
+  readonly error?: string;
+  readonly createdAt: number;
+  readonly completedAt?: number;
+}
+
+// ─── Media Save / Persist ─────────────────────────────────────────────────────
+
+export interface MediaSavePayload {
+  readonly userId: string;
+  readonly mediaUrl: string;
+  readonly mediaType: 'image' | 'video';
+  readonly filename: string;
+  readonly prompt?: string;
+  readonly style?: string;
+  readonly model?: string;
+  readonly provider?: string;
+  readonly source: 'generation' | 'refinement' | 'upload';
+  readonly mimeType?: string;
+  readonly sizeBytes?: number;
+}
+
+export interface UserMediaRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly mediaUrl: string;
+  readonly mediaType: 'image' | 'video';
+  readonly filename: string;
+  readonly prompt?: string;
+  readonly style?: string;
+  readonly model?: string;
+  readonly provider?: string;
+  readonly source: 'generation' | 'refinement' | 'upload';
+  readonly createdAt: string;
+}
+
+// ─── Provider Config ──────────────────────────────────────────────────────────
+
+export interface ProviderConfig {
+  readonly id: string;
+  readonly name: string;
+  readonly type: 'image' | 'video' | 'audio' | 'refinement';
+  readonly enabled: boolean;
+  readonly models: readonly string[];
+}
+
+// ─── API Result ───────────────────────────────────────────────────────────────
+
+export interface ApiResult<T> {
+  readonly success: boolean;
+  readonly data?: T;
+  readonly error?: string;
+  readonly code?: number;
+}
+
+export interface ErrorResult {
+  readonly success: false;
+  readonly error: string;
+  readonly code?: number;
+  readonly details?: Record<string, unknown>;
+}
+
+// ─── Media Pipeline State (discriminated union) ───────────────────────────────
+
+export type MediaPipelineState =
+  | { readonly phase: 'idle' }
+  | { readonly phase: 'uploading'; readonly progress: number }
+  | { readonly phase: 'generating'; readonly mediaType: 'image' | 'video' }
+  | { readonly phase: 'refining'; readonly action: RefinementAction }
+  | { readonly phase: 'preview-ready'; readonly resultUrl: string; readonly mediaType: 'image' | 'video' }
+  | { readonly phase: 'saving' }
+  | { readonly phase: 'success'; readonly savedId: string }
+  | { readonly phase: 'error'; readonly message: string; readonly retryable: boolean };
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
