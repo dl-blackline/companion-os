@@ -359,6 +359,8 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
       setCompanionState(type === 'photo' ? 'generating-image' : 'generating-video');
 
       try {
+        console.log('[MediaView] Starting generation:', { jobId, type, style, size });
+
         const mediaRes = await fetch('/.netlify/functions/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -373,10 +375,15 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
         });
 
         const mediaData = await mediaRes.json();
+        console.log('[MediaView] Media API response:', { ok: mediaRes.ok, mediaData });
 
-        if (!mediaRes.ok || mediaData.error) {
+        // Unwrap the ok() envelope: { success, data: { url, ... } }
+        const payload = mediaData.data ?? mediaData;
+
+        if (!mediaRes.ok || mediaData.error || !mediaData.success) {
           // Fallback to description mode when API not configured
-          console.warn('Media API unavailable, falling back to description mode:', mediaData.error);
+          const errMsg = mediaData.error ?? payload?.error ?? 'unknown';
+          console.warn('Media API unavailable, falling back to description mode:', errMsg);
 
           const descriptionPrompt = `You are a ${type === 'photo' ? 'photo' : 'video'} generation AI system named ${aiName}.
 
@@ -406,22 +413,32 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
           }
 
           const data = await res.json();
+          console.log('[MediaView] Chat fallback response:', data);
+          // Unwrap ok() envelope for chat response; also handle legacy raw() shape
+          const description = data.data?.response ?? data.response;
           setGallery((prev) =>
             prev.map((item) =>
               item.id === jobId
-                ? { ...item, status: 'complete', resultDescription: data.response, completedAt: Date.now() }
+                ? { ...item, status: 'complete', resultDescription: description, completedAt: Date.now() }
                 : item
             )
           );
         } else {
+          // Validate that a usable media URL was returned
+          const resultUrl = payload.url ?? payload.resultUrl ?? '';
+          if (!resultUrl) {
+            console.error('[MediaView] Media API returned success but no media URL:', payload);
+            throw new Error('Media generation completed but no media URL was returned');
+          }
+
           setGallery((prev) =>
             prev.map((item) =>
               item.id === jobId
                 ? {
                     ...item,
                     status: 'complete',
-                    resultUrl: mediaData.url,
-                    resultDescription: mediaData.prompt || currentPrompt,
+                    resultUrl,
+                    resultDescription: payload.prompt || currentPrompt,
                     completedAt: Date.now(),
                   }
                 : item
