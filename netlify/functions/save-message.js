@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { generateEmbedding } from "../../lib/openai-client.js";
+import { embed } from "../../lib/ai-client.js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -7,24 +8,26 @@ const supabase = createClient(
 );
 
 export async function handler(event) {
+  if (event.httpMethod === "OPTIONS") {
+    return preflight();
+  }
+
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
     const { conversation_id, user_id, role, content } = JSON.parse(event.body);
 
     if (!conversation_id || !user_id || !role || !content) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Missing required fields: conversation_id, user_id, role, content" }),
-      };
+      return fail(
+        "Missing required fields: conversation_id, user_id, role, content",
+        "ERR_VALIDATION",
+        400,
+      );
     }
 
-    const embedding = await generateEmbedding(content);
+    const embedding = await embed(content);
 
     const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
@@ -37,20 +40,11 @@ export async function handler(event) {
     }).select();
 
     if (error) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: error.message }),
-      };
+      return fail(error.message, "ERR_DB", 500);
     }
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "Message saved", data }),
-    };
+    return ok({ message: "Message saved", data });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

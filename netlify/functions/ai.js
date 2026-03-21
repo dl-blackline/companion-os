@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { generateEmbedding } from "../../lib/openai-client.js";
 import { think } from "../../lib/companion-brain.js";
-import { chat as aiChat } from "../../lib/ai-client.js";
+import { chat as aiChat, embed } from "../../lib/ai-client.js";
 import {
   liveTalkSystem,
   liveTalkIntentClassification,
@@ -25,22 +24,7 @@ import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
 import { runTask } from "../../lib/multimodal-engine.js";
 import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 import { isNofilterModel } from "../../lib/nofilter-client.js";
-import { ok, fail, preflight, raw } from "../../lib/_responses.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-function response(statusCode, body) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify(body),
-  };
-}
+import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
 
 function getSupabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -93,9 +77,11 @@ async function handleChat(data) {
   const { conversation_id, user_id, message, model, stream, media_url, media_type } = data;
 
   if (!conversation_id || !user_id || !message) {
-    return response(400, {
-      error: "Missing required fields: conversation_id, user_id, message",
-    });
+    return fail(
+      "Missing required fields: conversation_id, user_id, message",
+      "ERR_VALIDATION",
+      400,
+    );
   }
 
   const supabase = getSupabase();
@@ -143,7 +129,7 @@ async function handleChat(data) {
     if (visionAnalysis) {
       let assistantEmbedding = null;
       try {
-        assistantEmbedding = await generateEmbedding(visionAnalysis);
+        assistantEmbedding = await embed(visionAnalysis);
       } catch (err) {
         console.warn("Embedding generation failed:", err.message);
       }
@@ -167,7 +153,7 @@ async function handleChat(data) {
         }),
       ]);
 
-      return response(200, {
+      return ok({
         response: visionAnalysis,
         intent: { intent: "vision_analysis", confidence: 1 },
       });
@@ -214,7 +200,7 @@ async function handleChat(data) {
     let assistantEmbedding = null;
 
     try {
-      assistantEmbedding = await generateEmbedding(assistantTextContent);
+      assistantEmbedding = await embed(assistantTextContent);
     } catch (err) {
       console.warn("Embedding generation failed:", err.message);
     }
@@ -263,7 +249,7 @@ async function handleChat(data) {
     }
 
     if (isMediaResponse) {
-      return response(200, {
+      return ok({
         response: assistantTextContent,
         media_url: result.response.url,
         media_type: dbMediaType,
@@ -271,7 +257,7 @@ async function handleChat(data) {
       });
     }
 
-    return response(200, {
+    return ok({
       response: result.response,
       intent: result.intent || { intent: "chat", confidence: 1 },
     });
@@ -292,14 +278,14 @@ async function handleChat(data) {
         model,
       });
 
-      return response(200, {
+      return ok({
         response: aiResponse,
         intent: { intent: "chat", confidence: 1 },
       });
     } catch (routerError) {
       console.error("Router failed:", routerError);
 
-      return response(200, {
+      return raw(200, {
         response:
           "I'm having trouble connecting to the AI service right now.",
       });
@@ -317,20 +303,20 @@ async function handleMemory(data) {
   if (action === "search") {
     const supabase = getSupabase();
 
-    const embedding = await generateEmbedding(data.content);
+    const embedding = await embed(data.content);
 
     const { data: results } = await supabase.rpc("match_messages", {
       query_embedding: embedding,
       match_count: 5,
     });
 
-    return response(200, { results });
+    return ok({ results });
   }
 
   if (action === "save") {
     const supabase = getSupabase();
 
-    const embedding = await generateEmbedding(data.content);
+    const embedding = await embed(data.content);
 
     const { data: saved } = await supabase
       .from(process.env.CHAT_HISTORY_TABLE || "messages")
@@ -343,10 +329,10 @@ async function handleMemory(data) {
       })
       .select();
 
-    return response(200, { data: saved });
+    return ok({ data: saved });
   }
 
-  return response(400, { error: "Invalid memory action" });
+  return fail("Invalid memory action", "ERR_VALIDATION", 400);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -355,7 +341,7 @@ async function handleMemory(data) {
 
 async function handleMedia(data) {
   if (!data.prompt) {
-    return response(400, { error: "Prompt required" });
+    return fail("Prompt required", "ERR_VALIDATION", 400);
   }
 
   try {
@@ -366,10 +352,10 @@ async function handleMedia(data) {
       options: data.options || {},
     });
 
-    return response(200, result);
+    return ok(result);
   } catch (err) {
     console.error("Media generation error:", err.message);
-    return response(500, { error: err.message });
+    return fail(err.message, "ERR_MEDIA", 500);
   }
 }
 
@@ -394,15 +380,15 @@ async function handleWorkflow(data) {
       );
     }
 
-    return response(200, { project });
+    return ok({ project });
   }
 
   if (data.action === "run") {
     const result = await runWorkflow(data.project_id);
-    return response(200, result);
+    return ok(result);
   }
 
-  return response(400, { error: "Invalid workflow action" });
+  return fail("Invalid workflow action", "ERR_VALIDATION", 400);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -412,21 +398,21 @@ async function handleWorkflow(data) {
 async function handleRealtime(data) {
   if (data.action === "start") {
     const session = await createSession(data);
-    return response(200, { session });
+    return ok({ session });
   }
 
   if (data.action === "end") {
     const existing = await getSession(data.session_id);
 
     if (!existing) {
-      return response(404, { error: "Session not found" });
+      return fail("Session not found", "ERR_NOT_FOUND", 404);
     }
 
     const session = await endSession(data.session_id);
-    return response(200, { session });
+    return ok({ session });
   }
 
-  return response(400, { error: "Invalid realtime action" });
+  return fail("Invalid realtime action", "ERR_VALIDATION", 400);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -444,18 +430,18 @@ async function handleRealtimeToken(data) {
   // realtime token endpoint itself.
   if (isNofilterModel(model)) {
     if (!process.env.NOFILTER_GPT_API_KEY) {
-      return response(500, { error: "NOFILTER_GPT_API_KEY is not configured" });
+      return fail("NOFILTER_GPT_API_KEY is not configured", "ERR_CONFIG", 500);
     }
   } else if (!process.env.OPENAI_API_KEY) {
-    return response(500, { error: "OpenAI API key not configured" });
+    return fail("OpenAI API key not configured", "ERR_CONFIG", 500);
   }
 
   try {
     const { client_secret, realtime_endpoint } = await createRealtimeSession({ model, voice });
-    return response(200, { client_secret, realtime_endpoint });
+    return ok({ client_secret, realtime_endpoint });
   } catch (err) {
     console.error("Realtime token error:", err.message);
-    return response(500, { error: "Failed to create realtime session" });
+    return fail("Failed to create realtime session", "ERR_REALTIME", 500);
   }
 }
 
@@ -465,7 +451,7 @@ async function handleRealtimeToken(data) {
 
 async function handleVoice(data) {
   if (!data.text) {
-    return response(400, { error: "Missing required field: text" });
+    return fail("Missing required field: text", "ERR_VALIDATION", 400);
   }
 
   try {
@@ -477,10 +463,10 @@ async function handleVoice(data) {
       useElevenLabs: data.useElevenLabs || false,
     });
 
-    return response(200, result);
+    return ok(result);
   } catch (err) {
     console.error("Voice processing error:", err.message);
-    return response(500, { error: err.message });
+    return fail(err.message, "ERR_VOICE", 500);
   }
 }
 
@@ -490,7 +476,7 @@ async function handleVoice(data) {
 
 async function handleMultimodal(data) {
   if (!data.taskType) {
-    return response(400, { error: "Missing required field: taskType" });
+    return fail("Missing required field: taskType", "ERR_VALIDATION", 400);
   }
 
   try {
@@ -501,10 +487,10 @@ async function handleMultimodal(data) {
       options: data.options || {},
     });
 
-    return response(200, result);
+    return ok(result);
   } catch (err) {
     console.error("Multimodal engine error:", err.message);
-    return response(500, { error: err.message });
+    return fail(err.message, "ERR_MULTIMODAL", 500);
   }
 }
 
@@ -518,9 +504,9 @@ async function handleMultimodal(data) {
 async function detectLiveTalkIntent(message, historyContext) {
   try {
     const prompt = liveTalkIntentClassification({ message, historyContext });
-    const raw = await aiChat({ prompt, model: "gpt-4.1-mini", task: "live_talk_intent" });
+    const rawText = await aiChat({ prompt, model: "gpt-4.1-mini", task: "live_talk_intent" });
     // Strip potential markdown fences
-    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const cleaned = rawText.replace(/```json|```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
     console.warn("Live talk intent detection failed, defaulting to chat:", err.message);
@@ -549,7 +535,7 @@ async function handleLiveTalk(data) {
   } = data;
 
   if (!message) {
-    return response(400, { error: "Missing required field: message" });
+    return fail("Missing required field: message", "ERR_VALIDATION", 400);
   }
 
   // Build recent history context string for intent detection
@@ -572,7 +558,7 @@ async function handleLiveTalk(data) {
     const resolvedTaskType = task_type || "other";
     const prompt = liveTalkTask({ aiName: ai_name, taskType: resolvedTaskType, taskDescription: taskDesc });
     const taskResponse = await aiChat({ prompt, task: "live_talk_task" });
-    return response(200, {
+    return ok({
       response: taskResponse,
       action: {
         type: "task_completed",
@@ -592,7 +578,7 @@ async function handleLiveTalk(data) {
       message,
     });
     const roleplayResponse = await aiChat({ prompt, task: "live_talk_roleplay" });
-    return response(200, {
+    return ok({
       response: roleplayResponse,
       action: {
         type: "roleplay_continued",
@@ -612,7 +598,7 @@ async function handleLiveTalk(data) {
       },
       task: "live_talk_exit",
     });
-    return response(200, {
+    return ok({
       response: exitResponse,
       action: { type: "roleplay_ended" },
     });
@@ -631,7 +617,7 @@ async function handleLiveTalk(data) {
         });
         const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "image", prompt: imagePrompt });
         const voiceReply = await aiChat({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
-        return response(200, {
+        return ok({
           response: voiceReply,
           action: {
             type: "image_generated",
@@ -647,7 +633,7 @@ async function handleLiveTalk(data) {
           prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
           task: "live_talk_fallback",
         });
-        return response(200, { response: fallback });
+        return ok({ response: fallback });
       }
     }
 
@@ -660,7 +646,7 @@ async function handleLiveTalk(data) {
         });
         const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "video", prompt: videoPrompt });
         const voiceReply = await aiChat({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
-        return response(200, {
+        return ok({
           response: voiceReply,
           action: {
             type: "video_generated",
@@ -676,7 +662,7 @@ async function handleLiveTalk(data) {
           prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
           task: "live_talk_fallback",
         });
-        return response(200, { response: fallback });
+        return ok({ response: fallback });
       }
     }
 
@@ -686,7 +672,7 @@ async function handleLiveTalk(data) {
         intent.scenario || "an intriguing conversation with the user";
       const prompt = liveTalkRoleplay({ character, scenario, historyContext: "", message });
       const roleplayResponse = await aiChat({ prompt, task: "live_talk_roleplay" });
-      return response(200, {
+      return ok({
         response: roleplayResponse,
         action: {
           type: "roleplay_started",
@@ -700,7 +686,7 @@ async function handleLiveTalk(data) {
       const taskDesc = intent.taskDescription || message;
       const prompt = liveTalkTask({ aiName: ai_name, taskType: intent.taskType || "other", taskDescription: taskDesc });
       const taskResponse = await aiChat({ prompt, task: "live_talk_task" });
-      return response(200, {
+      return ok({
         response: taskResponse,
         action: {
           type: "task_completed",
@@ -720,7 +706,7 @@ async function handleLiveTalk(data) {
         prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
         task: "live_talk_chat",
       });
-      return response(200, { response: chatResponse });
+      return ok({ response: chatResponse });
     }
   }
 }
@@ -731,11 +717,11 @@ async function handleLiveTalk(data) {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS };
+    return preflight();
   }
 
   if (event.httpMethod !== "POST") {
-    return response(405, { error: "Method not allowed" });
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
@@ -783,12 +769,12 @@ export async function handler(event) {
         return await handleLiveTalk(payload);
 
       default:
-        return response(400, { error: "Invalid request type" });
+        return fail("Invalid request type", "ERR_VALIDATION", 400);
     }
   } catch (err) {
     console.error("AI gateway error:", err);
 
-    return response(200, {
+    return raw(200, {
       response: "I'm having trouble connecting to the AI service right now.",
     });
   }

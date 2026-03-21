@@ -12,37 +12,19 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { generateEmbedding } from "../../lib/openai-client.js";
+import { embed } from "../../lib/ai-client.js";
 import {
   storeEpisodicMemory,
   storeRelationshipMemory,
   searchEpisodicMemory,
   searchRelationshipMemory,
 } from "../../lib/memory-manager.js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function ok(body) {
-  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(body) };
-}
-
-function err(statusCode, message) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify({ error: message }),
-  };
-}
 
 /* ─── Determine which memory table to use based on memory_type/category ───── */
 function resolveMemoryTable(memory_type, category) {
@@ -81,18 +63,18 @@ function rowToMemory(row, memoryType, category) {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   if (event.httpMethod !== "POST") {
-    return err(405, "Method not allowed");
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   let body;
   try {
     body = JSON.parse(event.body || "{}");
   } catch {
-    return err(400, "Invalid JSON body");
+    return fail("Invalid JSON body", "ERR_VALIDATION", 400);
   }
 
   const { action } = body;
@@ -102,8 +84,8 @@ export async function handler(event) {
     if (action === "save") {
       const { user_id, title, content, category, memory_type, confidence } = body;
 
-      if (!user_id) return err(400, "Missing required field: user_id");
-      if (!content) return err(400, "Missing required field: content");
+      if (!user_id) return fail("Missing required field: user_id", "ERR_VALIDATION", 400);
+      if (!content) return fail("Missing required field: content", "ERR_VALIDATION", 400);
 
       const memoryTable = resolveMemoryTable(memory_type, category);
       const memoryText = title ? `${title}: ${content}` : content;
@@ -147,10 +129,10 @@ export async function handler(event) {
     if (action === "search") {
       const { user_id, query, limit = 10 } = body;
 
-      if (!user_id) return err(400, "Missing required field: user_id");
-      if (!query) return err(400, "Missing required field: query");
+      if (!user_id) return fail("Missing required field: user_id", "ERR_VALIDATION", 400);
+      if (!query) return fail("Missing required field: query", "ERR_VALIDATION", 400);
 
-      const embedding = await generateEmbedding(query);
+      const embedding = await embed(query);
 
       const [episodicRows, relationshipRows] = await Promise.all([
         searchEpisodicMemory(embedding, user_id).catch(() => []),
@@ -178,10 +160,10 @@ export async function handler(event) {
       const { content } = body;
 
       if (!content) {
-        return err(400, "Missing required field: action or content");
+        return fail("Missing required field: action or content", "ERR_VALIDATION", 400);
       }
 
-      const embedding = await generateEmbedding(content);
+      const embedding = await embed(content);
 
       const { data, error: rpcError } = await supabase.rpc("match_messages", {
         query_embedding: embedding,
@@ -189,13 +171,13 @@ export async function handler(event) {
       });
 
       if (rpcError) {
-        return err(500, rpcError.message);
+        return fail(rpcError.message, "ERR_DB", 500);
       }
 
       return ok({ results: data });
     }
   } catch (e) {
     console.error(`search-memory [${action || "legacy"}] error:`, e.message);
-    return err(500, e.message || "Internal server error");
+    return fail(e.message || "Internal server error", "ERR_INTERNAL", 500);
   }
 }
