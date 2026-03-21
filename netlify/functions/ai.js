@@ -285,9 +285,8 @@ async function handleChat(data) {
     } catch (routerError) {
       console.error("Router failed:", routerError);
 
+      // Backward compat: soft-fail 200 so the frontend shows a friendly message
       return raw(200, {
-        response:
-          "I'm having trouble connecting to the AI service right now.",
       });
     }
   }
@@ -774,6 +773,7 @@ export async function handler(event) {
   } catch (err) {
     console.error("AI gateway error:", err);
 
+    // Backward compat: soft-fail 200 so the frontend shows a friendly message
     return raw(200, {
       response: "I'm having trouble connecting to the AI service right now.",
     });
