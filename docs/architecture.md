@@ -118,6 +118,9 @@ companion-os/
 │
 ├── netlify/functions/                # Serverless API
 │   ├── companion-brain.js            # ★ Unified AI endpoint (response contract)
+│   ├── companion-stream.js           # ★ SSE streaming endpoint (realtime)
+│   ├── roleplay.js                   # ★ Roleplay endpoint (uses think())
+│   ├── daily-plan.js                 # ★ Planning endpoint (uses think())
 │   ├── ai.js                         # Legacy AI gateway (uses think() + ai-client)
 │   ├── chat.js                       # Legacy chat endpoint (uses think())
 │   └── ...                           # Other endpoints
@@ -135,7 +138,10 @@ companion-os/
 │   └── ...
 │
 └── docs/
-    └── architecture.md               # ★ This document
+    ├── architecture.md               # ★ Companion Brain architecture
+    ├── companion-experience-engine.md # ★ Unified experience engine overview
+    ├── companion-engine-architecture.md # Core engine (goals, constraints)
+    └── realtime-experience.md         # Realtime streaming & avatar layer
 ```
 
 ---
@@ -313,8 +319,8 @@ endpoints. The migration path is:
 | `ai.js` (type=voice) | `companion-brain` | handled by tool |
 | `ai.js` (type=realtime) | `companion-brain` | handled by tool |
 | `chat.js` | `companion-brain` | `chat` |
-| Future: roleplay | `companion-brain` | `roleplay` |
-| Future: daily_plan | `companion-brain` | `planning` |
+| `roleplay.js` | `companion-brain` | `roleplay` |
+| `daily-plan.js` | `companion-brain` | `planning` |
 | Future: research | `companion-brain` | `research` |
 
 ---
