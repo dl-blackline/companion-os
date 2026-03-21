@@ -46,7 +46,9 @@ export type ConstraintDomain =
   | 'time'
   | 'health'
   | 'dietary'
-  | 'work';
+  | 'work'
+  | 'content'
+  | 'privacy';
 
 export interface UserConstraint {
   readonly id: string;
