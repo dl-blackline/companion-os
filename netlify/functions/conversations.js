@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -8,33 +9,16 @@ const supabase =
   SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 export async function handler(event) {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers, body: "" };
+    return preflight();
   }
 
   if (!supabase) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: "Server configuration error: missing Supabase credentials",
-      }),
-    };
+    return fail("Server configuration error: missing Supabase credentials", "ERR_CONFIG", 500);
   }
 
   if (event.httpMethod !== "GET") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
@@ -44,11 +28,7 @@ export async function handler(event) {
     const limit = parseInt(params.limit || "50", 10);
 
     if (!user_id) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Missing required parameter: user_id" }),
-      };
+      return fail("Missing required parameter: user_id", "ERR_VALIDATION", 400);
     }
 
     let query = supabase
@@ -66,24 +46,12 @@ export async function handler(event) {
 
     if (error) {
       console.error("Conversations fetch error:", error.message);
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: "Failed to fetch conversations" }),
-      };
+      return fail("Failed to fetch conversations", "ERR_INTERNAL", 500);
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ messages: (data || []).reverse() }),
-    };
+    return ok({ messages: (data || []).reverse() });
   } catch (err) {
     console.error("Conversations function error:", err.message);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

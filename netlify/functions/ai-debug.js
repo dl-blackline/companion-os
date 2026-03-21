@@ -1,37 +1,23 @@
-import { runAI } from "../../lib/ai-router.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-function response(statusCode, body) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify(body),
-  };
-}
+import { chat } from "../../lib/ai-client.js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   const message = event.queryStringParameters?.message || "hello";
   const model = event.queryStringParameters?.model;
 
   try {
-    const messages = {
+    const prompt = {
       system: "You are a helpful assistant.",
       user: message,
     };
 
-    const reply = await runAI(messages, model);
+    const reply = await chat({ prompt, model });
 
-    return response(200, {
+    return ok({
       status: "ok",
       message: message,
       reply: reply,
@@ -39,9 +25,6 @@ export async function handler(event) {
   } catch (error) {
     console.error("AI debug error:", error);
 
-    return response(500, {
-      status: "error",
-      error: error.message,
-    });
+    return fail(error.message, "ERR_INTERNAL", 500);
   }
 }

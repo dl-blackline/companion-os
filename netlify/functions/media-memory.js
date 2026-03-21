@@ -22,46 +22,28 @@ import {
   deleteMedia,
   searchMediaMemories,
 } from "../../lib/media-memory-service.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function ok(body) {
-  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(body) };
-}
-
-function err(statusCode, message) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify({ error: message }),
-  };
-}
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   if (event.httpMethod !== "POST") {
-    return err(405, "Method not allowed");
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   let body;
   try {
     body = JSON.parse(event.body || "{}");
   } catch {
-    return err(400, "Invalid JSON body");
+    return fail("Invalid JSON body", "ERR_VALIDATION", 400);
   }
 
   const { action, user_id } = body;
 
-  if (!action) return err(400, "Missing required field: action");
-  if (!user_id) return err(400, "Missing required field: user_id");
+  if (!action) return fail("Missing required field: action", "ERR_VALIDATION", 400);
+  if (!user_id) return fail("Missing required field: user_id", "ERR_VALIDATION", 400);
 
   try {
     switch (action) {
@@ -80,12 +62,12 @@ export async function handler(event) {
         } = body;
 
         if (!public_url && !storage_path) {
-          return err(400, "Missing required field: public_url or storage_path");
+          return fail("Missing required field: public_url or storage_path", "ERR_VALIDATION", 400);
         }
         if (!media_type || !["image", "video"].includes(media_type)) {
-          return err(400, "Invalid media_type; must be 'image' or 'video'");
+          return fail("Invalid media_type; must be 'image' or 'video'", "ERR_VALIDATION", 400);
         }
-        if (!filename) return err(400, "Missing required field: filename");
+        if (!filename) return fail("Missing required field: filename", "ERR_VALIDATION", 400);
 
         const result = await runFullMediaPipeline({
           user_id,
@@ -119,7 +101,7 @@ export async function handler(event) {
       /* ── approve ─────────────────────────────────────────────────────────── */
       case "approve": {
         const { candidate_id, title_override, content_override } = body;
-        if (!candidate_id) return err(400, "Missing required field: candidate_id");
+        if (!candidate_id) return fail("Missing required field: candidate_id", "ERR_VALIDATION", 400);
 
         const result = await approveCandidate({
           candidate_id,
@@ -133,7 +115,7 @@ export async function handler(event) {
       /* ── reject ──────────────────────────────────────────────────────────── */
       case "reject": {
         const { candidate_id } = body;
-        if (!candidate_id) return err(400, "Missing required field: candidate_id");
+        if (!candidate_id) return fail("Missing required field: candidate_id", "ERR_VALIDATION", 400);
 
         const result = await rejectCandidate({ candidate_id, user_id });
         return ok(result);
@@ -142,7 +124,7 @@ export async function handler(event) {
       /* ── delete ──────────────────────────────────────────────────────────── */
       case "delete": {
         const { media_id } = body;
-        if (!media_id) return err(400, "Missing required field: media_id");
+        if (!media_id) return fail("Missing required field: media_id", "ERR_VALIDATION", 400);
 
         const result = await deleteMedia({ media_id, user_id });
         return ok(result);
@@ -151,17 +133,17 @@ export async function handler(event) {
       /* ── search ──────────────────────────────────────────────────────────── */
       case "search": {
         const { query, limit = 5 } = body;
-        if (!query) return err(400, "Missing required field: query");
+        if (!query) return fail("Missing required field: query", "ERR_VALIDATION", 400);
 
         const results = await searchMediaMemories({ query, user_id, limit });
         return ok({ results });
       }
 
       default:
-        return err(400, `Unknown action: ${action}`);
+        return fail(`Unknown action: ${action}`, "ERR_VALIDATION", 400);
     }
   } catch (e) {
     console.error(`media-memory [${action}] error:`, e.message);
-    return err(500, e.message || "Internal server error");
+    return fail(e.message || "Internal server error", "ERR_INTERNAL", 500);
   }
 }

@@ -1,12 +1,6 @@
 import { generateMedia } from "../../lib/media-engine.js";
 import { optimizePrompt } from "../../lib/media/prompt-optimizer.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 /**
  * Build a refinement prompt for the given action and optional user instructions.
@@ -29,15 +23,11 @@ function buildRefinementPrompt(action, mediaType, customPrompt) {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
@@ -46,27 +36,15 @@ export async function handler(event) {
     );
 
     if (!media_url) {
-      return {
-        statusCode: 400,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: "media_url is required" }),
-      };
+      return fail("media_url is required", "ERR_VALIDATION", 400);
     }
 
     if (!media_type || !["image", "video"].includes(media_type)) {
-      return {
-        statusCode: 400,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: "media_type must be 'image' or 'video'" }),
-      };
+      return fail("media_type must be 'image' or 'video'", "ERR_VALIDATION", 400);
     }
 
     if (!action) {
-      return {
-        statusCode: 400,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: "action is required" }),
-      };
+      return fail("action is required", "ERR_VALIDATION", 400);
     }
 
     // Build the refinement prompt
@@ -88,29 +66,18 @@ export async function handler(event) {
       },
     });
 
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({
-        id: generationResult.id || crypto.randomUUID(),
-        url: generationResult.url,
-        refined_url: generationResult.url,
-        model: generationResult.model,
-        provider: generationResult.provider,
-        prompt: optimizedPrompt,
-        action,
-        taskId: generationResult.taskId,
-      }),
-    };
+    return ok({
+      id: generationResult.id || crypto.randomUUID(),
+      url: generationResult.url,
+      refined_url: generationResult.url,
+      model: generationResult.model,
+      provider: generationResult.provider,
+      prompt: optimizedPrompt,
+      action,
+      taskId: generationResult.taskId,
+    });
   } catch (err) {
     console.error("refine-media error:", err);
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({
-        error: "Media refinement failed",
-        details: err.message,
-      }),
-    };
+    return fail("Media refinement failed", "ERR_INTERNAL", 500);
   }
 }

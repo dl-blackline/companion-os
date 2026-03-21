@@ -3,20 +3,10 @@
  * All routes require admin role verified server-side.
  */
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function res(status, body) {
-  return { statusCode: status, headers: CORS, body: JSON.stringify(body) };
-}
 
 function getSupabase() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
@@ -52,18 +42,18 @@ async function auditLog(supabase, actorId, actorEmail, action, targetType, targe
 // Ban duration for effectively permanent suspension (~100 years)
 const PERMANENT_BAN_DURATION = "876600h";
 
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS, body: "" };
+  if (event.httpMethod === "OPTIONS") return preflight();
 
   const supabase = getSupabase();
-  if (!supabase) return res(500, { error: "Server configuration error" });
+  if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
   const token = authHeader?.replace("Bearer ", "");
   const actor = await resolveActor(supabase, token);
-  if (!actor) return res(401, { error: "Unauthorized" });
+  if (!actor) return fail("Unauthorized", "ERR_AUTH", 401);
 
   const actorIsAdmin = await isAdmin(supabase, actor.id);
-  if (!actorIsAdmin) return res(403, { error: "Admin access required" });
+  if (!actorIsAdmin) return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
   const path = event.path.replace(/.*\/admin-users/, "");
 
@@ -81,7 +71,7 @@ const PERMANENT_BAN_DURATION = "876600h";
         perPage: limit,
       });
 
-      if (usersErr) return res(500, { error: usersErr.message });
+      if (usersErr) return fail(usersErr.message, "ERR_INTERNAL", 500);
 
       // Fetch roles and entitlements for these users
       const userIds = users.map((u) => u.id);
@@ -112,7 +102,7 @@ const PERMANENT_BAN_DURATION = "876600h";
         );
       }
 
-      return res(200, { users: result, total: result.length });
+      return ok({ users: result, total: result.length });
     }
 
     // POST /admin-users — create (or invite) a new user
@@ -125,22 +115,22 @@ const PERMANENT_BAN_DURATION = "876600h";
       let newUser;
       if (invite) {
         // Send an invitation email — no password required
-        if (!email) return res(400, { error: "email required" });
-        if (!siteUrl) return res(500, { error: "SITE_URL not configured — cannot send invite emails" });
+        if (!email) return fail("email required", "ERR_VALIDATION", 400);
+        if (!siteUrl) return fail("SITE_URL not configured — cannot send invite emails", "ERR_CONFIG", 500);
         const { data, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
           redirectTo: siteUrl,
         });
-        if (inviteErr) return res(422, { error: inviteErr.message });
+        if (inviteErr) return fail(inviteErr.message, "ERR_UNPROCESSABLE", 422);
         newUser = data.user;
       } else {
         // Direct create — password required, email auto-confirmed
-        if (!email || !password) return res(400, { error: "email and password required" });
+        if (!email || !password) return fail("email and password required", "ERR_VALIDATION", 400);
         const { data: { user }, error: createErr } = await supabase.auth.admin.createUser({
           email,
           password,
           email_confirm: true,
         });
-        if (createErr) return res(422, { error: createErr.message });
+        if (createErr) return fail(createErr.message, "ERR_UNPROCESSABLE", 422);
         newUser = user;
       }
 
@@ -152,7 +142,7 @@ const PERMANENT_BAN_DURATION = "876600h";
 
       await auditLog(supabase, actor.id, actor.email, "user.created", "user", newUser.id, { email, role, plan });
 
-      return res(201, { user: { id: newUser.id, email: newUser.email, role, plan } });
+      return ok({ user: { id: newUser.id, email: newUser.email, role, plan } }, 201);
     }
 
     // PATCH /admin-users/:userId — update user role/plan/status
@@ -201,12 +191,12 @@ const PERMANENT_BAN_DURATION = "876600h";
       await Promise.all(updates);
       await auditLog(supabase, actor.id, actor.email, "user.updated", "user", targetUserId, { role, plan, status, display_name });
 
-      return res(200, { success: true });
+      return ok({ updated: true });
     }
 
-    return res(404, { error: "Not found" });
+    return fail("Not found", "ERR_NOT_FOUND", 404);
   } catch (err) {
     console.error("admin-users error:", err);
-    return res(500, { error: err.message });
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

@@ -4,20 +4,10 @@
  * Admins can view/update all tickets.
  */
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function res(status, body) {
-  return { statusCode: status, headers: CORS, body: JSON.stringify(body) };
-}
 
 async function getUser(supabase, token) {
   if (!token) return null;
@@ -31,13 +21,13 @@ async function checkAdmin(supabase, userId) {
 }
 
 export async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS, body: "" };
-  if (!SUPABASE_URL || !SUPABASE_KEY) return res(500, { error: "Server configuration error" });
+  if (event.httpMethod === "OPTIONS") return preflight();
+  if (!SUPABASE_URL || !SUPABASE_KEY) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   const token = (event.headers?.authorization || event.headers?.Authorization || "").replace("Bearer ", "");
   const user = await getUser(supabase, token);
-  if (!user) return res(401, { error: "Unauthorized" });
+  if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
 
   const userIsAdmin = await checkAdmin(supabase, user.id);
   const path = event.path.replace(/.*\/support-tickets/, "");
@@ -64,14 +54,14 @@ export async function handler(event) {
       if (priority) query = query.eq("priority", priority);
 
       const { data, error, count } = await query;
-      if (error) return res(500, { error: error.message });
-      return res(200, { tickets: data || [], total: count || 0 });
+      if (error) return fail(error.message, "ERR_INTERNAL", 500);
+      return ok({ tickets: data || [], total: count || 0 });
     }
 
     // POST /support-tickets — create a ticket
     if (event.httpMethod === "POST" && (path === "" || path === "/")) {
       const { title, description, category = "other", priority = "medium" } = JSON.parse(event.body || "{}");
-      if (!title) return res(400, { error: "title is required" });
+      if (!title) return fail("title is required", "ERR_VALIDATION", 400);
 
       const { data, error } = await supabase
         .from("support_tickets")
@@ -79,20 +69,20 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return res(422, { error: error.message });
+      if (error) return fail(error.message, "ERR_UNPROCESSABLE", 422);
 
       await supabase.from("audit_logs").insert({
         actor_id: user.id, actor_email: user.email, action: "support_ticket.created",
         target_type: "support_ticket", target_id: data.id, details: { title, category, priority },
       });
 
-      return res(201, { ticket: data });
+      return ok({ ticket: data }, 201);
     }
 
     // PATCH /support-tickets/:id — admin updates status/notes/resolution
     const matchPatch = path.match(/^\/([^/]+)$/);
     if (event.httpMethod === "PATCH" && matchPatch) {
-      if (!userIsAdmin) return res(403, { error: "Admin access required" });
+      if (!userIsAdmin) return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
       const ticketId = matchPatch[1];
       const body = JSON.parse(event.body || "{}");
@@ -109,19 +99,19 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return res(422, { error: error.message });
+      if (error) return fail(error.message, "ERR_UNPROCESSABLE", 422);
 
       await supabase.from("audit_logs").insert({
         actor_id: user.id, actor_email: user.email, action: "support_ticket.updated",
         target_type: "support_ticket", target_id: ticketId, details: safe,
       });
 
-      return res(200, { ticket: data });
+      return ok({ ticket: data });
     }
 
-    return res(404, { error: "Not found" });
+    return fail("Not found", "ERR_NOT_FOUND", 404);
   } catch (err) {
     console.error("support-tickets error:", err);
-    return res(500, { error: err.message });
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }
