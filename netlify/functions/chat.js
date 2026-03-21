@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { embed } from "../../lib/ai-client.js";
 import { think } from "../../lib/companion-brain.js";
 import { ok, fail, preflight, raw } from "../../lib/_responses.js";
+import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -55,14 +56,23 @@ export async function handler(event) {
   let model;
 
   try {
-    const body = JSON.parse(event.body);
+    // Input validation
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
+
+    let body = JSON.parse(event.body);
+    body = sanitizeDeep(body);
+
+    const validationError = validateAIPayload(body);
+    if (validationError) return fail(validationError, "ERR_VALIDATION", 400);
+
     const { conversation_id, user_id } = body;
     model = body.model;
     message = body.message;
 
-    if (!conversation_id || !user_id || !message) {
+    if (!conversation_id) {
       return fail(
-        "Missing required fields: conversation_id, user_id, message",
+        "Missing required field: conversation_id",
         "ERR_VALIDATION",
         400,
       );
