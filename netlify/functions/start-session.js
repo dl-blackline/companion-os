@@ -1,35 +1,22 @@
 import { createSession } from "../../lib/realtime/session-manager.js";
+import { ok, fail } from "../../lib/_responses.js";
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
     const { user_id, session_type, metadata } = JSON.parse(event.body);
 
     if (!user_id || !session_type) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing required fields: user_id, session_type",
-        }),
-      };
+      return fail("Missing required fields: user_id, session_type", "ERR_VALIDATION", 400);
     }
 
     const session = await createSession({ user_id, session_type, metadata });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ session }),
-    };
+    return ok({ session });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

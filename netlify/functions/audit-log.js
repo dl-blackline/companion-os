@@ -2,37 +2,27 @@
  * audit-log.js — Admin-only audit log reader
  */
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function res(status, body) {
-  return { statusCode: status, headers: CORS, body: JSON.stringify(body) };
-}
-
 export async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS, body: "" };
-  if (event.httpMethod !== "GET") return res(405, { error: "Method not allowed" });
+  if (event.httpMethod === "OPTIONS") return preflight();
+  if (event.httpMethod !== "GET") return fail("Method not allowed", "ERR_METHOD", 405);
 
-  if (!SUPABASE_URL || !SUPABASE_KEY) return res(500, { error: "Server configuration error" });
+  if (!SUPABASE_URL || !SUPABASE_KEY) return fail("Server configuration error", "ERR_CONFIG", 500);
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
   const token = authHeader?.replace("Bearer ", "");
-  if (!token) return res(401, { error: "Unauthorized" });
+  if (!token) return fail("Unauthorized", "ERR_AUTH", 401);
 
   const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) return res(401, { error: "Unauthorized" });
+  if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
 
   const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
-  if (roleData?.role !== "admin") return res(403, { error: "Admin access required" });
+  if (roleData?.role !== "admin") return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
   try {
     const params = event.queryStringParameters || {};
@@ -52,11 +42,11 @@ export async function handler(event) {
     if (actor_id) query = query.eq("actor_id", actor_id);
 
     const { data, error, count } = await query;
-    if (error) return res(500, { error: error.message });
+    if (error) return fail(error.message, "ERR_INTERNAL", 500);
 
-    return res(200, { logs: data || [], total: count || 0, page, limit });
+    return ok({ logs: data || [], total: count || 0, page, limit });
   } catch (err) {
     console.error("audit-log error:", err);
-    return res(500, { error: err.message });
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

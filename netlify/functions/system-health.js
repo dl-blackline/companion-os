@@ -1,19 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-function result(statusCode, body) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify(body),
-  };
-}
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 async function checkSupabase() {
   try {
@@ -106,11 +92,11 @@ async function checkLeonardo() {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   if (event.httpMethod !== "GET") {
-    return result(405, { error: "Method not allowed" });
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
@@ -122,9 +108,9 @@ export async function handler(event) {
       checkLeonardo(),
     ]);
 
-    return result(200, { openai, supabase, vector_search, media, leonardo });
+    return ok({ openai, supabase, vector_search, media, leonardo });
   } catch (err) {
     console.error("System health check error:", err);
-    return result(500, { error: err.message });
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

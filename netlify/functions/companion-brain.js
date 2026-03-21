@@ -1,6 +1,7 @@
 import { think, listCapabilities } from "../../lib/companion-brain.js";
 import { createClient } from "@supabase/supabase-js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -56,15 +57,16 @@ export async function handler(event) {
     return fail("Invalid JSON body", "ERR_PARSE", 400);
   }
 
-  const { message, user_id, conversation_id } = body;
+  // Input validation
+  const sizeCheck = validatePayloadSize(event.body);
+  if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
 
-  if (!message || !user_id || !conversation_id) {
-    return fail(
-      "Missing required fields: message, user_id, conversation_id",
-      "ERR_VALIDATION",
-      400,
-    );
-  }
+  body = sanitizeDeep(body);
+
+  const validationError = validateAIPayload(body);
+  if (validationError) return fail(validationError, "ERR_VALIDATION", 400);
+
+  const { message, user_id, conversation_id } = body;
 
   // Build a getRecentConversation callback from Supabase
   const getRecentConversation = async (convId) => {

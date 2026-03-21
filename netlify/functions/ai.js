@@ -25,6 +25,7 @@ import { runTask } from "../../lib/multimodal-engine.js";
 import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 import { isNofilterModel } from "../../lib/nofilter-client.js";
 import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
+import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
 
 function getSupabase() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -724,7 +725,11 @@ export async function handler(event) {
   }
 
   try {
-    const body = JSON.parse(event.body);
+    // Input validation: payload size check
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
+
+    const body = sanitizeDeep(JSON.parse(event.body));
 
     console.log("AI Gateway Request:", body);
 

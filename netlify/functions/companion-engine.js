@@ -41,45 +41,27 @@ import {
   buildCompanionContext,
   formatCompanionContext,
 } from "../../lib/companion-engine.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function ok(body) {
-  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(body) };
-}
-
-function err(statusCode, message) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify({ error: message }),
-  };
-}
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   if (event.httpMethod !== "POST") {
-    return err(405, "Method not allowed");
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   let body;
   try {
     body = JSON.parse(event.body || "{}");
   } catch {
-    return err(400, "Invalid JSON body");
+    return fail("Invalid JSON body", "ERR_VALIDATION", 400);
   }
 
   const { action, user_id } = body;
 
-  if (!action) return err(400, "Missing required field: action");
+  if (!action) return fail("Missing required field: action", "ERR_VALIDATION", 400);
 
   // Actions that operate on a specific resource by ID don't require user_id.
   const RESOURCE_ACTIONS = new Set([
@@ -89,7 +71,7 @@ export async function handler(event) {
   ]);
 
   if (!user_id && !RESOURCE_ACTIONS.has(action)) {
-    return err(400, "Missing required field: user_id");
+    return fail("Missing required field: user_id", "ERR_VALIDATION", 400);
   }
 
   try {
@@ -103,7 +85,7 @@ export async function handler(event) {
     }
 
     if (action === "goals.create") {
-      if (!body.title) return err(400, "Missing required field: title");
+      if (!body.title) return fail("Missing required field: title", "ERR_VALIDATION", 400);
       const goal = await createGoal({
         user_id,
         domain: body.domain,
@@ -112,21 +94,21 @@ export async function handler(event) {
         priority: body.priority,
         target_date: body.target_date,
       });
-      if (!goal) return err(500, "Failed to create goal");
+      if (!goal) return fail("Failed to create goal", "ERR_INTERNAL", 500);
       return ok({ goal });
     }
 
     if (action === "goals.update") {
-      if (!body.goal_id) return err(400, "Missing required field: goal_id");
+      if (!body.goal_id) return fail("Missing required field: goal_id", "ERR_VALIDATION", 400);
       const goal = await updateGoal(body.goal_id, body);
-      if (!goal) return err(500, "Failed to update goal");
+      if (!goal) return fail("Failed to update goal", "ERR_INTERNAL", 500);
       return ok({ goal });
     }
 
     if (action === "goals.delete") {
-      if (!body.goal_id) return err(400, "Missing required field: goal_id");
+      if (!body.goal_id) return fail("Missing required field: goal_id", "ERR_VALIDATION", 400);
       const deleted = await deleteGoal(body.goal_id);
-      if (!deleted) return err(500, "Failed to delete goal");
+      if (!deleted) return fail("Failed to delete goal", "ERR_INTERNAL", 500);
       return ok({ deleted: true });
     }
 
@@ -139,29 +121,29 @@ export async function handler(event) {
     }
 
     if (action === "constraints.create") {
-      if (!body.label) return err(400, "Missing required field: label");
-      if (!body.value) return err(400, "Missing required field: value");
+      if (!body.label) return fail("Missing required field: label", "ERR_VALIDATION", 400);
+      if (!body.value) return fail("Missing required field: value", "ERR_VALIDATION", 400);
       const constraint = await createConstraint({
         user_id,
         domain: body.domain,
         label: body.label,
         value: body.value,
       });
-      if (!constraint) return err(500, "Failed to create constraint");
+      if (!constraint) return fail("Failed to create constraint", "ERR_INTERNAL", 500);
       return ok({ constraint });
     }
 
     if (action === "constraints.update") {
-      if (!body.constraint_id) return err(400, "Missing required field: constraint_id");
+      if (!body.constraint_id) return fail("Missing required field: constraint_id", "ERR_VALIDATION", 400);
       const constraint = await updateConstraint(body.constraint_id, body);
-      if (!constraint) return err(500, "Failed to update constraint");
+      if (!constraint) return fail("Failed to update constraint", "ERR_INTERNAL", 500);
       return ok({ constraint });
     }
 
     if (action === "constraints.delete") {
-      if (!body.constraint_id) return err(400, "Missing required field: constraint_id");
+      if (!body.constraint_id) return fail("Missing required field: constraint_id", "ERR_VALIDATION", 400);
       const deleted = await deleteConstraint(body.constraint_id);
-      if (!deleted) return err(500, "Failed to delete constraint");
+      if (!deleted) return fail("Failed to delete constraint", "ERR_INTERNAL", 500);
       return ok({ deleted: true });
     }
 
@@ -175,10 +157,10 @@ export async function handler(event) {
     }
 
     if (action === "initiatives.update") {
-      if (!body.initiative_id) return err(400, "Missing required field: initiative_id");
-      if (!body.status) return err(400, "Missing required field: status");
+      if (!body.initiative_id) return fail("Missing required field: initiative_id", "ERR_VALIDATION", 400);
+      if (!body.status) return fail("Missing required field: status", "ERR_VALIDATION", 400);
       const initiative = await updateInitiativeStatus(body.initiative_id, body.status);
-      if (!initiative) return err(500, "Failed to update initiative");
+      if (!initiative) return fail("Failed to update initiative", "ERR_INTERNAL", 500);
       return ok({ initiative });
     }
 
@@ -189,8 +171,8 @@ export async function handler(event) {
 
     // ── Interactions ────────────────────────────────────────────────────────
     if (action === "interactions.log") {
-      if (!body.module) return err(400, "Missing required field: module");
-      if (!body.interaction_action) return err(400, "Missing required field: interaction_action");
+      if (!body.module) return fail("Missing required field: module", "ERR_VALIDATION", 400);
+      if (!body.interaction_action) return fail("Missing required field: interaction_action", "ERR_VALIDATION", 400);
       const entry = await logInteraction({
         user_id,
         module: body.module,
@@ -199,7 +181,7 @@ export async function handler(event) {
         outcome: body.outcome,
         metadata: body.metadata,
       });
-      if (!entry) return err(500, "Failed to log interaction");
+      if (!entry) return fail("Failed to log interaction", "ERR_INTERNAL", 500);
       return ok({ entry });
     }
 
@@ -217,9 +199,9 @@ export async function handler(event) {
       return ok({ context: ctx, formatted: formatCompanionContext(ctx) });
     }
 
-    return err(400, `Unknown action: ${action}`);
+    return fail(`Unknown action: ${action}`, "ERR_VALIDATION", 400);
   } catch (e) {
     console.error(`companion-engine [${action}] error:`, e.message);
-    return err(500, e.message || "Internal server error");
+    return fail(e.message || "Internal server error", "ERR_INTERNAL", 500);
   }
 }

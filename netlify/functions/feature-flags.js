@@ -4,20 +4,10 @@
  * POST/PATCH: admin-only
  */
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const CORS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function res(status, body) {
-  return { statusCode: status, headers: CORS, body: JSON.stringify(body) };
-}
 
 function getSupabase() {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
@@ -36,10 +26,10 @@ async function isAdmin(supabase, userId) {
 }
 
 export async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS, body: "" };
+  if (event.httpMethod === "OPTIONS") return preflight();
 
   const supabase = getSupabase();
-  if (!supabase) return res(500, { error: "Server configuration error" });
+  if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
   const token = authHeader?.replace("Bearer ", "");
@@ -53,18 +43,18 @@ export async function handler(event) {
       if (!userIsAdmin) query = query.eq("admin_only", false);
 
       const { data, error } = await query;
-      if (error) return res(500, { error: error.message });
-      return res(200, { flags: data || [] });
+      if (error) return fail(error.message, "ERR_INTERNAL", 500);
+      return ok({ flags: data || [] });
     }
 
     // Write operations require admin
-    if (!user) return res(401, { error: "Unauthorized" });
-    if (!userIsAdmin) return res(403, { error: "Admin access required" });
+    if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
+    if (!userIsAdmin) return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
     if (event.httpMethod === "POST") {
       const body = JSON.parse(event.body || "{}");
       const { key, name, description, enabled, rollout_percentage, admin_only, kill_switch, category } = body;
-      if (!key || !name) return res(400, { error: "key and name are required" });
+      if (!key || !name) return fail("key and name are required", "ERR_VALIDATION", 400);
 
       const { data, error } = await supabase
         .from("feature_flags")
@@ -72,20 +62,20 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return res(422, { error: error.message });
+      if (error) return fail(error.message, "ERR_UNPROCESSABLE", 422);
 
       await supabase.from("audit_logs").insert({
         actor_id: user.id, actor_email: user.email, action: "feature_flag.created",
         target_type: "feature_flag", target_id: data.id, details: { key, enabled },
       });
 
-      return res(201, { flag: data });
+      return ok({ flag: data }, 201);
     }
 
     if (event.httpMethod === "PATCH") {
       const body = JSON.parse(event.body || "{}");
       const { id, ...updates } = body;
-      if (!id) return res(400, { error: "id is required" });
+      if (!id) return fail("id is required", "ERR_VALIDATION", 400);
 
       // Strip non-updatable fields
       const safe = {};
@@ -101,19 +91,19 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return res(422, { error: error.message });
+      if (error) return fail(error.message, "ERR_UNPROCESSABLE", 422);
 
       await supabase.from("audit_logs").insert({
         actor_id: user.id, actor_email: user.email, action: "feature_flag.updated",
         target_type: "feature_flag", target_id: id, details: safe,
       });
 
-      return res(200, { flag: data });
+      return ok({ flag: data });
     }
 
-    return res(405, { error: "Method not allowed" });
+    return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
     console.error("feature-flags error:", err);
-    return res(500, { error: err.message });
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

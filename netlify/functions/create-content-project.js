@@ -1,23 +1,13 @@
 import { createProject, addWorkflowStep } from "../../lib/workflow-engine.js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 export async function handler(event) {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers, body: "" };
+    return preflight();
   }
 
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
@@ -26,13 +16,7 @@ export async function handler(event) {
     );
 
     if (!user_id || !title) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({
-          error: "Missing required fields: user_id, title",
-        }),
-      };
+      return fail("Missing required fields: user_id, title", "ERR_VALIDATION", 400);
     }
 
     const project = await createProject({
@@ -43,11 +27,7 @@ export async function handler(event) {
     });
 
     if (!project) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: "Failed to create project" }),
-      };
+      return fail("Failed to create project", "ERR_INTERNAL", 500);
     }
 
     // Add workflow steps if provided
@@ -62,20 +42,9 @@ export async function handler(event) {
       }
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ project }),
-    };
+    return ok({ project });
   } catch (err) {
     console.error("Create content project error:", err.message);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: "Failed to create content project",
-        details: err.message,
-      }),
-    };
+    return fail("Failed to create content project", "ERR_INTERNAL", 500);
   }
 }

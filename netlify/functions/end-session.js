@@ -1,51 +1,32 @@
 import { endSession, getSession } from "../../lib/realtime/session-manager.js";
+import { ok, fail } from "../../lib/_responses.js";
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
     const { session_id } = JSON.parse(event.body);
 
     if (!session_id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing required field: session_id",
-        }),
-      };
+      return fail("Missing required field: session_id", "ERR_VALIDATION", 400);
     }
 
     const existing = await getSession(session_id);
 
     if (!existing) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: "Session not found" }),
-      };
+      return fail("Session not found", "ERR_NOT_FOUND", 404);
     }
 
     if (existing.status !== "active") {
-      return {
-        statusCode: 409,
-        body: JSON.stringify({ error: "Session is not active" }),
-      };
+      return fail("Session is not active", "ERR_CONFLICT", 409);
     }
 
     const session = await endSession(session_id);
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ session }),
-    };
+    return ok({ session });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

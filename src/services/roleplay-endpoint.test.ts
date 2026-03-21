@@ -42,6 +42,10 @@ function makeEvent(body: Record<string, unknown>, method = 'POST') {
   };
 }
 
+/** Reusable valid UUIDs for tests. */
+const TEST_USER_ID = '00000000-0000-4000-a000-000000000001';
+const TEST_CONV_ID = '00000000-0000-4000-a000-000000000002';
+
 function parseBody(result: { body: string }) {
   return JSON.parse(result.body);
 }
@@ -83,7 +87,7 @@ describe('roleplay handler', () => {
   });
 
   it('returns 400 when message is missing', async () => {
-    const result = await handler(makeEvent({ user_id: 'user-1' }));
+    const result = await handler(makeEvent({ user_id: TEST_USER_ID }));
     expect(result.statusCode).toBe(400);
     const body = parseBody(result);
     expect(body.success).toBe(false);
@@ -100,8 +104,8 @@ describe('roleplay handler', () => {
 
     const result = await handler(
       makeEvent({
-        user_id: 'user-1',
-        conversation_id: 'conv-1',
+        user_id: TEST_USER_ID,
+        conversation_id: TEST_CONV_ID,
         message: 'I draw my sword',
         model: 'gpt-4o',
         character: 'Captain Nova',
@@ -120,8 +124,8 @@ describe('roleplay handler', () => {
     const thinkArgs = mockThink.mock.calls[0][0];
     expect(thinkArgs.capability).toBe('roleplay');
     expect(thinkArgs.message).toBe('I draw my sword');
-    expect(thinkArgs.user_id).toBe('user-1');
-    expect(thinkArgs.conversation_id).toBe('conv-1');
+    expect(thinkArgs.user_id).toBe(TEST_USER_ID);
+    expect(thinkArgs.conversation_id).toBe(TEST_CONV_ID);
     expect(thinkArgs.model).toBe('gpt-4o');
     expect(thinkArgs.extra.roleplayCharacter).toBe('Captain Nova');
     expect(thinkArgs.extra.roleplayScenario).toBe('space adventure');
@@ -135,13 +139,13 @@ describe('roleplay handler', () => {
 
     await handler(
       makeEvent({
-        user_id: 'user-1',
+        user_id: TEST_USER_ID,
         message: 'hello',
       }),
     );
 
     const thinkArgs = mockThink.mock.calls[0][0];
-    expect(thinkArgs.conversation_id).toBe('user-1');
+    expect(thinkArgs.conversation_id).toBe(TEST_USER_ID);
   });
 
   it('passes character and scenario as extra params', async () => {
@@ -152,7 +156,7 @@ describe('roleplay handler', () => {
 
     await handler(
       makeEvent({
-        user_id: 'user-1',
+        user_id: TEST_USER_ID,
         message: 'Continue the story',
         character: 'Gandalf',
         scenario: 'The Shire',
@@ -171,7 +175,7 @@ describe('roleplay handler', () => {
 
     const result = await handler(
       makeEvent({
-        user_id: 'user-1',
+        user_id: TEST_USER_ID,
         message: 'hello',
       }),
     );

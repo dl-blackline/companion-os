@@ -10,6 +10,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { think } from "../../lib/companion-brain.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
 
 function getSupabase() {
   return createClient(
@@ -46,12 +47,16 @@ export async function handler(event) {
   }
 
   try {
-    const body = JSON.parse(event.body);
-    const { user_id, conversation_id, message, model } = body;
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
 
-    if (!user_id) {
-      return fail("Missing required field: user_id", "ERR_VALIDATION", 400);
-    }
+    let body = JSON.parse(event.body);
+    body = sanitizeDeep(body);
+
+    const validationError = validateAIPayload(body, { requireMessage: false });
+    if (validationError) return fail(validationError, "ERR_VALIDATION", 400);
+
+    const { user_id, conversation_id, message, model } = body;
 
     const supabase = getSupabase();
 

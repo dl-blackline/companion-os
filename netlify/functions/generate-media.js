@@ -1,11 +1,5 @@
 import { createJob } from "../../lib/job-queue.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const MEDIA_TYPE_TO_JOB = {
   image: "image_generation",
@@ -15,53 +9,30 @@ const MEDIA_TYPE_TO_JOB = {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+    return preflight();
   }
 
   try {
     const { type, prompt, model, options } = JSON.parse(event.body);
 
     if (!prompt) {
-      return {
-        statusCode: 400,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: "Prompt required" }),
-      };
+      return fail("Prompt required", "ERR_VALIDATION", 400);
     }
 
     const job_type = MEDIA_TYPE_TO_JOB[type];
 
     if (!job_type) {
-      return {
-        statusCode: 400,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: "Unsupported media type" }),
-      };
+      return fail("Unsupported media type", "ERR_VALIDATION", 400);
     }
 
     const job = await createJob(job_type, { type, prompt, model, options });
 
     if (!job) {
-      return {
-        statusCode: 500,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: "Failed to create job" }),
-      };
+      return fail("Failed to create job", "ERR_INTERNAL", 500);
     }
 
-    return {
-      statusCode: 202,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ job_id: job.id, status: job.status }),
-    };
+    return ok({ job_id: job.id, status: job.status }, 202);
   } catch (error) {
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({
-        error: "Media generation failed",
-        details: error.message,
-      }),
-    };
+    return fail("Media generation failed", "ERR_INTERNAL", 500);
   }
 }

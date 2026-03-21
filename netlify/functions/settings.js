@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { ok, fail, preflight } from "../../lib/_responses.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -7,25 +8,12 @@ const supabase =
   SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 export async function handler(event) {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers, body: "" };
+    return preflight();
   }
 
   if (!supabase) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: "Server configuration error: missing Supabase credentials",
-      }),
-    };
+    return fail("Server configuration error: missing Supabase credentials", "ERR_CONFIG", 500);
   }
 
   try {
@@ -34,11 +22,7 @@ export async function handler(event) {
         event.queryStringParameters && event.queryStringParameters.user_id;
 
       if (!user_id) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ error: "Missing required parameter: user_id" }),
-        };
+        return fail("Missing required parameter: user_id", "ERR_VALIDATION", 400);
       }
 
       const { data, error } = await supabase
@@ -49,31 +33,17 @@ export async function handler(event) {
 
       if (error && error.code !== "PGRST116") {
         console.error("Settings fetch error:", error.message);
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ error: "Failed to fetch settings" }),
-        };
+        return fail("Failed to fetch settings", "ERR_INTERNAL", 500);
       }
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ settings: data || null }),
-      };
+      return ok({ settings: data || null });
     }
 
     if (event.httpMethod === "POST") {
       const { user_id, settings } = JSON.parse(event.body);
 
       if (!user_id || !settings) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({
-            error: "Missing required fields: user_id, settings",
-          }),
-        };
+        return fail("Missing required fields: user_id, settings", "ERR_VALIDATION", 400);
       }
 
       const { data, error } = await supabase
@@ -87,31 +57,15 @@ export async function handler(event) {
 
       if (error) {
         console.error("Settings save error:", error.message);
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ error: "Failed to save settings" }),
-        };
+        return fail("Failed to save settings", "ERR_INTERNAL", 500);
       }
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ settings: data }),
-      };
+      return ok({ settings: data });
     }
 
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
+    return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
     console.error("Settings function error:", err.message);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

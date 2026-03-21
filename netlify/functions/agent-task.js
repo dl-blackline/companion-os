@@ -1,24 +1,10 @@
 import { createAgentTask, getAgentTask, getAgentTasksByStatus } from "../../lib/agent-manager.js";
 import { AGENTS } from "../../lib/agent-registry.js";
-
-const CORS_HEADERS = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-function response(statusCode, body) {
-  return {
-    statusCode,
-    headers: CORS_HEADERS,
-    body: JSON.stringify(body),
-  };
-}
+import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 
 export const handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
-    return response(204, {});
+    return preflight();
   }
 
   // GET — list tasks or fetch a single task by id
@@ -31,7 +17,7 @@ export const handler = async (event) => {
       try {
         if (status) {
           const tasks = await getAgentTasksByStatus(status);
-          return response(200, tasks);
+          return raw(200, tasks);
         }
         // Return all tasks (most recent first) – fetch each status bucket
         const [pending, processing, completed, failed] = await Promise.all([
@@ -40,24 +26,24 @@ export const handler = async (event) => {
           getAgentTasksByStatus("completed", 50),
           getAgentTasksByStatus("failed", 50),
         ]);
-        return response(200, [...processing, ...pending, ...completed, ...failed]);
+        return raw(200, [...processing, ...pending, ...completed, ...failed]);
       } catch (err) {
-        return response(500, { error: err.message });
+        return fail(err.message, "ERR_INTERNAL", 500);
       }
     }
 
     // Single task by id
     const taskId = params.id;
     if (!taskId) {
-      return response(400, { error: "Missing query parameter: id or list" });
+      return fail("Missing query parameter: id or list", "ERR_VALIDATION", 400);
     }
 
     const task = await getAgentTask(taskId);
     if (!task) {
-      return response(404, { error: "Task not found" });
+      return fail("Task not found", "ERR_NOT_FOUND", 404);
     }
 
-    return response(200, task);
+    return raw(200, task);
   }
 
   // POST — create a new agent task
@@ -66,33 +52,35 @@ export const handler = async (event) => {
     try {
       body = JSON.parse(event.body || "{}");
     } catch {
-      return response(400, { error: "Invalid JSON body" });
+      return fail("Invalid JSON body", "ERR_VALIDATION", 400);
     }
 
     const { agent_type, task } = body;
 
     if (!agent_type || !task) {
-      return response(400, { error: "Missing required fields: agent_type, task" });
+      return fail("Missing required fields: agent_type, task", "ERR_VALIDATION", 400);
     }
 
     if (!AGENTS[agent_type]) {
-      return response(400, {
-        error: `Unknown agent_type: ${agent_type}. Valid types: ${Object.keys(AGENTS).join(", ")}`,
-      });
+      return fail(
+        `Unknown agent_type: ${agent_type}. Valid types: ${Object.keys(AGENTS).join(", ")}`,
+        "ERR_VALIDATION",
+        400,
+      );
     }
 
     try {
       const record = await createAgentTask(agent_type, task);
 
       if (!record) {
-        return response(500, { error: "Failed to create agent task" });
+        return fail("Failed to create agent task", "ERR_INTERNAL", 500);
       }
 
-      return response(201, { task_id: record.id, status: record.status });
+      return ok({ task_id: record.id, status: record.status }, 201);
     } catch (err) {
-      return response(500, { error: err.message });
+      return fail(err.message, "ERR_INTERNAL", 500);
     }
   }
 
-  return response(405, { error: "Method not allowed" });
+  return fail("Method not allowed", "ERR_METHOD", 405);
 };
