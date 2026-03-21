@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { generateEmbedding } from "../../lib/openai-client.js";
+import { embed } from "../../lib/ai-client.js";
 import { think } from "../../lib/companion-brain.js";
 import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 
@@ -86,7 +86,7 @@ export async function handler(event) {
     }
 
     // Save both the user message and the assistant response
-    const assistantEmbedding = await generateEmbedding(result.response).catch(() => null);
+    const assistantEmbedding = await embed(result.response).catch(() => null);
 
     await Promise.all([
       saveMessage({
