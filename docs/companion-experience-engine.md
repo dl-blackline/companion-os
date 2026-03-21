@@ -166,7 +166,7 @@ renders all memory layers into the system prompt.
 7. For each token: emit SSE: token → { content, accumulated }
 8. If image generated: emit SSE: image → { imageUrl, prompt }
 9. Generate lip-sync frames from accumulated text
-10. Emit SSE: done → { fullText, durationMs, lipSyncFrames }
+10. Emit SSE: done → { fullText, intent, isMedia, timestamp }
 11. Emit SSE: state → { state: "idle", avatarState: "idle" }
 ```
 

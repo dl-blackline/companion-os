@@ -66,6 +66,7 @@ describe('roleplay handler', () => {
   it('rejects non-POST methods', async () => {
     const result = await handler({ httpMethod: 'GET', body: '' });
     expect(result.statusCode).toBe(405);
+    expect(result.headers['Access-Control-Allow-Origin']).toBe('*');
     const body = parseBody(result);
     expect(body.success).toBe(false);
     expect(body.code).toBe('ERR_METHOD');
