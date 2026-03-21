@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { think } from "../../lib/companion-brain.js";
 import { chat as aiChat, embed } from "../../lib/ai-client.js";
 import {
@@ -27,16 +27,6 @@ import { isNofilterModel } from "../../lib/nofilter-client.js";
 import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
 import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
 
-function getSupabase() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Missing Supabase environment configuration");
-  }
-
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
 
 async function getRecentConversation(supabase, conversation_id) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
@@ -84,8 +74,6 @@ async function handleChat(data) {
       400,
     );
   }
-
-  const supabase = getSupabase();
 
   try {
     /* -------------------- VISION ANALYSIS (if media attached) ------------------- */
@@ -301,8 +289,6 @@ async function handleMemory(data) {
   const { action } = data;
 
   if (action === "search") {
-    const supabase = getSupabase();
-
     const embedding = await embed(data.content);
 
     const { data: results } = await supabase.rpc("match_messages", {
@@ -314,8 +300,6 @@ async function handleMemory(data) {
   }
 
   if (action === "save") {
-    const supabase = getSupabase();
-
     const embedding = await embed(data.content);
 
     const { data: saved } = await supabase

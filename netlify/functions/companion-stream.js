@@ -1,6 +1,6 @@
 import { think } from "../../lib/companion-brain.js";
 import { chatStream } from "../../lib/ai-client.js";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import {
   createCompanionState,
   transitionState,
@@ -18,11 +18,6 @@ import { preflight, fail, CORS_HEADERS } from "../../lib/_responses.js";
 
 /** Default estimated speech duration (ms) used for lip-sync frame generation. */
 const DEFAULT_SPEECH_DURATION_MS = 5000;
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 /**
  * Companion Stream — SSE endpoint for real-time streaming AI responses.

@@ -1,13 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { embed } from "../../lib/ai-client.js";
 import { think } from "../../lib/companion-brain.js";
 import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 async function getRecentConversation(conversation_id) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";

@@ -11,7 +11,7 @@
  * backward compatibility with older callers.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { embed } from "../../lib/ai-client.js";
 import {
   storeEpisodicMemory,
@@ -20,11 +20,6 @@ import {
   searchRelationshipMemory,
 } from "../../lib/memory-manager.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 /* ─── Determine which memory table to use based on memory_type/category ───── */
 function resolveMemoryTable(memory_type, category) {

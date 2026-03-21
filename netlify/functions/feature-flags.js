@@ -3,16 +3,8 @@
  * GET: public (non-admin flags for all users; all flags for admins)
  * POST/PATCH: admin-only
  */
-import { createClient } from "@supabase/supabase-js";
+import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function getSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  return createClient(SUPABASE_URL, SUPABASE_KEY);
-}
 
 async function resolveUser(supabase, token) {
   if (!token) return null;
@@ -28,7 +20,6 @@ async function isAdmin(supabase, userId) {
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
 
-  const supabase = getSupabase();
   if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;

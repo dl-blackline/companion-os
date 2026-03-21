@@ -7,17 +7,10 @@
  * Routes through the unified think() pipeline with the "roleplay" capability.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { think } from "../../lib/companion-brain.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
-
-function getSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-  );
-}
 
 async function getRecentConversation(supabase, conversation_id) {
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
@@ -58,8 +51,6 @@ export async function handler(event) {
 
     const { user_id, conversation_id, message, model, character, scenario } =
       body;
-
-    const supabase = getSupabase();
 
     const result = await think({
       message,

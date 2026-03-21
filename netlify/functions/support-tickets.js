@@ -3,11 +3,8 @@
  * Users can create tickets and view their own.
  * Admins can view/update all tickets.
  */
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function getUser(supabase, token) {
   if (!token) return null;
@@ -22,9 +19,8 @@ async function checkAdmin(supabase, userId) {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
-  if (!SUPABASE_URL || !SUPABASE_KEY) return fail("Server configuration error", "ERR_CONFIG", 500);
+  if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   const token = (event.headers?.authorization || event.headers?.Authorization || "").replace("Bearer ", "");
   const user = await getUser(supabase, token);
   if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
