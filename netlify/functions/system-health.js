@@ -1,15 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 
 async function checkSupabase() {
   try {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!supabase) {
       return "error";
     }
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
     const table = process.env.CHAT_HISTORY_TABLE || "messages";
     const { error } = await supabase.from(table).select("id").limit(1);
     return error ? "error" : "ok";
@@ -34,13 +30,9 @@ async function checkOpenAI() {
 
 async function checkVectorSearch() {
   try {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!supabase) {
       return "error";
     }
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
     // Verify the match_messages RPC function exists by calling with a dummy embedding
     const { error } = await supabase.rpc("match_messages", {
       query_embedding: Array(1536).fill(0),

@@ -1,12 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CHAT_TABLE = process.env.CHAT_HISTORY_TABLE || "messages";
-
-const supabase =
-  SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {

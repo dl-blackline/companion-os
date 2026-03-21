@@ -1,18 +1,14 @@
 /**
  * audit-log.js — Admin-only audit log reader
  */
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
   if (event.httpMethod !== "GET") return fail("Method not allowed", "ERR_METHOD", 405);
 
-  if (!SUPABASE_URL || !SUPABASE_KEY) return fail("Server configuration error", "ERR_CONFIG", 500);
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
   const token = authHeader?.replace("Bearer ", "");

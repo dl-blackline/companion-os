@@ -1,11 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../lib/_supabase.js";
 import { embed } from "../../lib/ai-client.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {

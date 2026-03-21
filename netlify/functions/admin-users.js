@@ -2,16 +2,8 @@
  * admin-users.js — Admin-only user management endpoint
  * All routes require admin role verified server-side.
  */
-import { createClient } from "@supabase/supabase-js";
+import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function getSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  return createClient(SUPABASE_URL, SUPABASE_KEY);
-}
 
 async function resolveActor(supabase, token) {
   if (!token) return null;
@@ -44,7 +36,6 @@ const PERMANENT_BAN_DURATION = "876600h";
 
   if (event.httpMethod === "OPTIONS") return preflight();
 
-  const supabase = getSupabase();
   if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;

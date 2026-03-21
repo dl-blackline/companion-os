@@ -1,13 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function getSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  return createClient(SUPABASE_URL, SUPABASE_KEY);
-}
 
 // PostgREST error code for "row not found" (single-row select returned 0 rows)
 const PGRST_NOT_FOUND = "PGRST116";
@@ -21,7 +13,6 @@ async function getUserFromToken(supabase, token) {
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
 
-  const supabase = getSupabase();
   if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
 
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
