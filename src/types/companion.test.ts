@@ -129,8 +129,8 @@ describe('GoalMilestone type', () => {
 
 describe('ConstraintDomain type', () => {
   it('accepts all valid constraint domains', () => {
-    const domains: ConstraintDomain[] = ['general', 'financial', 'time', 'health', 'dietary', 'work'];
-    expect(domains).toHaveLength(6);
+    const domains: ConstraintDomain[] = ['general', 'financial', 'time', 'health', 'dietary', 'work', 'content', 'privacy'];
+    expect(domains).toHaveLength(8);
   });
 });
 
@@ -211,6 +211,18 @@ describe('UserConstraint', () => {
   it('can be deactivated', () => {
     const c = makeConstraint({ isActive: false });
     expect(c.isActive).toBe(false);
+  });
+
+  it('supports content boundary domain', () => {
+    const c = makeConstraint({ domain: 'content', label: 'Avoid politics', value: 'Do not discuss political topics' });
+    expect(c.domain).toBe('content');
+    expect(c.label).toBe('Avoid politics');
+  });
+
+  it('supports privacy preference domain', () => {
+    const c = makeConstraint({ domain: 'privacy', label: 'Data retention', value: 'Do not store conversation history beyond 30 days' });
+    expect(c.domain).toBe('privacy');
+    expect(c.label).toBe('Data retention');
   });
 });
 
