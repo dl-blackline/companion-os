@@ -380,6 +380,8 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
         // Unwrap the ok() envelope: { success, data: { url, ... } }
         const payload = mediaData.data ?? mediaData;
 
+        // Check both HTTP status and response body: the gateway may return 200
+        // with { success: false } via raw() for backward compatibility.
         if (!mediaRes.ok || mediaData.error || !mediaData.success) {
           // Fallback to description mode when API not configured
           const errMsg = mediaData.error ?? payload?.error ?? 'unknown';

@@ -173,7 +173,8 @@ export async function generateVideo(
     // Unwrap ok() envelope: { success, data: { ... } }
     const data = (json.data ?? json) as Record<string, unknown>;
 
-    // If the response contains a taskId, the job is async
+    // Check for both taskId (provider APIs) and job_id (Netlify job queue) since
+    // different backends return different field names for async job identifiers.
     if (data.taskId || data.job_id) {
       const taskId = (data.taskId ?? data.job_id) as string;
       console.log('[video-service] Async job created:', taskId);

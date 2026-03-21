@@ -14,7 +14,7 @@ export async function handler(event) {
 
   try {
     const { type, prompt, model, options } = JSON.parse(event.body);
-    console.log("[generate-media] Incoming request:", { type, prompt: prompt?.slice(0, 80), model, options });
+    console.log("[generate-media] Incoming request:", { type, model, options, promptLength: prompt?.length });
 
     if (!prompt) {
       console.warn("[generate-media] Missing prompt");
