@@ -14,25 +14,31 @@ export async function handler(event) {
 
   try {
     const { type, prompt, model, options } = JSON.parse(event.body);
+    console.log("[generate-media] Incoming request:", { type, model, options, promptLength: prompt?.length });
 
     if (!prompt) {
+      console.warn("[generate-media] Missing prompt");
       return fail("Prompt required", "ERR_VALIDATION", 400);
     }
 
     const job_type = MEDIA_TYPE_TO_JOB[type];
 
     if (!job_type) {
+      console.warn("[generate-media] Unsupported media type:", type);
       return fail("Unsupported media type", "ERR_VALIDATION", 400);
     }
 
     const job = await createJob(job_type, { type, prompt, model, options });
 
     if (!job) {
+      console.error("[generate-media] Failed to create job for type:", job_type);
       return fail("Failed to create job", "ERR_INTERNAL", 500);
     }
 
+    console.log("[generate-media] Job created:", { job_id: job.id, status: job.status });
     return ok({ job_id: job.id, status: job.status }, 202);
   } catch (error) {
+    console.error("[generate-media] Unexpected error:", error?.message || error);
     return fail("Media generation failed", "ERR_INTERNAL", 500);
   }
 }

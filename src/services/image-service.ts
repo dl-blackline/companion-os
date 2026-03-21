@@ -265,6 +265,8 @@ export async function generateImage(
   request: ImageGenerationRequest,
 ): Promise<AsyncResult<MediaGenerationResult>> {
   try {
+    console.log('[image-service] generateImage request:', { prompt: request.prompt, model: request.model, style: request.style });
+
     const res = await fetch(`${API_BASE}/generate-media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -283,6 +285,7 @@ export async function generateImage(
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       const msg = (body as Record<string, string>).error || `Image generation failed (${res.status})`;
+      console.error('[image-service] generateImage error:', msg);
       return error(appError(
         res.status === 429 ? 'rate_limit' : 'server',
         msg,
@@ -290,13 +293,24 @@ export async function generateImage(
       ));
     }
 
-    const data = await res.json() as Record<string, unknown>;
+    const json = await res.json() as Record<string, unknown>;
+    console.log('[image-service] generateImage response:', json);
+
+    // Unwrap ok() envelope: { success, data: { ... } }
+    const data = (json.data ?? json) as Record<string, unknown>;
+
+    const resultUrl = (data.url ?? data.resultUrl ?? '') as string;
+    if (!resultUrl) {
+      console.error('[image-service] No image URL in response:', data);
+      return error(appError('processing_failed', 'Image generation completed but no image URL was returned'));
+    }
+
     const result: MediaGenerationResult = {
       id: crypto.randomUUID(),
       type: 'image',
       prompt: request.prompt,
       enhancedPrompt: data.prompt as string | undefined,
-      resultUrl: (data.url ?? data.resultUrl ?? '') as string,
+      resultUrl,
       model: (data.model ?? 'gpt-image-1') as string,
       provider: (data.provider ?? 'openai') as string,
       createdAt: Date.now(),
@@ -304,6 +318,7 @@ export async function generateImage(
 
     return success(result);
   } catch (e) {
+    console.error('[image-service] generateImage exception:', (e as Error).message);
     return error(appError('network', (e as Error).message, { retryable: true }));
   }
 }

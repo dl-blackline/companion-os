@@ -138,6 +138,8 @@ export async function generateVideo(
   request: VideoGenerationRequest,
 ): Promise<AsyncResult<MediaGenerationResult>> {
   try {
+    console.log('[video-service] generateVideo request:', { prompt: request.prompt, model: request.model, style: request.style });
+
     const res = await fetch(`${API_BASE}/generate-media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -157,6 +159,7 @@ export async function generateVideo(
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       const msg = (body as Record<string, string>).error || `Video generation failed (${res.status})`;
+      console.error('[video-service] generateVideo error:', msg);
       return error(appError(
         res.status === 429 ? 'rate_limit' : 'server',
         msg,
@@ -164,11 +167,24 @@ export async function generateVideo(
       ));
     }
 
-    const data = await res.json() as Record<string, unknown>;
+    const json = await res.json() as Record<string, unknown>;
+    console.log('[video-service] generateVideo response:', json);
 
-    // If the response contains a taskId, the job is async
-    if (data.taskId) {
-      return processing(data.taskId as string);
+    // Unwrap ok() envelope: { success, data: { ... } }
+    const data = (json.data ?? json) as Record<string, unknown>;
+
+    // Check for both taskId (provider APIs) and job_id (Netlify job queue) since
+    // different backends return different field names for async job identifiers.
+    if (data.taskId || data.job_id) {
+      const taskId = (data.taskId ?? data.job_id) as string;
+      console.log('[video-service] Async job created:', taskId);
+      return processing(taskId);
+    }
+
+    const resultUrl = (data.url ?? data.resultUrl ?? '') as string;
+    if (!resultUrl) {
+      console.error('[video-service] No video URL in response:', data);
+      return error(appError('processing_failed', 'Video generation completed but no video URL was returned'));
     }
 
     const result: MediaGenerationResult = {
@@ -176,7 +192,7 @@ export async function generateVideo(
       type: 'video',
       prompt: request.prompt,
       enhancedPrompt: data.prompt as string | undefined,
-      resultUrl: (data.url ?? data.resultUrl ?? '') as string,
+      resultUrl,
       model: (data.model ?? request.model) as string,
       provider: (data.provider ?? 'unknown') as string,
       createdAt: Date.now(),
@@ -184,6 +200,7 @@ export async function generateVideo(
 
     return success(result);
   } catch (e) {
+    console.error('[video-service] generateVideo exception:', (e as Error).message);
     return error(appError('network', (e as Error).message, { retryable: true }));
   }
 }
