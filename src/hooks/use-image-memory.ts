@@ -4,8 +4,8 @@
 //   upload → AI reviews image → memory candidates created → user approves → memory saved
 
 import { useState, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useAuth } from '@/context/auth-context';
+import { supabase as sharedSupabase, supabaseConfigured } from '@/lib/supabase-client';
 import {
   analyzeMedia,
   approveCandidate as approveMediaCandidate,
@@ -67,13 +67,6 @@ export interface UseImageMemoryReturn {
 
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
 
-function getSupabaseClient() {
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-  if (!url || !key) return null;
-  return createClient(url, key);
-}
-
 /**
  * Upload a file to Supabase storage (or fall back to a base64 data URL if
  * storage is not configured).  Reports progress via `onProgress` (0–100).
@@ -87,14 +80,13 @@ async function uploadFileToStorage(
   const path = `${userId}/memory/${generateId()}.${ext}`;
   onProgress(15);
 
-  const supabase = getSupabaseClient();
-  if (supabase) {
-    const { data, error } = await supabase.storage
+  if (supabaseConfigured) {
+    const { data, error } = await sharedSupabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, file, { cacheControl: '3600', upsert: false });
     onProgress(80);
     if (!error && data) {
-      const { data: pub } = supabase.storage
+      const { data: pub } = sharedSupabase.storage
         .from(STORAGE_BUCKET)
         .getPublicUrl(data.path);
       onProgress(100);

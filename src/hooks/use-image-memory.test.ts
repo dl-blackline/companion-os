@@ -482,6 +482,8 @@ describe('searchMemories service', () => {
       expect(result.data.results).toHaveLength(1);
       expect(result.data.results[0].relevanceScore).toBe(0.92);
       expect(result.data.results[0].memory.title).toBe('User has a golden retriever');
+      // userId from the query should propagate into the returned MemoryRecord
+      expect(result.data.results[0].memory.userId).toBe('user-123');
     }
   });
 });
