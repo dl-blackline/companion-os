@@ -34,6 +34,7 @@ async function auditLog(supabase, actorId, actorEmail, action, targetType, targe
 // Ban duration for effectively permanent suspension (~100 years)
 const PERMANENT_BAN_DURATION = "876600h";
 
+export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
 
   if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
