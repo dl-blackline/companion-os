@@ -18,10 +18,18 @@ import {
   Copy,
   MagicWand,
   Warning,
+  UploadSimple,
+  FloppyDisk,
+  SpeakerHigh,
+  SpeakerSlash,
+  ArrowClockwise,
 } from '@phosphor-icons/react';
-import type { CompanionState, MediaGeneration, MediaStyle } from '@/types';
+import type { CompanionState, MediaGeneration, MediaStyle, VideoAudioMode, RefinementAction } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
+import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
+import { IMAGE_REFINEMENT_ACTIONS, VIDEO_REFINEMENT_ACTIONS, buildRefinementPrompt } from '@/services/media-refinement-service';
+import { useAuth } from '@/context/auth-context';
 
 /** Aspect ratio options for image generation */
 type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
@@ -90,10 +98,12 @@ function GenerationCard({
   item,
   onDelete,
   onRetry,
+  onSave,
 }: {
   item: MediaGeneration;
   onDelete: (id: string) => void;
   onRetry: (item: MediaGeneration) => void;
+  onSave?: (item: MediaGeneration) => void;
 }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -202,6 +212,17 @@ function GenerationCard({
 
           {/* Overlay actions */}
           <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {item.status === 'complete' && item.resultUrl && onSave && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="w-7 h-7 rounded-lg bg-background/80 backdrop-blur-sm"
+                title="Save to library"
+                onClick={() => onSave(item)}
+              >
+                <FloppyDisk size={13} />
+              </Button>
+            )}
             {item.status === 'complete' && item.resultUrl && (
               <Button
                 size="icon"
@@ -309,12 +330,25 @@ function GenerationCard({
 }
 
 export function MediaView({ companionState, setCompanionState, aiName }: MediaViewProps) {
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState<MediaTab>('photo');
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<MediaStyle>('photorealistic');
   const [selectedRatio, setSelectedRatio] = useState<AspectRatio>('1:1');
   const [gallery, setGallery] = useState<MediaGeneration[]>([]);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [audioMode, setAudioMode] = useState<VideoAudioMode>('silent');
+
+  // Upload + Refinement state
+  const [showUploader, setShowUploader] = useState(false);
+  const [uploadedMedia, setUploadedMedia] = useState<MediaFile | null>(null);
+  const [refinementAction, setRefinementAction] = useState<RefinementAction>('enhance');
+  const [refinementPrompt, setRefinementPrompt] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
+  const [refinedUrl, setRefinedUrl] = useState<string | null>(null);
+
+  // Save state
+  const [isSaving, setIsSaving] = useState(false);
 
   const styles = activeTab === 'photo' ? PHOTO_STYLES : VIDEO_STYLES;
 
@@ -474,6 +508,100 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
     }
   };
 
+  /** Handle media upload selection */
+  const handleUploadSelect = useCallback((media: MediaFile) => {
+    setUploadedMedia(media);
+    setShowUploader(false);
+    setRefinedUrl(null);
+    setRefinementAction('enhance');
+    setRefinementPrompt('');
+  }, []);
+
+  /** Submit refinement request for uploaded media */
+  const handleRefine = async () => {
+    if (!uploadedMedia) return;
+    setIsRefining(true);
+    setCompanionState(uploadedMedia.mediaType === 'image' ? 'generating-image' : 'generating-video');
+
+    try {
+      const prompt = buildRefinementPrompt(refinementAction, refinementPrompt || undefined);
+      const res = await fetch('/.netlify/functions/refine-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          media_url: uploadedMedia.previewUrl,
+          media_type: uploadedMedia.mediaType,
+          action: refinementAction,
+          prompt,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url || data.refined_url) {
+          setRefinedUrl(data.url || data.refined_url);
+          toast.success('Media refined successfully');
+        } else {
+          toast.info('Refinement submitted — result will appear shortly');
+        }
+      } else {
+        const errData = await res.json().catch(() => ({ error: 'Refinement failed' }));
+        toast.error(errData.error || 'Refinement failed');
+      }
+    } catch {
+      toast.error('Could not refine media');
+    } finally {
+      setIsRefining(false);
+      setCompanionState('idle');
+    }
+  };
+
+  /** Save a generated or refined media result */
+  const handleSave = async (mediaUrl: string, mediaType: 'image' | 'video', sourcePrompt?: string) => {
+    if (!authUser?.id) {
+      toast.error('Please sign in to save media');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await fetch('/.netlify/functions/media-memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          user_id: authUser.id,
+          public_url: mediaUrl,
+          storage_path: mediaUrl,
+          filename: `companion-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'png' : 'mp4'}`,
+          media_type: mediaType,
+          user_title: sourcePrompt,
+          source: refinedUrl ? 'refinement' : 'generation',
+        }),
+      });
+
+      if (res.ok) {
+        toast.success('Media saved to your library');
+      } else {
+        const errData = await res.json().catch(() => ({ error: 'Save failed' }));
+        toast.error(errData.error || 'Failed to save media');
+      }
+    } catch {
+      toast.error('Could not save media');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /** Clear uploaded media and refinement state */
+  const clearUpload = () => {
+    if (uploadedMedia) {
+      URL.revokeObjectURL(uploadedMedia.previewUrl);
+    }
+    setUploadedMedia(null);
+    setRefinedUrl(null);
+    setRefinementPrompt('');
+  };
+
   const isGenerating = companionState === 'generating-image' || companionState === 'generating-video';
   const completedCount = gallery.filter((g) => g.status === 'complete').length;
 
@@ -497,9 +625,19 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
           >
             Create
           </h2>
-          <p className="text-xs text-muted-foreground">Photo & video generation</p>
+          <p className="text-xs text-muted-foreground">Photo & video generation · Upload & refine</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Upload button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => setShowUploader(!showUploader)}
+          >
+            <UploadSimple size={14} />
+            Upload & Refine
+          </Button>
           {/* Tab switcher */}
           <div className="flex items-center bg-card rounded-xl p-1 border border-border gap-1">
             {(['photo', 'video'] as MediaTab[]).map((tab) => (
@@ -649,6 +787,40 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
                 </div>
               </div>
 
+              {/* Audio mode — video only */}
+              {activeTab === 'video' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Audio
+                  </label>
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'silent' as VideoAudioMode, label: 'Silent', icon: <SpeakerSlash size={14} /> },
+                      { value: 'with-audio' as VideoAudioMode, label: 'With Audio', icon: <SpeakerHigh size={14} /> },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setAudioMode(opt.value)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-200',
+                          audioMode === opt.value
+                            ? 'border-primary/60 bg-primary/10 text-primary'
+                            : 'border-border/50 bg-card/40 text-muted-foreground hover:border-border hover:text-foreground'
+                        )}
+                      >
+                        {opt.icon}
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {audioMode === 'with-audio' && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Audio will be generated alongside the video when supported by the model
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Generate button */}
               <Button
                 onClick={handleGenerate}
@@ -667,6 +839,136 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <p className="text-[11px] text-muted-foreground text-center">
                 ⌘ + Enter to generate
               </p>
+
+              {/* ─── Upload & Refinement Section ─── */}
+              {showUploader && !uploadedMedia && (
+                <div className="pt-2">
+                  <MediaUploader
+                    onSelect={handleUploadSelect}
+                    onCancel={() => setShowUploader(false)}
+                  />
+                </div>
+              )}
+
+              {uploadedMedia && (
+                <div className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Refine {uploadedMedia.mediaType === 'image' ? 'Photo' : 'Video'}
+                    </span>
+                    <button
+                      onClick={clearUpload}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  {/* Original preview */}
+                  <div className="relative rounded-lg overflow-hidden bg-black/5">
+                    {uploadedMedia.mediaType === 'image' ? (
+                      <img
+                        src={uploadedMedia.previewUrl}
+                        alt="Original"
+                        className="max-h-40 w-full object-contain"
+                      />
+                    ) : (
+                      <video
+                        src={uploadedMedia.previewUrl}
+                        controls
+                        className="max-h-40 w-full object-contain"
+                      />
+                    )}
+                    <Badge variant="outline" className="absolute bottom-2 left-2 text-[10px] bg-black/60 text-white border-0">
+                      Original
+                    </Badge>
+                  </div>
+
+                  {/* Refinement action selector */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Enhancement
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(uploadedMedia.mediaType === 'image' ? IMAGE_REFINEMENT_ACTIONS : VIDEO_REFINEMENT_ACTIONS).map((action) => (
+                        <button
+                          key={action.value}
+                          onClick={() => setRefinementAction(action.value)}
+                          className={cn(
+                            'text-left p-2 rounded-lg border transition-all duration-200',
+                            refinementAction === action.value
+                              ? 'border-primary/60 bg-primary/10'
+                              : 'border-border/50 bg-card/40 hover:border-border'
+                          )}
+                        >
+                          <p className="text-[11px] font-semibold leading-none mb-0.5">{action.label}</p>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{action.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Custom prompt for refinement */}
+                  {(refinementAction === 'custom' || refinementAction === 'stylize') && (
+                    <Textarea
+                      value={refinementPrompt}
+                      onChange={(e) => setRefinementPrompt(e.target.value)}
+                      placeholder="Describe the enhancement you want…"
+                      className="resize-none min-h-[60px] bg-card/60 border-border/60 text-xs rounded-lg"
+                    />
+                  )}
+
+                  {/* Refine button */}
+                  <Button
+                    onClick={handleRefine}
+                    disabled={isRefining || (refinementAction === 'custom' && !refinementPrompt.trim())}
+                    className="w-full gap-2 rounded-xl h-10 font-semibold text-sm"
+                  >
+                    <ArrowClockwise size={14} className={isRefining ? 'animate-spin' : ''} />
+                    {isRefining ? 'Refining…' : 'Refine Media'}
+                  </Button>
+
+                  {/* Refined result preview */}
+                  {refinedUrl && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Refined result
+                      </label>
+                      <div className="relative rounded-lg overflow-hidden bg-black/5">
+                        {uploadedMedia.mediaType === 'image' ? (
+                          <img src={refinedUrl} alt="Refined" className="max-h-40 w-full object-contain" />
+                        ) : (
+                          <video src={refinedUrl} controls className="max-h-40 w-full object-contain" />
+                        )}
+                        <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px]">
+                          Refined
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 gap-1.5 text-xs"
+                          onClick={handleRefine}
+                          disabled={isRefining}
+                        >
+                          <ArrowCounterClockwise size={12} />
+                          Re-refine
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 gap-1.5 text-xs"
+                          onClick={() => handleSave(refinedUrl, uploadedMedia.mediaType)}
+                          disabled={isSaving}
+                        >
+                          <FloppyDisk size={12} />
+                          {isSaving ? 'Saving…' : 'Save'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -698,7 +1000,21 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <AnimatePresence>
                   {gallery.map((item) => (
-                    <GenerationCard key={item.id} item={item} onDelete={handleDelete} onRetry={handleRetry} />
+                    <GenerationCard
+                      key={item.id}
+                      item={item}
+                      onDelete={handleDelete}
+                      onRetry={handleRetry}
+                      onSave={(g) => {
+                        if (g.resultUrl) {
+                          handleSave(
+                            g.resultUrl,
+                            g.type === 'photo' ? 'image' : 'video',
+                            g.prompt,
+                          );
+                        }
+                      }}
+                    />
                   ))}
                 </AnimatePresence>
               </div>

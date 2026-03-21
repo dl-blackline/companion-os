@@ -149,6 +149,7 @@ export async function generateVideo(
           style: request.style,
           duration: request.durationSeconds,
           enhance_prompt: request.enhancePrompt,
+          audio_mode: request.audioMode ?? 'silent',
         },
       }),
     });

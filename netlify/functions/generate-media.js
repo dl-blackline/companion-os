@@ -19,7 +19,7 @@ export async function handler(event) {
   }
 
   try {
-    const { type, prompt, model } = JSON.parse(event.body);
+    const { type, prompt, model, options } = JSON.parse(event.body);
 
     if (!prompt) {
       return {
@@ -39,7 +39,7 @@ export async function handler(event) {
       };
     }
 
-    const job = await createJob(job_type, { type, prompt, model });
+    const job = await createJob(job_type, { type, prompt, model, options });
 
     if (!job) {
       return {
