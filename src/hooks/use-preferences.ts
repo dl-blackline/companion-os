@@ -2,7 +2,7 @@
  * usePreferences — load and save user preferences with optimistic updates
  */
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, supabaseConfigured } from '@/lib/supabase-client';
+import { useAuth } from '@/context/auth-context';
 import type { UserPreferences } from '@/types';
 import { DEFAULT_USER_PREFERENCES } from '@/types';
 
@@ -20,16 +20,12 @@ export function usePreferences(): UsePreferencesReturn {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getToken = async (): Promise<string | null> => {
-    if (!supabaseConfigured) return null;
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  };
+  const { getAccessToken } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const token = await getToken();
+      const token = getAccessToken();
       if (!token) return;
       setLoading(true);
       try {
@@ -49,7 +45,7 @@ export function usePreferences(): UsePreferencesReturn {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [getAccessToken]);
 
   const update = useCallback(async (partial: Partial<UserPreferences>) => {
     // Save previous state for rollback on failure
@@ -59,7 +55,7 @@ export function usePreferences(): UsePreferencesReturn {
     setSaving(true);
     setError(null);
     try {
-      const token = await getToken();
+      const token = getAccessToken();
       if (!token) return;
       const res = await fetch('/.netlify/functions/user-preferences', {
         method: 'POST',
@@ -82,7 +78,7 @@ export function usePreferences(): UsePreferencesReturn {
     } finally {
       setSaving(false);
     }
-  }, [prefs]);
+  }, [prefs, getAccessToken]);
 
   return { prefs, loading, saving, error, update };
 }

@@ -186,13 +186,14 @@ export async function searchMemories(
       const relevanceScore = item.similarity || 0;
       const recencyScore = computeRecencyScore(mem.createdAt);
       const priorityBoost = mem.isPinned ? 0.15 : 0;
+      const record = toMemoryRecord(mem, query.userId);
 
       return {
-        memory: toMemoryRecord(mem),
+        memory: record,
         relevanceScore,
         recencyScore,
         finalScore: relevanceScore * 0.6 + recencyScore * 0.2 + priorityBoost + 0.2,
-        reason: determineApplicationReason(toMemoryRecord(mem), relevanceScore),
+        reason: determineApplicationReason(record, relevanceScore),
       };
     }).sort((a, b) => b.finalScore - a.finalScore);
 
@@ -371,10 +372,10 @@ export function formatInjectionForPrompt(plan: MemoryInjectionPlan): string {
 
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
 
-function toMemoryRecord(mem: Memory): MemoryRecord {
+function toMemoryRecord(mem: Memory, userId: string): MemoryRecord {
   return {
     id: mem.id,
-    userId: '',
+    userId,
     title: mem.title,
     content: mem.content,
     category: mem.category,
