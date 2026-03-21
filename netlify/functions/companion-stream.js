@@ -16,6 +16,9 @@ import {
 import { formatSSE } from "../../lib/realtime/stream-handler.js";
 import { preflight, fail, CORS_HEADERS } from "../../lib/_responses.js";
 
+/** Default estimated speech duration (ms) used for lip-sync frame generation. */
+const DEFAULT_SPEECH_DURATION_MS = 5000;
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -133,7 +136,7 @@ export async function handler(event) {
     companionState = transitionState(companionState, "responding", "stream_start");
     avatarState = transitionAvatar(avatarState, "speaking");
 
-    const lipFrames = generateLipSyncFrames(result.response, 5000);
+    const lipFrames = generateLipSyncFrames(result.response, DEFAULT_SPEECH_DURATION_MS);
     avatarState = applyLipSync(avatarState, lipFrames);
 
     if (includeAvatarState) {

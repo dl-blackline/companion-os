@@ -163,14 +163,23 @@ export async function streamCompanionMessage(
           fullText = sseEvent.data.accumulated as string;
           break;
 
-        case 'state':
+        case 'state': {
+          const companionData = sseEvent.data.companionState;
+          const avatarData = sseEvent.data.avatarState;
+          const csState = (companionData && typeof companionData === 'object')
+            ? (companionData as Record<string, unknown>).state as CompanionState
+            : 'idle' as CompanionState;
+          const avState = (avatarData && typeof avatarData === 'object')
+            ? (avatarData as Record<string, unknown>).state as AvatarState
+            : 'idle' as AvatarState;
           onEvent({
             type: 'state_change',
-            state: (sseEvent.data.companionState as Record<string, unknown>)?.state as CompanionState,
-            avatarState: (sseEvent.data.avatarState as Record<string, unknown>)?.state as AvatarState,
+            state: csState,
+            avatarState: avState,
             timestamp: sseEvent.data.timestamp as string,
           });
           break;
+        }
 
         case 'image':
           onEvent({
@@ -309,7 +318,9 @@ export async function generateConversationImage(
     });
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+      const errData = await res.json().catch(() => ({
+        error: `Image generation endpoint returned ${res.status}`,
+      }));
       return {
         success: false,
         error: errData.error || `Image generation failed: ${res.status}`,
@@ -326,7 +337,7 @@ export async function generateConversationImage(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Image generation failed',
+      error: err instanceof Error ? err.message : 'Image generation request failed unexpectedly',
       durationMs: Date.now() - start,
     };
   }
