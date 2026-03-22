@@ -287,7 +287,8 @@ Please provide a helpful response.`;
         }
       } else {
         // Fall back to standard JSON response
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data ?? json;
         responseText = data.response || '';
         if (data.media_url) {
           responseMediaUrl = data.media_url;

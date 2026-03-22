@@ -394,7 +394,8 @@ export class RealtimeVoiceClient {
       throw new Error(errData.error || `Failed to get ephemeral key: ${res.status}`);
     }
 
-    const data = await res.json();
+    const json = await res.json();
+    const data = json.data ?? json;
     return {
       key: data.client_secret,
       endpoint: data.realtime_endpoint || 'https://api.openai.com/v1/realtime',

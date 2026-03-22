@@ -514,7 +514,8 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
         }),
       });
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data ?? json;
         if (data.response) {
           setPrompt(data.response.trim().replace(/^["']/, '').replace(/["']$/, ''));
           toast.success('Prompt enhanced');
@@ -556,7 +557,8 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data ?? json;
         if (data.url || data.refined_url) {
           setRefinedUrl(data.url || data.refined_url);
           toast.success('Media refined successfully');
