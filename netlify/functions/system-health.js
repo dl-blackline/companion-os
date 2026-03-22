@@ -17,13 +17,18 @@ async function checkSupabase() {
 async function checkOpenAI() {
   try {
     if (!process.env.OPENAI_API_KEY) {
+      console.warn("[system-health] OPENAI_API_KEY is not configured");
       return "error";
     }
     const res = await fetch("https://api.openai.com/v1/models", {
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
     });
+    if (!res.ok) {
+      console.warn(`[system-health] OpenAI API check failed with status ${res.status}`);
+    }
     return res.ok ? "ok" : "error";
-  } catch {
+  } catch (err) {
+    console.error("[system-health] OpenAI API check error:", err.message);
     return "error";
   }
 }
