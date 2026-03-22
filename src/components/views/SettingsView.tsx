@@ -288,7 +288,8 @@ export function SettingsView() {
     try {
       const res = await fetch('/.netlify/functions/system-health');
       if (!res.ok) throw new Error('Health check request failed');
-      const data = await res.json();
+      const json = await res.json();
+      const data = json.data ?? json;
 
       const w = window as typeof window & {
         SpeechRecognition?: typeof SpeechRecognition;

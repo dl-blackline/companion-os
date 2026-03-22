@@ -96,7 +96,8 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
-        const { prefs } = await res.json();
+        const json = await res.json();
+        const { prefs } = json.data ?? json;
         if (!cancelled && prefs?.orb_appearance) {
           const loaded = prefs.orb_appearance as OrbPreferencePayload;
           setPref(loaded);

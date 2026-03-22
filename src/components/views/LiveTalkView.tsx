@@ -229,7 +229,8 @@ export function LiveTalkView({
               }),
             })
               .then((r) => r.json())
-              .then((imgData) => {
+              .then((json) => {
+                const imgData = json.data ?? json;
                 if (imgData.url) {
                   const imageTurn: TalkTurn = {
                     id: generateId(),
@@ -278,7 +279,8 @@ export function LiveTalkView({
               }),
             })
               .then((r) => r.json())
-              .then((vidData) => {
+              .then((json) => {
+                const vidData = json.data ?? json;
                 if (vidData.url) {
                   const videoTurn: TalkTurn = {
                     id: generateId(),
@@ -356,7 +358,8 @@ export function LiveTalkView({
               }),
             })
               .then((r) => r.json())
-              .then((taskData) => {
+              .then((json) => {
+                const taskData = json.data ?? json;
                 const taskText = taskData.response || 'Task completed.';
                 const taskTurn: TalkTurn = {
                   id: generateId(),
@@ -577,7 +580,8 @@ Prefer using tools over just talking about doing something. If the user asks for
           throw new Error(errData.error || `Chat request failed with status ${res.status}`);
         }
 
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data ?? json;
         const responseText = data.response || '';
 
         // Handle action payloads (image generation, video generation, role-play, task)
