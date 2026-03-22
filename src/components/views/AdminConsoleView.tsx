@@ -305,7 +305,8 @@ function OverviewTab() {
       }
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
         const json = await healthRes.value.json();
-        const services: ServiceHealth[] = json.services ?? json ?? [];
+        const data = json.data ?? json;
+        const services: ServiceHealth[] = data.services ?? [];
         const statuses = services.map((s) => s.status);
         if (statuses.includes('down')) systemStatus = 'down';
         else if (statuses.includes('degraded')) systemStatus = 'degraded';
@@ -708,7 +709,8 @@ function SystemHealthTab() {
       const res = await apiFetch('/.netlify/functions/system-health', token);
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const json = await res.json();
-      const services: ServiceHealth[] = json.services ?? json ?? [];
+      const data = json.data ?? json;
+      const services: ServiceHealth[] = data.services ?? [];
       setLastChecked(new Date());
       setState({ data: services, loading: false, error: null });
     } catch (e) {
