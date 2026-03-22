@@ -42,6 +42,7 @@ import {
   SignOut,
   Trash,
   Warning,
+  WarningCircle,
   FloppyDisk,
   Spinner,
 } from '@phosphor-icons/react';
@@ -165,7 +166,7 @@ function SliderSetting({
   );
 }
 
-type ServiceStatus = 'ok' | 'error' | 'checking' | 'idle';
+type ServiceStatus = 'ok' | 'error' | 'not_configured' | 'checking' | 'idle';
 
 interface DiagnosticsResult {
   openai: ServiceStatus;
@@ -199,6 +200,14 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
       <span className="flex items-center gap-1.5 text-xs text-green-500">
         <CheckCircle size={14} weight="fill" />
         Connected
+      </span>
+    );
+  }
+  if (status === 'not_configured') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-yellow-500">
+        <WarningCircle size={14} weight="fill" />
+        Not Configured
       </span>
     );
   }
@@ -298,11 +307,11 @@ export function SettingsView() {
       const hasVoice = !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
 
       setDiagnostics({
-        openai: data.openai === 'ok' ? 'ok' : 'error',
-        supabase: data.supabase === 'ok' ? 'ok' : 'error',
-        vector_search: data.vector_search === 'ok' ? 'ok' : 'error',
-        media: data.media === 'ok' ? 'ok' : 'error',
-        leonardo: data.leonardo === 'ok' ? 'ok' : 'error',
+        openai: data.openai === 'ok' ? 'ok' : data.openai === 'not_configured' ? 'not_configured' : 'error',
+        supabase: data.supabase === 'ok' ? 'ok' : data.supabase === 'not_configured' ? 'not_configured' : 'error',
+        vector_search: data.vector_search === 'ok' ? 'ok' : data.vector_search === 'not_configured' ? 'not_configured' : 'error',
+        media: data.media === 'ok' ? 'ok' : data.media === 'not_configured' ? 'not_configured' : 'error',
+        leonardo: data.leonardo === 'ok' ? 'ok' : data.leonardo === 'not_configured' ? 'not_configured' : 'error',
         realtime_voice: hasVoice ? 'ok' : 'error',
       });
     } catch {

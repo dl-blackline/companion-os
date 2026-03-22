@@ -496,7 +496,7 @@ export interface SupportTicket {
 
 // ─── System Health ────────────────────────────────────────────────────────────
 
-export type ServiceStatus = 'healthy' | 'warning' | 'degraded' | 'down' | 'unknown';
+export type ServiceStatus = 'healthy' | 'warning' | 'degraded' | 'down' | 'not_configured' | 'unknown';
 
 export interface ServiceHealth {
   service: string;
