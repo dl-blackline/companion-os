@@ -168,6 +168,13 @@ function SliderSetting({
 
 type ServiceStatus = 'ok' | 'error' | 'not_configured' | 'checking' | 'idle';
 
+/** Map a raw health-check value from the API to a local ServiceStatus. */
+function mapHealthStatus(raw: string): ServiceStatus {
+  if (raw === 'ok') return 'ok';
+  if (raw === 'not_configured') return 'not_configured';
+  return 'error';
+}
+
 interface DiagnosticsResult {
   openai: ServiceStatus;
   supabase: ServiceStatus;
@@ -307,11 +314,11 @@ export function SettingsView() {
       const hasVoice = !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
 
       setDiagnostics({
-        openai: data.openai === 'ok' ? 'ok' : data.openai === 'not_configured' ? 'not_configured' : 'error',
-        supabase: data.supabase === 'ok' ? 'ok' : data.supabase === 'not_configured' ? 'not_configured' : 'error',
-        vector_search: data.vector_search === 'ok' ? 'ok' : data.vector_search === 'not_configured' ? 'not_configured' : 'error',
-        media: data.media === 'ok' ? 'ok' : data.media === 'not_configured' ? 'not_configured' : 'error',
-        leonardo: data.leonardo === 'ok' ? 'ok' : data.leonardo === 'not_configured' ? 'not_configured' : 'error',
+        openai: mapHealthStatus(data.openai),
+        supabase: mapHealthStatus(data.supabase),
+        vector_search: mapHealthStatus(data.vector_search),
+        media: mapHealthStatus(data.media),
+        leonardo: mapHealthStatus(data.leonardo),
         realtime_voice: hasVoice ? 'ok' : 'error',
       });
     } catch {

@@ -109,6 +109,7 @@ async function checkLeonardo() {
 function toDisplayStatus(result) {
   if (result === "ok") return "healthy";
   if (result === "not_configured") return "not_configured";
+  // "error" (configured but unreachable) maps to "down"
   return "down";
 }
 
