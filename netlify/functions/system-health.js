@@ -92,7 +92,7 @@ export async function handler(event) {
   }
 
   try {
-    const [openai, supabase, vector_search, media, leonardo] = await Promise.all([
+    const [openai, supa, vector_search, media, leonardo] = await Promise.all([
       checkOpenAI(),
       checkSupabase(),
       checkVectorSearch(),
@@ -100,7 +100,26 @@ export async function handler(event) {
       checkLeonardo(),
     ]);
 
-    return ok({ openai, supabase, vector_search, media, leonardo });
+    const checkedAt = new Date().toISOString();
+
+    const services = [
+      { service: "openai", label: "OpenAI", status: openai === "ok" ? "healthy" : "down", checked_at: checkedAt },
+      { service: "supabase", label: "Supabase", status: supa === "ok" ? "healthy" : "down", checked_at: checkedAt },
+      { service: "vector_search", label: "Vector Search", status: vector_search === "ok" ? "healthy" : "down", checked_at: checkedAt },
+      { service: "media", label: "Media APIs", status: media === "ok" ? "healthy" : "down", checked_at: checkedAt },
+      { service: "leonardo", label: "Leonardo AI", status: leonardo === "ok" ? "healthy" : "down", checked_at: checkedAt },
+    ];
+
+    return ok({
+      // Flat format (backward compat with SettingsView diagnostics)
+      openai,
+      supabase: supa,
+      vector_search,
+      media,
+      leonardo,
+      // Structured format (AdminConsoleView)
+      services,
+    });
   } catch (err) {
     console.error("System health check error:", err);
     return fail(err.message, "ERR_INTERNAL", 500);
