@@ -414,9 +414,11 @@ async function handleRealtimeToken(data) {
   // realtime token endpoint itself.
   if (isNofilterModel(model)) {
     if (!process.env.NOFILTER_GPT_API_KEY) {
+      console.error("[ai] NOFILTER_GPT_API_KEY is not configured for realtime token request");
       return fail("NOFILTER_GPT_API_KEY is not configured", "ERR_CONFIG", 500);
     }
   } else if (!process.env.OPENAI_API_KEY) {
+    console.error("[ai] OPENAI_API_KEY is not configured for realtime token request");
     return fail("OpenAI API key not configured", "ERR_CONFIG", 500);
   }
 
