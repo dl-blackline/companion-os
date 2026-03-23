@@ -32,6 +32,7 @@ const FORBIDDEN_KEYS = [
  * or unrelated tokens won't match.
  */
 const OPENAI_KEY_PATTERN = /^sk-[A-Za-z0-9]{20,}/;
+const SUPABASE_SECRET_KEY_PATTERN = /^sb_secret_[A-Za-z0-9]+/;
 
 /**
  * Detect if a string is a JWT whose payload contains `"role":"service_role"`.
@@ -97,6 +98,13 @@ export function assertNoSecrets(): void {
       throw new Error(
         `Forbidden secret value in ${key}: value looks like an OpenAI API key (sk-…). ` +
           "Secret keys must only be used in server-side code (e.g. Netlify functions)."
+      );
+    }
+
+    if (SUPABASE_SECRET_KEY_PATTERN.test(value)) {
+      throw new Error(
+        `Forbidden secret value in ${key}: value looks like a Supabase secret key (sb_secret_…). ` +
+          "Use a publishable/anon key in frontend code and keep secret keys server-side only."
       );
     }
 

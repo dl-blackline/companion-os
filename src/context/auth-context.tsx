@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     if (!supabaseConfigured) {
-      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." } as AuthError }
+      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY)." } as AuthError }
     }
     setAuthState({ status: 'authenticating' })
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string) => {
     if (!supabaseConfigured) {
-      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." } as AuthError }
+      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY)." } as AuthError }
     }
     const { error } = await supabase.auth.signUp({
       email,
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     if (!supabaseConfigured) {
-      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." } as AuthError }
+      return { error: { message: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY)." } as AuthError }
     }
     if (!email || !email.includes('@')) {
       return { error: { message: "Please enter a valid email address." } as AuthError }

@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { 
   Plus, 
   PaperPlaneRight, 
-  User, 
   Robot, 
   Sparkle,
   MagnifyingGlass,
@@ -32,8 +31,11 @@ import { getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 import { useAuth } from '@/context/auth-context';
+import { useSettings } from '@/context/settings-context';
 import { useAIControl } from '@/context/ai-control-context';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { runAI } from '@/services/ai-orchestrator';
+import { getUserInitials } from '@/services/user-identity-service';
 
 /** Convert a File to a base64-encoded data URL (works without server access). */
 async function fileToDataUrl(file: File): Promise<string> {
@@ -47,6 +49,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 export function ChatView() {
   const { user: authUser } = useAuth();
+  const { prefs } = useSettings();
   const { orchestratorConfig } = useAIControl();
   const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
   const [activeConvId, setActiveConvId] = useState<string | null>(
@@ -64,6 +67,7 @@ export function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);
+  const userInitials = getUserInitials(prefs.display_name, authUser?.email);
   const modes = getAllModes();
 
   /** Scroll to bottom of messages */
@@ -529,9 +533,12 @@ Please provide a helpful response.`;
                       </span>
                     </div>
                     {message.role === 'user' && (
-                      <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0 mt-1">
-                        <User size={18} weight="fill" className="text-accent" />
-                      </div>
+                      <Avatar className="w-8 h-8 shrink-0 mt-1 border border-border/60">
+                        {prefs.avatar_url && <AvatarImage src={prefs.avatar_url} alt="User avatar" />}
+                        <AvatarFallback className="text-[10px] bg-accent/10 text-accent">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
                     )}
                   </motion.div>
                 ))

@@ -533,6 +533,8 @@ export interface UserPreferences {
   display_name?: string;
   bio?: string;
   avatar_url?: string;
+  avatar_style?: 'avatar' | 'emojicon';
+  active_identity_id?: string;
   // AI Behavior
   ai_personality: 'professional' | 'warm' | 'direct' | 'coach' | 'analytical';
   ai_tone: 'formal' | 'conversational' | 'casual';

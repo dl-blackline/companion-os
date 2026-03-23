@@ -99,6 +99,11 @@ describe('assertNoSecrets', () => {
     expect(() => assertNoSecrets()).toThrowError(/Forbidden secret value in VITE_CUSTOM_KEY.*OpenAI API key/);
   });
 
+  it('throws when a VITE_ var contains a Supabase sb_secret key', () => {
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'sb_secret_abcdefghijklmnopqrstuvwxyz1234');
+    expect(() => assertNoSecrets()).toThrowError(/Forbidden secret value in VITE_SUPABASE_ANON_KEY.*Supabase secret key/);
+  });
+
   it('does not throw for short sk- values that are not real keys', () => {
     vi.stubEnv('VITE_SHORT', 'sk-short');
     expect(() => assertNoSecrets()).not.toThrow();

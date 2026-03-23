@@ -16,7 +16,9 @@ export default function Login({ onNavigateToSignup, onNavigateToForgotPassword }
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(
-    supabaseKeyError ?? (configured ? null : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.")
+    configured
+      ? null
+      : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) environment variables."
   )
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)

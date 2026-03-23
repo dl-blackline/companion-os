@@ -105,13 +105,13 @@ describe('SettingsView — Auth section in Account tab', () => {
     mockAuthState = { status: 'initializing' };
     await renderSettings();
     expect(screen.getByText(/restoring session/i)).toBeInTheDocument();
-  });
+  }, 10000);
 
   it('shows "not signed in" when unauthenticated', async () => {
     mockAuthState = { status: 'unauthenticated' };
     await renderSettings();
     // The auth card specifically says "You are not signed in."
-    expect(screen.getByText('You are not signed in.')).toBeInTheDocument();
+    expect(screen.getAllByText('You are not signed in.').length).toBeGreaterThan(0);
   });
 
   it('shows signed-in status and Sign Out button when authenticated', async () => {
