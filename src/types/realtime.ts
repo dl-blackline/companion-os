@@ -111,6 +111,16 @@ export interface StreamImageEvent {
   readonly timestamp: string;
 }
 
+/** Voice audio generated from the AI response via TTS. */
+export interface StreamVoiceEvent {
+  readonly type: 'voice_generated';
+  /** Data URL or remote URL for the generated audio (e.g. data:audio/mpeg;base64,…). */
+  readonly audioUrl: string;
+  /** Estimated audio duration in milliseconds. */
+  readonly durationMs: number;
+  readonly timestamp: string;
+}
+
 /** Companion state change during streaming. */
 export interface StreamStateEvent {
   readonly type: 'state_change';
@@ -125,6 +135,7 @@ export type RealtimeStreamEvent =
   | StreamLifecycleEvent
   | StreamInterruptEvent
   | StreamImageEvent
+  | StreamVoiceEvent
   | StreamStateEvent;
 
 // ─── SSE Protocol ────────────────────────────────────────────────────────────
@@ -142,6 +153,7 @@ export type SSEEventName =
   | 'token'
   | 'state'
   | 'image'
+  | 'voice'
   | 'done'
   | 'error'
   | 'interrupted';

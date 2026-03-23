@@ -53,7 +53,8 @@ architecture without modifying existing endpoints.
 │  POST → SSE response:    │                    └──────────┬───────────────┘
 │   event: state           │                               │
 │   event: token           │                               ▼
-│   event: image           │                    ┌──────────────────────────┐
+│   event: image           │
+│   event: voice           │                    ┌──────────────────────────┐
 │   event: done            │                    │  OpenAI Realtime API     │
 │   event: error           │                    │  (WebRTC bidirectional)  │
 │   event: interrupted     │                    └──────────────────────────┘
@@ -133,6 +134,60 @@ architecture without modifying existing endpoints.
    └─▶ event: state  { companionState: "idle", avatarState: "idle" }
    └─▶ Frontend: Avatar returns to idle
 ```
+
+### Text Input → Streamed Response + TTS Voice
+
+When `includeVoice: true` is sent in the request, the streaming endpoint
+generates TTS audio after the text stream completes.
+
+```
+ 1–8. (same as above — tokens stream as before)
+
+ 9. STREAM COMPLETE
+    └─▶ event: done   { fullText: "Hello world" }
+
+10. TTS VOICE GENERATION
+    └─▶ Backend: generateVoice(fullText, voiceId)
+    └─▶ ElevenLabs API → base64 audio
+    └─▶ event: voice  { audioUrl: "data:audio/mpeg;base64,…", durationMs: 3000 }
+    └─▶ Frontend: Plays audio via HTMLAudioElement
+    └─▶ Avatar: speaking state synced with audio playback
+
+11. COMPANION STATE: responding → idle
+    └─▶ event: state  { companionState: "idle", avatarState: "idle" }
+    └─▶ Frontend: Avatar returns to idle after audio ends
+```
+
+**Full interaction flow (input → stream → voice → memory):**
+
+```
+User input
+  │
+  ▼
+POST /api/ai-stream { message, user_id, includeVoice: true }
+  │
+  ├─▶ Orchestrator: injectContext() + getRecentInteractions()
+  │     └─▶ Context Engine → Supabase (user prefs, recent history)
+  │     └─▶ Memory Service → short-term + episodic memory
+  │
+  ├─▶ orchestrateStream() → token-by-token AI response
+  │     └─▶ SSE: event: token (×N)
+  │     └─▶ SSE: event: done { fullText }
+  │
+  ├─▶ generateVoice(fullText) → ElevenLabs TTS
+  │     └─▶ SSE: event: voice { audioUrl, durationMs }
+  │
+  ├─▶ recordInteraction() → Memory Service (fire-and-forget)
+  │     └─▶ user turn + assistant turn persisted
+  │
+  └─▶ Frontend:
+        ├─▶ useCompanionStream hook processes SSE events
+        ├─▶ text rendered token-by-token
+        ├─▶ audioUrl played via Audio API
+        └─▶ Avatar state: idle → listening → thinking → speaking → idle
+```
+
+---
 
 ### Voice Input → Voice Response (WebRTC)
 

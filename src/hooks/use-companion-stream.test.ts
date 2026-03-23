@@ -147,4 +147,18 @@ describe('useCompanionStream service contract', () => {
     expect(res.ok).toBe(false);
     expect(res.status).toBe(500);
   });
+
+  it('correctly parses SSE voice events from the response', () => {
+    const raw = buildSSE([
+      { event: 'token', data: { content: 'Hello', accumulated: 'Hello' } },
+      { event: 'done', data: { fullText: 'Hello', timestamp: 'T1' } },
+      { event: 'voice', data: { audioUrl: 'data:audio/mpeg;base64,abc', durationMs: 3000, timestamp: 'T2' } },
+    ]);
+
+    const events = parseSSEResponse(raw);
+    expect(events).toHaveLength(3);
+    expect(events[2].event).toBe('voice');
+    expect(events[2].data.audioUrl).toBe('data:audio/mpeg;base64,abc');
+    expect(events[2].data.durationMs).toBe(3000);
+  });
 });
