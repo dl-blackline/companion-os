@@ -17,6 +17,8 @@ describe('assertNoSecrets', () => {
     // Clear secrets injected by test setup so each test starts clean.
     vi.stubEnv('OPENAI_API_KEY', '');
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+    vi.stubEnv('VITE_OPENAI_API_KEY', '');
+    vi.stubEnv('VITE_SUPABASE_SERVICE_ROLE_KEY', '');
   });
 
   afterEach(() => {
@@ -37,9 +39,21 @@ describe('assertNoSecrets', () => {
     expect(() => assertNoSecrets()).toThrowError(/Forbidden use of secret API key: SUPABASE_SERVICE_ROLE_KEY/);
   });
 
+  it('throws when VITE_SUPABASE_SERVICE_ROLE_KEY is in import.meta.env', () => {
+    vi.stubEnv('VITE_SUPABASE_SERVICE_ROLE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.leaked');
+    expect(() => assertNoSecrets()).toThrowError(/Forbidden use of secret API key: VITE_SUPABASE_SERVICE_ROLE_KEY/);
+  });
+
+  it('throws when VITE_OPENAI_API_KEY is in import.meta.env', () => {
+    vi.stubEnv('VITE_OPENAI_API_KEY', 'sk-leaked-key');
+    expect(() => assertNoSecrets()).toThrowError(/Forbidden use of secret API key: VITE_OPENAI_API_KEY/);
+  });
+
   it('does not throw when keys exist but are empty strings', () => {
     vi.stubEnv('OPENAI_API_KEY', '');
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+    vi.stubEnv('VITE_OPENAI_API_KEY', '');
+    vi.stubEnv('VITE_SUPABASE_SERVICE_ROLE_KEY', '');
     expect(() => assertNoSecrets()).not.toThrow();
   });
 
