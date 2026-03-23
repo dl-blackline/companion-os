@@ -12,6 +12,23 @@ if (!supabaseConfigured) {
 }
 
 /**
+ * Decode a base64url-encoded string (used in JWTs) to a UTF-8 string.
+ * JWTs use base64url encoding which differs from standard base64:
+ *   - '-' replaces '+'
+ *   - '_' replaces '/'
+ *   - padding ('=') is omitted
+ */
+function base64UrlDecode(str: string): string {
+  // Convert base64url → standard base64
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/")
+  // Restore padding
+  const pad = base64.length % 4
+  if (pad === 2) base64 += "=="
+  else if (pad === 3) base64 += "="
+  return atob(base64)
+}
+
+/**
  * Detect if a key is a Supabase service role JWT by inspecting its payload.
  * Service role keys carry `"role":"service_role"` in the JWT claims.
  * This catches the case where someone accidentally sets VITE_SUPABASE_ANON_KEY
@@ -21,7 +38,7 @@ export function isServiceRoleKey(key: string): boolean {
   try {
     const parts = key.split(".")
     if (parts.length !== 3) return false
-    const payload = JSON.parse(atob(parts[1]))
+    const payload = JSON.parse(base64UrlDecode(parts[1]))
     return payload.role === "service_role"
   } catch {
     return false

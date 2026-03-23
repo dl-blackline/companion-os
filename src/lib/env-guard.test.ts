@@ -19,6 +19,18 @@ describe('assertNoSecrets', () => {
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
     vi.stubEnv('VITE_OPENAI_API_KEY', '');
     vi.stubEnv('VITE_SUPABASE_SERVICE_ROLE_KEY', '');
+    vi.stubEnv('GEMINI_API_KEY', '');
+    vi.stubEnv('NOFILTER_GPT_API_KEY', '');
+    vi.stubEnv('PIAPI_API_KEY', '');
+    vi.stubEnv('LEONARDO_API_KEY', '');
+    vi.stubEnv('RUNWAY_API_KEY', '');
+    vi.stubEnv('KLING_ACCESS_KEY', '');
+    vi.stubEnv('KLING_SECRET_KEY', '');
+    vi.stubEnv('HAILUO_API_KEY', '');
+    vi.stubEnv('ELEVENLABS_API_KEY', '');
+    vi.stubEnv('SUNO_API_KEY', '');
+    vi.stubEnv('BRAVE_SEARCH_API_KEY', '');
+    vi.stubEnv('GOOGLE_MAPS_API_KEY', '');
   });
 
   afterEach(() => {
@@ -55,6 +67,24 @@ describe('assertNoSecrets', () => {
     vi.stubEnv('VITE_OPENAI_API_KEY', '');
     vi.stubEnv('VITE_SUPABASE_SERVICE_ROLE_KEY', '');
     expect(() => assertNoSecrets()).not.toThrow();
+  });
+
+  it.each([
+    'GEMINI_API_KEY',
+    'NOFILTER_GPT_API_KEY',
+    'PIAPI_API_KEY',
+    'LEONARDO_API_KEY',
+    'RUNWAY_API_KEY',
+    'KLING_ACCESS_KEY',
+    'KLING_SECRET_KEY',
+    'HAILUO_API_KEY',
+    'ELEVENLABS_API_KEY',
+    'SUNO_API_KEY',
+    'BRAVE_SEARCH_API_KEY',
+    'GOOGLE_MAPS_API_KEY',
+  ])('throws when %s is in import.meta.env', (key) => {
+    vi.stubEnv(key, 'leaked-secret-value');
+    expect(() => assertNoSecrets()).toThrowError(new RegExp(`Forbidden use of secret API key: ${key}`));
   });
 
   it('error message mentions server-side usage', () => {
