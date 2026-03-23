@@ -17,6 +17,7 @@ import {
 } from "../../lib/realtime/avatar-controller.js";
 import { formatSSE } from "../../lib/realtime/stream-handler.js";
 import { preflight, fail, CORS_HEADERS } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 /** Default estimated speech duration (ms) used for lip-sync frame generation. */
 const DEFAULT_SPEECH_DURATION_MS = 5000;
@@ -35,10 +36,13 @@ const DEFAULT_SPEECH_DURATION_MS = 5000;
  *   system_prompt      (string, optional) — custom system prompt
  *   task               (string, optional, default "chat") — task label
  *   includeAvatarState (boolean, optional, default true)
+ *   includeVoice       (boolean, optional, default false) — generate TTS audio
+ *   voiceId            (string, optional) — ElevenLabs voice id
  *
  * Response: text/event-stream with SSE events:
  *   event: state   — companion + avatar state transitions
  *   event: token   — individual token deltas
+ *   event: voice   — TTS audio URL (when includeVoice is true)
  *   event: done    — stream complete with full text
  *   event: error   — error during stream
  */
@@ -71,6 +75,7 @@ export async function handler(event) {
   }
 
   const includeAvatarState = body.includeAvatarState !== false;
+  const includeVoice = body.includeVoice === true;
   const now = () => new Date().toISOString();
 
   let sseBody = "";
@@ -141,6 +146,27 @@ export async function handler(event) {
       fullText: accumulated,
       timestamp: now(),
     });
+
+    // ── Voice generation (TTS) ──
+    if (includeVoice && accumulated) {
+      try {
+        const { generateVoice } = await import("../../lib/media/voice-generator.js");
+        log.info("[ai-stream]", "generating TTS audio", { user_id, chars: accumulated.length });
+        const voiceResult = await generateVoice(accumulated, body.voiceId);
+        // Estimate duration based on average speaking rate (~150 words/min).
+        // ElevenLabs does not return duration metadata, so we approximate.
+        const wordCount = accumulated.split(/\s+/).length;
+        const estimatedDurationMs = Math.max(1000, Math.round((wordCount / 150) * 60_000));
+        sseBody += formatSSE("voice", {
+          audioUrl: voiceResult.url,
+          durationMs: estimatedDurationMs,
+          timestamp: now(),
+        });
+        log.info("[ai-stream]", "TTS audio generated", { user_id, durationMs: estimatedDurationMs });
+      } catch (voiceErr) {
+        log.warn("[ai-stream]", "TTS generation failed (non-fatal)", { error: voiceErr.message });
+      }
+    }
 
     companionState = transitionState(companionState, "idle", "stream_complete");
     avatarState = transitionAvatar(

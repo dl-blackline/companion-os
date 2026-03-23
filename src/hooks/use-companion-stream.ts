@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-import type { AvatarState, CompanionState, RealtimeStreamEvent } from '@/types/realtime';
+import type { AvatarState, CompanionState, RealtimeStreamEvent, StreamVoiceEvent } from '@/types/realtime';
 import { parseSSEResponse } from '@/services/realtime-session-service';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -23,6 +23,10 @@ export interface StreamRequestOptions {
   systemPrompt?: string;
   task?: string;
   includeAvatarState?: boolean;
+  /** Request TTS audio generation for the response. */
+  includeVoice?: boolean;
+  /** ElevenLabs voice id for TTS. */
+  voiceId?: string;
 }
 
 export interface CompanionStreamState {
@@ -36,6 +40,8 @@ export interface CompanionStreamState {
   avatarState: AvatarState;
   /** Error message if the stream failed. */
   error: string | null;
+  /** Audio URL from TTS voice generation (when includeVoice is true). */
+  audioUrl: string | null;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -67,6 +73,7 @@ export function useCompanionStream(options: UseCompanionStreamOptions = {}) {
     companionState: 'idle',
     avatarState: 'idle',
     error: null,
+    audioUrl: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -94,6 +101,7 @@ export function useCompanionStream(options: UseCompanionStreamOptions = {}) {
         companionState: 'idle',
         avatarState: 'idle',
         error: null,
+        audioUrl: null,
       });
 
       try {
@@ -109,6 +117,8 @@ export function useCompanionStream(options: UseCompanionStreamOptions = {}) {
             system_prompt: request.systemPrompt,
             task: request.task,
             includeAvatarState: request.includeAvatarState ?? true,
+            includeVoice: request.includeVoice ?? false,
+            voiceId: request.voiceId,
           }),
           signal: controller.signal,
         });
@@ -163,6 +173,18 @@ export function useCompanionStream(options: UseCompanionStreamOptions = {}) {
               }));
               onEvent?.({ type: 'stream_end', timestamp: sse.data.timestamp as string });
               break;
+
+            case 'voice': {
+              const audioUrl = sse.data.audioUrl as string;
+              setState((prev) => ({ ...prev, audioUrl }));
+              onEvent?.({
+                type: 'voice_generated',
+                audioUrl,
+                durationMs: sse.data.durationMs as number,
+                timestamp: sse.data.timestamp as string,
+              } as StreamVoiceEvent);
+              break;
+            }
 
             case 'error':
               setState((prev) => ({
