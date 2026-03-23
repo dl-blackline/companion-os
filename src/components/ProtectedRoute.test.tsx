@@ -22,8 +22,10 @@ vi.mock('@/context/auth-context', () => ({
 
 // Override supabaseConfigured to true for most tests
 let mockConfigured = true;
+let mockKeyError: string | null = null;
 vi.mock('@/lib/supabase-client', () => ({
   get supabaseConfigured() { return mockConfigured; },
+  get supabaseKeyError() { return mockKeyError; },
   supabase: null,
 }));
 
@@ -33,6 +35,7 @@ beforeEach(() => {
   mockLoading = false;
   mockAuthState = { status: 'unauthenticated' };
   mockConfigured = true;
+  mockKeyError = null;
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,6 +72,16 @@ describe('ProtectedRoute', () => {
     render(<ProtectedRoute><div>Protected Content</div></ProtectedRoute>);
 
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
+  });
+
+  it('shows login page with error when service_role key is detected', () => {
+    mockConfigured = false;
+    mockKeyError = 'VITE_SUPABASE_ANON_KEY contains a service_role key.';
+    mockUser = null;
+    render(<ProtectedRoute><div>Protected Content</div></ProtectedRoute>);
+
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
   });
 
   it('navigates to signup page', () => {

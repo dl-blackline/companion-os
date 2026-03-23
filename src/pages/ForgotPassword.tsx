@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useAuth } from "@/context/auth-context"
+import { supabaseKeyError } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

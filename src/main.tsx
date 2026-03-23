@@ -15,8 +15,12 @@ import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
 
-// Fail fast if secret keys leaked into the frontend bundle.
-assertNoSecrets()
+// Log (but don't crash) if secret keys leaked into the frontend bundle.
+try {
+  assertNoSecrets()
+} catch (e) {
+  console.error(e instanceof Error ? e.message : e)
+}
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
