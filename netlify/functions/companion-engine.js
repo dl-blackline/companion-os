@@ -42,6 +42,7 @@ import {
   formatCompanionContext,
 } from "../../lib/companion-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -201,7 +202,7 @@ export async function handler(event) {
 
     return fail(`Unknown action: ${action}`, "ERR_VALIDATION", 400);
   } catch (e) {
-    console.error(`companion-engine [${action}] error:`, e.message);
+    log.error("[companion-engine]", `action=${action} error:`, e.message);
     return fail(e.message || "Internal server error", "ERR_INTERNAL", 500);
   }
 }

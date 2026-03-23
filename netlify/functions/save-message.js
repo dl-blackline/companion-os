@@ -1,6 +1,7 @@
 import { supabase } from "../../lib/_supabase.js";
-import { embed } from "../../lib/ai-client.js";
+import { orchestrateEmbed } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -22,7 +23,7 @@ export async function handler(event) {
       );
     }
 
-    const embedding = await embed(content);
+    const embedding = await orchestrateEmbed(content);
 
     const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
@@ -40,6 +41,7 @@ export async function handler(event) {
 
     return ok({ message: "Message saved", data });
   } catch (err) {
+    log.error("[save-message]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

@@ -1,6 +1,7 @@
 import { generateMedia } from "../../lib/media-engine.js";
 import { optimizePrompt } from "../../lib/media/prompt-optimizer.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 /**
  * Build a refinement prompt for the given action and optional user instructions.
@@ -77,7 +78,7 @@ export async function handler(event) {
       taskId: generationResult.taskId,
     });
   } catch (err) {
-    console.error("refine-media error:", err);
+    log.error("[refine-media]", "handler error:", err.message);
     return fail("Media refinement failed", "ERR_INTERNAL", 500);
   }
 }

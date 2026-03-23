@@ -12,7 +12,7 @@
  */
 
 import { supabase } from "../../lib/_supabase.js";
-import { embed } from "../../lib/ai-client.js";
+import { orchestrateEmbed } from "../../services/ai/orchestrator.js";
 import {
   storeEpisodicMemory,
   storeRelationshipMemory,
@@ -20,6 +20,7 @@ import {
   searchRelationshipMemory,
 } from "../../lib/memory-manager.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 /* ─── Determine which memory table to use based on memory_type/category ───── */
 function resolveMemoryTable(memory_type, category) {
@@ -127,7 +128,7 @@ export async function handler(event) {
       if (!user_id) return fail("Missing required field: user_id", "ERR_VALIDATION", 400);
       if (!query) return fail("Missing required field: query", "ERR_VALIDATION", 400);
 
-      const embedding = await embed(query);
+      const embedding = await orchestrateEmbed(query);
 
       const [episodicRows, relationshipRows] = await Promise.all([
         searchEpisodicMemory(embedding, user_id).catch(() => []),
@@ -158,7 +159,7 @@ export async function handler(event) {
         return fail("Missing required field: action or content", "ERR_VALIDATION", 400);
       }
 
-      const embedding = await embed(content);
+      const embedding = await orchestrateEmbed(content);
 
       const { data, error: rpcError } = await supabase.rpc("match_messages", {
         query_embedding: embedding,
@@ -172,7 +173,7 @@ export async function handler(event) {
       return ok({ results: data });
     }
   } catch (e) {
-    console.error(`search-memory [${action || "legacy"}] error:`, e.message);
+    log.error("[search-memory]", `action=${action || "legacy"} error:`, e.message);
     return fail(e.message || "Internal server error", "ERR_INTERNAL", 500);
   }
 }

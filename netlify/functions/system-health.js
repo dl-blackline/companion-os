@@ -1,5 +1,6 @@
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 // ── Status values ───────────────────────────────────────────────────────────
 // "ok"             — service is reachable and healthy
@@ -14,12 +15,12 @@ async function checkSupabase() {
     const table = process.env.CHAT_HISTORY_TABLE || "messages";
     const { error } = await supabase.from(table).select("id").limit(1);
     if (error) {
-      console.warn("[system-health] Supabase query failed:", error.message);
+      log.warn("[system-health]", "supabase query failed:", error.message);
       return "error";
     }
     return "ok";
   } catch (err) {
-    console.error("[system-health] Supabase check error:", err.message);
+    log.error("[system-health]", "supabase check error:", err.message);
     return "error";
   }
 }
@@ -27,19 +28,19 @@ async function checkSupabase() {
 async function checkOpenAI() {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      console.warn("[system-health] OPENAI_API_KEY is not configured");
+      log.warn("[system-health]", "OPENAI_API_KEY is not configured");
       return "not_configured";
     }
     const res = await fetch("https://api.openai.com/v1/models", {
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
     });
     if (!res.ok) {
-      console.warn(`[system-health] OpenAI API check failed with status ${res.status}`);
+      log.warn("[system-health]", `OpenAI API check failed with status ${res.status}`);
       return "error";
     }
     return "ok";
   } catch (err) {
-    console.error("[system-health] OpenAI API check error:", err.message);
+    log.error("[system-health]", "OpenAI check error:", err.message);
     return "error";
   }
 }
@@ -55,12 +56,12 @@ async function checkVectorSearch() {
       match_count: 1,
     });
     if (error) {
-      console.warn("[system-health] Vector search check failed:", error.message);
+      log.warn("[system-health]", "vector search check failed:", error.message);
       return "error";
     }
     return "ok";
   } catch (err) {
-    console.error("[system-health] Vector search check error:", err.message);
+    log.error("[system-health]", "vector search check error:", err.message);
     return "error";
   }
 }
@@ -82,7 +83,7 @@ async function checkMedia() {
     // Any response (even 400 for missing params) confirms connectivity
     return res.status < 500 ? "ok" : "error";
   } catch (err) {
-    console.error("[system-health] Media API check error:", err.message);
+    log.error("[system-health]", "media API check error:", err.message);
     return "error";
   }
 }
@@ -100,7 +101,7 @@ async function checkLeonardo() {
     });
     return res.ok ? "ok" : "error";
   } catch (err) {
-    console.error("[system-health] Leonardo check error:", err.message);
+    log.error("[system-health]", "leonardo check error:", err.message);
     return "error";
   }
 }
@@ -152,7 +153,7 @@ export async function handler(event) {
       services,
     });
   } catch (err) {
-    console.error("System health check error:", err);
+    log.error("[system-health]", "health check error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

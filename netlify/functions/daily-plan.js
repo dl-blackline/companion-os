@@ -8,7 +8,7 @@
  */
 
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
-import { think } from "../../lib/companion-brain.js";
+import { orchestrate } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
@@ -59,7 +59,8 @@ export async function handler(event) {
     const planMessage =
       message || "Create a daily plan for today based on my goals and tasks.";
 
-    const result = await think({
+    const result = await orchestrate({
+      task: "planning",
       message: planMessage,
       user_id,
       conversation_id: conversation_id || user_id,

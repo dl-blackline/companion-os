@@ -107,7 +107,7 @@ export async function handler(event) {
 
     return fail("Not found", "ERR_NOT_FOUND", 404);
   } catch (err) {
-    console.error("support-tickets error:", err);
+    log.error("[support-tickets]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }
