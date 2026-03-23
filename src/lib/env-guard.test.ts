@@ -91,4 +91,37 @@ describe('assertNoSecrets', () => {
     vi.stubEnv('OPENAI_API_KEY', 'sk-secret');
     expect(() => assertNoSecrets()).toThrowError(/server-side code/);
   });
+
+  // ── Value-based detection (Layer 2) ──
+
+  it('throws when a VITE_ var contains an OpenAI-style sk- key', () => {
+    vi.stubEnv('VITE_CUSTOM_KEY', 'sk-abcdefghij1234567890ABCD');
+    expect(() => assertNoSecrets()).toThrowError(/Forbidden secret value in VITE_CUSTOM_KEY.*OpenAI API key/);
+  });
+
+  it('does not throw for short sk- values that are not real keys', () => {
+    vi.stubEnv('VITE_SHORT', 'sk-short');
+    expect(() => assertNoSecrets()).not.toThrow();
+  });
+
+  it('throws when a VITE_ var contains a service_role JWT', () => {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({ role: 'service_role', iss: 'supabase' }));
+    vi.stubEnv('VITE_DB_KEY', `${header}.${payload}.sig`);
+    expect(() => assertNoSecrets()).toThrowError(/Forbidden secret value in VITE_DB_KEY.*service_role JWT/);
+  });
+
+  it('does not throw for a VITE_ var containing an anon JWT', () => {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({ role: 'anon', iss: 'supabase' }));
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', `${header}.${payload}.sig`);
+    expect(() => assertNoSecrets()).not.toThrow();
+  });
+
+  it('does not throw for non-VITE_ vars with secret-looking values', () => {
+    // Backend-only env vars (no VITE_ prefix) are not embedded by Vite,
+    // so the value-based scan should skip them.
+    vi.stubEnv('BACKEND_KEY', 'sk-abcdefghij1234567890ABCD');
+    expect(() => assertNoSecrets()).not.toThrow();
+  });
 });
