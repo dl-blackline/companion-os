@@ -1,8 +1,8 @@
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
-import { embed } from "../../lib/ai-client.js";
-import { think } from "../../lib/companion-brain.js";
+import { orchestrate, orchestrateEmbed } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
+import { log } from "../../lib/_log.js";
 
 async function getRecentConversation(conversation_id) {
   if (!supabaseConfigured) return [];
@@ -17,7 +17,7 @@ async function getRecentConversation(conversation_id) {
     .limit(10);
 
   if (error) {
-    console.error("[chat] Recent conversation error:", error.message);
+    log.error("[chat]", "recent conversation error:", error.message);
     return [];
   }
 
@@ -38,7 +38,7 @@ async function saveMessage({ conversation_id, user_id, role, content, embedding 
   });
 
   if (error) {
-    console.error("[chat] Save message error:", error.message);
+    log.error("[chat]", "save message error:", error.message);
   }
 }
 
@@ -77,8 +77,11 @@ export async function handler(event) {
       );
     }
 
-    // Route through Companion Brain — unified orchestration pipeline
-    const result = await think({
+    log.info("[chat]", `user=${user_id?.slice(0, 8)} conv=${conversation_id?.slice(0, 8)}`);
+
+    // Route through unified AI orchestrator
+    const result = await orchestrate({
+      task: "chat",
       message,
       user_id,
       conversation_id,
@@ -95,7 +98,7 @@ export async function handler(event) {
     }
 
     // Save both the user message and the assistant response (best-effort)
-    const assistantEmbedding = await embed(result.response).catch(() => null);
+    const assistantEmbedding = await orchestrateEmbed(result.response).catch(() => null);
 
     await Promise.all([
       saveMessage({
@@ -103,7 +106,7 @@ export async function handler(event) {
         user_id,
         role: "user",
         content: message,
-        embedding: result.context?.embedding || null,
+        embedding: null,
       }),
       saveMessage({
         conversation_id,
@@ -113,7 +116,7 @@ export async function handler(event) {
         embedding: assistantEmbedding,
       }),
     ]).catch((err) => {
-      console.error("[chat] Failed to persist messages:", err.message);
+      log.error("[chat]", "failed to persist messages:", err.message);
     });
 
     return ok({
@@ -121,7 +124,7 @@ export async function handler(event) {
       intent: result.intent,
     });
   } catch (err) {
-    console.error("[chat] Chat endpoint error:", err.message);
+    log.error("[chat]", "handler error:", err.message);
 
     // Backward compatibility: return a soft-fail 200 with a human-friendly
     // message so the frontend doesn't surface a raw error.
