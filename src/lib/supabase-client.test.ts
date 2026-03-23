@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isServiceRoleKey } from '@/lib/supabase-client';
+import { isForbiddenBrowserSupabaseKey, isServiceRoleKey } from '@/lib/supabase-client';
 
 /**
  * Tests for the isServiceRoleKey() safety check in supabase-client.ts.
@@ -62,5 +62,21 @@ describe('isServiceRoleKey', () => {
   it('returns false for a base64url-encoded anon JWT', () => {
     const key = fakeJwtBase64Url({ role: 'anon', iss: 'supabase', iat: 1 });
     expect(isServiceRoleKey(key)).toBe(false);
+  });
+});
+
+describe('isForbiddenBrowserSupabaseKey', () => {
+  it('returns true for sb_secret_ keys', () => {
+    expect(isForbiddenBrowserSupabaseKey('sb_secret_1234567890abcdef')).toBe(true);
+  });
+
+  it('returns true for service_role JWTs', () => {
+    const key = fakeJwt({ role: 'service_role', iss: 'supabase', iat: 1 });
+    expect(isForbiddenBrowserSupabaseKey(key)).toBe(true);
+  });
+
+  it('returns false for anon JWTs', () => {
+    const key = fakeJwt({ role: 'anon', iss: 'supabase', iat: 1 });
+    expect(isForbiddenBrowserSupabaseKey(key)).toBe(false);
   });
 });

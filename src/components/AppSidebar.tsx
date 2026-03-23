@@ -4,8 +4,11 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { DynamicIcon } from '@/components/ui/dynamic-icon';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { triggerHaptic } from '@/utils/haptics';
 import { useAuth } from '@/context/auth-context';
+import { useSettings } from '@/context/settings-context';
+import { getUserInitials } from '@/services/user-identity-service';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
 
@@ -51,6 +54,8 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
 
 export function AppSidebar({ activeSection, onSectionChange, aiName, companionState }: AppSidebarProps) {
   const { isAdmin, user, logout } = useAuth();
+  const { prefs } = useSettings();
+  const userInitials = getUserInitials(prefs.display_name, user?.email);
   const mainItems  = navItems.filter((i) => i.group === 'main');
   const toolItems  = navItems.filter((i) => i.group === 'tools');
   const sysItems   = navItems.filter((i) => i.group === 'system');
@@ -143,9 +148,12 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
         {user && (
           <div className="border-t border-border/50 pt-2 mt-1">
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                {user.email?.[0]?.toUpperCase() ?? '?'}
-              </div>
+              <Avatar className="h-7 w-7 shrink-0 border border-border/60">
+                {prefs.avatar_url && <AvatarImage src={prefs.avatar_url} alt="User avatar" />}
+                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
               <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">{user.email}</span>
               <button
                 onClick={async () => {

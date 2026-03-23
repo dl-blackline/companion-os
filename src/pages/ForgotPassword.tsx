@@ -13,7 +13,9 @@ export default function ForgotPassword({ onNavigateToLogin }: ForgotPasswordProp
   const { resetPassword, configured } = useAuth()
   const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(
-    configured ? null : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables."
+    configured
+      ? null
+      : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) environment variables."
   )
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)

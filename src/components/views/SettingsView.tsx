@@ -20,7 +20,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Gear,
   Robot,
@@ -57,6 +57,7 @@ import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
 import { useVoice } from '@/context/voice-context';
 import { EmojiOrbCustomizer } from '@/components/EmojiOrbCustomizer';
+import { UserIdentityCard } from '@/components/settings/UserIdentityCard';
 import { toast } from 'sonner';
 
 const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
@@ -298,11 +299,6 @@ export function SettingsView() {
 
   const finalModels = envModels.length ? envModels : DEFAULT_MODELS;
 
-  useEffect(() => {
-    console.log('AI ENV:', import.meta.env);
-    console.log('Models:', finalModels);
-  }, [finalModels]);
-
   const chatModelOptions = useMemo(() => {
     const registryChat = (modelRegistry?.chat ?? []).map((m) => ({ id: m.id, name: m.name }));
     const byId = new Map<string, { id: string; name: string }>();
@@ -483,6 +479,7 @@ export function SettingsView() {
                 <Separator />
                 <div className="py-6 flex items-center gap-4">
                   <Avatar className="size-16">
+                    {prefs.avatar_url && <AvatarImage src={prefs.avatar_url} alt="Profile avatar" />}
                     <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -541,6 +538,8 @@ export function SettingsView() {
               </Card>
               )}
 
+              <UserIdentityCard />
+
               {/* ── Auth / Account Status — always visible ── */}
               <Card className="p-6">
                 <h3 className="font-semibold mb-1">Authentication</h3>
@@ -586,7 +585,7 @@ export function SettingsView() {
                     {accountVM.configured ? (
                       <p className="text-xs text-muted-foreground">Sign out and back in from the login screen, or reload the app to re-authenticate.</p>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Supabase is not configured. Set <code className="text-xs">VITE_SUPABASE_URL</code> and <code className="text-xs">VITE_SUPABASE_ANON_KEY</code> to enable authentication.</p>
+                      <p className="text-xs text-muted-foreground">Supabase is not configured. Set <code className="text-xs">VITE_SUPABASE_URL</code> and <code className="text-xs">VITE_SUPABASE_PUBLISHABLE_KEY</code> (or <code className="text-xs">VITE_SUPABASE_ANON_KEY</code>) to enable authentication.</p>
                     )}
                   </div>
                 )}

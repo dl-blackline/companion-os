@@ -1,13 +1,21 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseClientKey = supabasePublishableKey || supabaseAnonKey
 
-export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseClientKey)
 
 if (!supabaseConfigured) {
   console.warn(
-    "Missing Supabase environment variables. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file."
+    "Missing Supabase environment variables. Set VITE_SUPABASE_URL and either VITE_SUPABASE_PUBLISHABLE_KEY (preferred) or VITE_SUPABASE_ANON_KEY in your .env file."
+  )
+}
+
+if (supabasePublishableKey && supabaseAnonKey && supabasePublishableKey !== supabaseAnonKey) {
+  console.warn(
+    "Both VITE_SUPABASE_PUBLISHABLE_KEY and VITE_SUPABASE_ANON_KEY are set. Using VITE_SUPABASE_PUBLISHABLE_KEY."
   )
 }
 
@@ -44,15 +52,23 @@ export function isServiceRoleKey(key: string): boolean {
   }
 }
 
-if (supabaseAnonKey && isServiceRoleKey(supabaseAnonKey)) {
+/**
+ * Supabase secret keys are prefixed with `sb_secret_` and are server-only.
+ * Service role JWTs are also server-only.
+ */
+export function isForbiddenBrowserSupabaseKey(key: string): boolean {
+  return key.startsWith("sb_secret_") || isServiceRoleKey(key)
+}
+
+if (supabaseClientKey && isForbiddenBrowserSupabaseKey(supabaseClientKey)) {
   throw new Error(
     "Forbidden use of secret API key in browser: " +
-      "VITE_SUPABASE_ANON_KEY contains a service_role key. " +
-      "Use the anon (public) key for frontend code. " +
-      "The service_role key must only be used in server-side code (e.g. Netlify functions)."
+      "VITE_SUPABASE_PUBLISHABLE_KEY/VITE_SUPABASE_ANON_KEY contains a server-only Supabase key. " +
+      "Use a publishable/anon key for frontend code. " +
+      "Secret/service_role keys must only be used in server-side code (e.g. Netlify functions)."
   )
 }
 
 export const supabase: SupabaseClient = supabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseClientKey)
   : (null as unknown as SupabaseClient)
