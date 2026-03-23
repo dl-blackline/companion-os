@@ -9,9 +9,10 @@
  *   1. Env validation — fail fast with clear messages before any AI call
  *   2. Prompt handling — standardize prompt shape for all providers
  *   3. Model selection — resolve model from request or defaults
- *   4. Structured logging — consistent request/response/error logging
- *   5. Error normalization — all failures map to { success: false, error, code }
- *   6. Streaming flags — mark responses as streaming-capable
+ *   4. Context + memory injection — enrich prompts with recent interactions
+ *   5. Structured logging — consistent request/response/error logging
+ *   6. Error normalization — all failures map to { success: false, error, code }
+ *   7. Streaming flags — mark responses as streaming-capable
  *
  * Usage from Netlify functions:
  *
@@ -30,6 +31,83 @@ import { chat, chatStream, chatJSON, embed } from "../../lib/ai-client.js";
 import { think } from "../../lib/companion-brain.js";
 import { MODEL_CONFIG } from "../../lib/model-config.js";
 import { log } from "../../lib/_log.js";
+import { buildFullContext } from "../context/contextEngine.js";
+import {
+  storeInteraction,
+  getRecentInteractions,
+} from "../memory/memoryService.js";
+
+// ── Context + Memory injection ──────────────────────────────────────────────
+
+/**
+ * Enrich a prompt with recent context and memory for a given user.
+ *
+ * Called internally by orchestrateStream() and orchestrateSimple() so that
+ * even lightweight operations benefit from conversational history.
+ *
+ * @param {{ system: string, user: string }} prompt
+ * @param {object}  opts
+ * @param {string}  [opts.user_id]
+ * @param {string}  [opts.conversation_id]
+ * @param {string}  [opts.session_id]
+ * @returns {Promise<{ system: string, user: string }>}
+ */
+export async function injectContext(prompt, { user_id, conversation_id, session_id } = {}) {
+  if (!user_id || !prompt) return prompt;
+
+  try {
+    const [fullCtx, recentMemory] = await Promise.all([
+      buildFullContext({
+        user_id,
+        conversation_id: conversation_id || "",
+        message: prompt.user,
+        session_id,
+      }).catch((err) => {
+        log.warn("[orchestrator]", "context assembly failed (non-fatal):", err.message);
+        return null;
+      }),
+      getRecentInteractions({ user_id, session_id: session_id || "default", limit: 10 }).catch(
+        () => [],
+      ),
+    ]);
+
+    const contextBlock = fullCtx?.formatted || "";
+    const memoryBlock =
+      recentMemory.length > 0
+        ? recentMemory
+            .map((m) => `[${m.role}] ${typeof m.content === "string" ? m.content : JSON.stringify(m.content)}`)
+            .join("\n")
+        : "";
+
+    const sections = [prompt.system];
+    if (contextBlock) sections.push(`\n<context>\n${contextBlock}\n</context>`);
+    if (memoryBlock) sections.push(`\n<recent_memory>\n${memoryBlock}\n</recent_memory>`);
+
+    return { system: sections.join("\n"), user: prompt.user };
+  } catch (err) {
+    log.warn("[orchestrator]", "context injection failed (non-fatal):", err.message);
+    return prompt;
+  }
+}
+
+/**
+ * Persist an interaction into the memory layer.
+ *
+ * @param {object} params
+ * @param {string} params.user_id
+ * @param {string} [params.session_id]
+ * @param {string} params.role
+ * @param {string} params.content
+ * @returns {Promise<void>}
+ */
+export async function recordInteraction({ user_id, session_id, role, content }) {
+  if (!user_id || !content) return;
+  try {
+    await storeInteraction({ user_id, session_id: session_id || "default", role, content });
+  } catch (err) {
+    log.warn("[orchestrator]", "memory store failed (non-fatal):", err.message);
+  }
+}
 
 // ── Env validation ──────────────────────────────────────────────────────────
 
@@ -117,13 +195,19 @@ export async function orchestrate({
 /**
  * Stream an AI response token-by-token via an async generator.
  *
+ * When `user_id` is provided the prompt is enriched with recent context
+ * and memory before streaming begins.
+ *
  * @param {object} params
  * @param {string}   params.task    - Logical task label.
  * @param {{ system: string, user: string }} params.prompt - Prompt object.
  * @param {string}   [params.model] - Model to use.
+ * @param {string}   [params.user_id] - User id for context injection.
+ * @param {string}   [params.conversation_id] - Conversation id for context injection.
+ * @param {string}   [params.session_id] - Session id for memory lookup.
  * @returns {AsyncGenerator<string>} Yields individual tokens.
  */
-export async function* orchestrateStream({ task = "chat", prompt, model }) {
+export async function* orchestrateStream({ task = "chat", prompt, model, user_id, conversation_id, session_id }) {
   const resolvedModel = model || MODEL_CONFIG.chat;
   const startMs = Date.now();
 
@@ -131,7 +215,12 @@ export async function* orchestrateStream({ task = "chat", prompt, model }) {
 
   try {
     validateAIEnv();
-    yield* chatStream({ prompt, model: resolvedModel });
+
+    const enrichedPrompt = user_id
+      ? await injectContext(prompt, { user_id, conversation_id, session_id })
+      : prompt;
+
+    yield* chatStream({ prompt: enrichedPrompt, model: resolvedModel });
 
     const durationMs = Date.now() - startMs;
     log.info("[orchestrator]", `stream completed task=${task} in ${durationMs}ms`);
@@ -148,19 +237,30 @@ export async function* orchestrateStream({ task = "chat", prompt, model }) {
  * Run a direct chat completion without the full Brain pipeline.
  * Useful for lightweight tasks like classification or summarization.
  *
+ * When `user_id` is provided the prompt is enriched with recent context
+ * and memory before the completion runs.
+ *
  * @param {object} params
  * @param {{ system: string, user: string }} params.prompt
  * @param {string} [params.model]
  * @param {string} [params.task="chat"]
+ * @param {string} [params.user_id] - User id for context injection.
+ * @param {string} [params.conversation_id] - Conversation id for context injection.
+ * @param {string} [params.session_id] - Session id for memory lookup.
  * @returns {Promise<string>}
  */
-export async function orchestrateSimple({ prompt, model, task = "chat" }) {
+export async function orchestrateSimple({ prompt, model, task = "chat", user_id, conversation_id, session_id }) {
   const resolvedModel = model || MODEL_CONFIG.chat;
   log.info("[orchestrator]", `simple task=${task}`, `model=${resolvedModel}`);
 
   try {
     validateAIEnv();
-    return await chat({ prompt, model: resolvedModel, task });
+
+    const enrichedPrompt = user_id
+      ? await injectContext(prompt, { user_id, conversation_id, session_id })
+      : prompt;
+
+    return await chat({ prompt: enrichedPrompt, model: resolvedModel, task });
   } catch (err) {
     log.error("[orchestrator]", `simple failed task=${task}:`, err.message);
     throw err;
