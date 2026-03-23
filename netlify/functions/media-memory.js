@@ -23,6 +23,7 @@ import {
   searchMediaMemories,
 } from "../../lib/media-memory-service.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -143,7 +144,7 @@ export async function handler(event) {
         return fail(`Unknown action: ${action}`, "ERR_VALIDATION", 400);
     }
   } catch (e) {
-    console.error(`media-memory [${action}] error:`, e.message);
+    log.error("[media-memory]", `action=${action} error:`, e.message);
     return fail(e.message || "Internal server error", "ERR_INTERNAL", 500);
   }
 }

@@ -143,6 +143,8 @@ function ServiceStatusIcon({ status }: { status: ServiceStatus }) {
     return <WarningCircle className="w-4 h-4 text-yellow-400" weight="fill" />;
   if (status === 'degraded')
     return <WarningCircle className="w-4 h-4 text-orange-400" weight="fill" />;
+  if (status === 'not_configured')
+    return <WarningCircle className="w-4 h-4 text-yellow-500" weight="fill" />;
   if (status === 'down') return <XCircle className="w-4 h-4 text-red-400" weight="fill" />;
   return <Question className="w-4 h-4 text-zinc-500" weight="fill" />;
 }
@@ -152,6 +154,7 @@ function serviceStatusColor(status: ServiceStatus) {
     healthy: 'text-emerald-400',
     warning: 'text-yellow-400',
     degraded: 'text-orange-400',
+    not_configured: 'text-yellow-500',
     down: 'text-red-400',
     unknown: 'text-zinc-500',
   };
@@ -305,12 +308,13 @@ function OverviewTab() {
       }
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
         const json = await healthRes.value.json();
-        const services: ServiceHealth[] = json.services ?? json ?? [];
+        const data = json.data ?? json;
+        const services: ServiceHealth[] = data.services ?? [];
         const statuses = services.map((s) => s.status);
         if (statuses.includes('down')) systemStatus = 'down';
         else if (statuses.includes('degraded')) systemStatus = 'degraded';
         else if (statuses.includes('warning')) systemStatus = 'warning';
-        else if (statuses.every((s) => s === 'healthy')) systemStatus = 'healthy';
+        else if (statuses.every((s) => s === 'healthy' || s === 'not_configured')) systemStatus = 'healthy';
         else systemStatus = 'unknown';
       }
       if (auditRes.status === 'fulfilled' && auditRes.value.ok) {
@@ -708,7 +712,8 @@ function SystemHealthTab() {
       const res = await apiFetch('/.netlify/functions/system-health', token);
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       const json = await res.json();
-      const services: ServiceHealth[] = json.services ?? json ?? [];
+      const data = json.data ?? json;
+      const services: ServiceHealth[] = data.services ?? [];
       setLastChecked(new Date());
       setState({ data: services, loading: false, error: null });
     } catch (e) {
@@ -735,7 +740,7 @@ function SystemHealthTab() {
     if (statuses.includes('down')) return 'down';
     if (statuses.includes('degraded')) return 'degraded';
     if (statuses.includes('warning')) return 'warning';
-    if (statuses.every((s) => s === 'healthy')) return 'healthy';
+    if (statuses.every((s) => s === 'healthy' || s === 'not_configured')) return 'healthy';
     return 'unknown';
   })();
 
@@ -743,6 +748,7 @@ function SystemHealthTab() {
     healthy: 'bg-emerald-500/10 border-emerald-500/30',
     warning: 'bg-yellow-500/10 border-yellow-500/30',
     degraded: 'bg-orange-500/10 border-orange-500/30',
+    not_configured: 'bg-yellow-500/10 border-yellow-500/30',
     down: 'bg-red-500/10 border-red-500/30',
     unknown: 'bg-zinc-500/10 border-zinc-500/30',
   };

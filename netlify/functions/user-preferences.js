@@ -75,7 +75,7 @@ export async function handler(event) {
 
     return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
-    console.error("user-preferences error:", err);
+    log.error("[user-preferences]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

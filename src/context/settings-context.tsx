@@ -26,6 +26,7 @@ import type { CompanionSettings, ConversationMode, UserPreferences } from '@/typ
 import { DEFAULT_USER_PREFERENCES } from '@/types';
 import { setModelSetting, getModelSetting } from '@/utils/model-cache';
 import { useAuth } from '@/context/auth-context';
+import { supabase } from '@/lib/supabase-client';
 
 // ── Default CompanionSettings ────────────────────────────────────────────────
 export const DEFAULT_SETTINGS: CompanionSettings = {
@@ -220,17 +221,37 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (!authResolved) return;
     let cancelled = false;
     async function load() {
-      const token = getToken();
-      if (!token) return;
       setPrefsLoading(true);
       try {
-        const res = await fetch('/.netlify/functions/user-preferences', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const { prefs: loaded } = await res.json();
-        if (!cancelled && loaded) {
-          setPrefs((prev) => ({ ...prev, ...loaded }));
+        const token = getToken();
+        if (token) {
+          const res = await fetch('/.netlify/functions/user-preferences', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const json = await res.json();
+            const { prefs: loaded } = json.data ?? json;
+            if (!cancelled && loaded) {
+              const { display_name: _displayName, bio: _bio, ...nonProfilePrefs } = loaded;
+              setPrefs((prev) => ({ ...prev, ...nonProfilePrefs }));
+            }
+          }
+        }
+
+        if (authUser?.id) {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('display_name, bio')
+            .eq('id', authUser.id)
+            .maybeSingle();
+
+          if (!cancelled && !error && profile) {
+            setPrefs((prev) => ({
+              ...prev,
+              display_name: profile.display_name ?? '',
+              bio: profile.bio ?? '',
+            }));
+          }
         }
       } catch {
         // Defaults are fine
@@ -260,7 +281,42 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
       const seq = ++saveSeq.current;
 
+      const isProfilePatch =
+        Object.keys(patch).length > 0 &&
+        Object.keys(patch).every((key) => key === 'display_name' || key === 'bio');
+
+      const saveProfile = async () => {
+        if (!authUser?.id) {
+          toast.error('Not authenticated - profile not saved');
+          setPrefs(prevPrefs);
+          return;
+        }
+
+        const { error } = await supabase.from('profiles').upsert({
+          id: authUser.id,
+          display_name: patch.display_name,
+          bio: patch.bio,
+        });
+
+        // Stale response guard
+        if (seq !== saveSeq.current) return;
+
+        if (error) {
+          const msg = error.message || 'Failed to save profile';
+          setPrefsError(msg);
+          setPrefs(prevPrefs);
+          toast.error(msg);
+        } else {
+          toast.success('Profile saved');
+        }
+      };
+
       try {
+        if (isProfilePatch) {
+          await saveProfile();
+          return;
+        }
+
         const token = getToken();
         if (!token) {
           toast.error('Not authenticated — settings not saved');
@@ -297,7 +353,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (seq === saveSeq.current) setPrefsSaving(false);
       }
     },
-    [getToken],
+    [authUser?.id, getToken],
   );
 
   // ── Debounced preference save (for sliders / rapid-fire controls) ──────────

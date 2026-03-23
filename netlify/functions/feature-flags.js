@@ -94,7 +94,7 @@ export async function handler(event) {
 
     return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
-    console.error("feature-flags error:", err);
+    log.error("[feature-flags]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -26,7 +27,7 @@ export async function handler(event) {
         .single();
 
       if (error && error.code !== "PGRST116") {
-        console.error("Settings fetch error:", error.message);
+        log.error("[settings]", "fetch error:", error.message);
         return fail("Failed to fetch settings", "ERR_INTERNAL", 500);
       }
 
@@ -50,7 +51,7 @@ export async function handler(event) {
         .single();
 
       if (error) {
-        console.error("Settings save error:", error.message);
+        log.error("[settings]", "save error:", error.message);
         return fail("Failed to save settings", "ERR_INTERNAL", 500);
       }
 
@@ -59,7 +60,7 @@ export async function handler(event) {
 
     return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
-    console.error("Settings function error:", err.message);
+    log.error("[settings]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

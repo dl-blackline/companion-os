@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 const CHAT_TABLE = process.env.CHAT_HISTORY_TABLE || "messages";
 
@@ -40,13 +41,13 @@ export async function handler(event) {
     const { data, error } = await query;
 
     if (error) {
-      console.error("Conversations fetch error:", error.message);
+      log.error("[conversations]", "fetch error:", error.message);
       return fail("Failed to fetch conversations", "ERR_INTERNAL", 500);
     }
 
     return ok({ messages: (data || []).reverse() });
   } catch (err) {
-    console.error("Conversations function error:", err.message);
+    log.error("[conversations]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

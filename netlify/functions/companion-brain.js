@@ -1,7 +1,9 @@
-import { think, listCapabilities } from "../../lib/companion-brain.js";
-import { supabase } from "../../lib/_supabase.js";
+import { orchestrate } from "../../services/ai/orchestrator.js";
+import { listCapabilities } from "../../lib/companion-brain.js";
+import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
+import { log } from "../../lib/_log.js";
 
 /**
  * Companion Brain — unified Netlify function entry point.
@@ -65,7 +67,7 @@ export async function handler(event) {
 
   // Build a getRecentConversation callback from Supabase
   const getRecentConversation = async (convId) => {
-    if (!convId) return [];
+    if (!convId || !supabaseConfigured) return [];
     const { data, error } = await supabase
       .from("messages")
       .select("role, content")
@@ -73,14 +75,17 @@ export async function handler(event) {
       .order("created_at", { ascending: false })
       .limit(10);
     if (error) {
-      console.error("companion-brain getRecentConversation error:", error.message);
+      log.error("[companion-brain]", "getRecentConversation error:", error.message);
       return [];
     }
     return (data || []).reverse();
   };
 
   try {
-    const result = await think({
+    log.info("[companion-brain]", `user=${user_id?.slice(0, 8)} capability=${body.capability ?? "auto"}`);
+
+    const result = await orchestrate({
+      task: body.capability || "chat",
       message,
       user_id,
       conversation_id,
@@ -100,7 +105,7 @@ export async function handler(event) {
       isMedia: result.isMedia,
     });
   } catch (err) {
-    console.error("companion-brain error:", err);
+    log.error("[companion-brain]", "handler error:", err.message);
     return fail("Internal brain error", "ERR_BRAIN", 500);
   }
 }

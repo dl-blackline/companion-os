@@ -28,15 +28,12 @@ import { getModeConfig, getAllModes } from '@/lib/modes';
 import { getPromptGenerationAwareness } from '@/lib/prompt-studio';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
+import { getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 import { useAuth } from '@/context/auth-context';
-
-/** Return the currently selected chat model id. */
-function activeChatModel(): string {
-  return getModelSetting('chat') || 'gpt-4.1';
-}
+import { useAIControl } from '@/context/ai-control-context';
+import { runAIRequest } from '@/services/ai-orchestrator';
 
 /** Convert a File to a base64-encoded data URL (works without server access). */
 async function fileToDataUrl(file: File): Promise<string> {
@@ -50,6 +47,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 export function ChatView() {
   const { user: authUser } = useAuth();
+  const { orchestratorConfig } = useAIControl();
   const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
   const [activeConvId, setActiveConvId] = useState<string | null>(
     (conversations && conversations.length > 0) ? conversations[0].id : null
@@ -155,6 +153,11 @@ export function ChatView() {
   };
 
   const handleSendMessage = async () => {
+    if (!orchestratorConfig.capabilities.chat) {
+      toast.error('Chat capability is disabled in Control Center');
+      return;
+    }
+
     if ((!input.trim() && !pendingMedia) || !activeConversation || isStreaming) return;
 
     let mediaUrl: string | undefined;
@@ -225,77 +228,30 @@ Respond as the ${modeConfig.name} mode with the following characteristics:
 
 Please provide a helpful response.`;
 
-      const res = await fetch('/.netlify/functions/ai-orchestrator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'chat',
-          data: {
-            conversation_id: activeConversation.id,
-            user_id: authUser?.id || 'default-user',
-            message: fullPrompt,
-            model: activeChatModel(),
-            stream: !mediaUrl, // Streaming is disabled for vision requests: the backend processes the full image before generating a response, so streaming adds no UX value and complicates the response handling.
-            ...(mediaUrl && { media_url: mediaUrl }),
-            ...(mediaType && { media_type: mediaType }),
-          },
-        }),
+      const result = await runAIRequest<{
+        data?: { response?: string; media_url?: string; media_type?: MediaType };
+        response?: string;
+        media_url?: string;
+        media_type?: MediaType;
+      }>({
+        type: 'chat',
+        message: fullPrompt,
+        userId: authUser?.id || 'default-user',
+        conversationId: activeConversation.id,
+        config: orchestratorConfig,
+        history: activeConversation.messages.map((m) => `${m.role}: ${m.content}`),
+        mediaUrl,
+        mediaType,
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Chat API error:', res.status, errData);
-        throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Chat request failed');
       }
 
-      let responseText = '';
-      let responseMediaUrl: string | undefined;
-      let responseMediaType: MediaType | undefined;
-
-      // Handle NDJSON streaming responses
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/x-ndjson') || contentType.includes('text/event-stream')) {
-        setIsAnalyzing(false);
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            for (const line of chunk.split('\n')) {
-              const trimmed = line.trim();
-              if (!trimmed) continue;
-              try {
-                const parsed = JSON.parse(trimmed);
-                // Backend sends { token, done } format
-                if (parsed.token !== undefined && !parsed.done) {
-                  responseText += parsed.token;
-                  setStreamingText(responseText);
-                } else if (parsed.delta) {
-                  responseText += parsed.delta;
-                  setStreamingText(responseText);
-                } else if (parsed.response) {
-                  responseText = parsed.response;
-                  setStreamingText(responseText);
-                }
-              } catch {
-                // Non-JSON line — ignore
-              }
-            }
-          }
-        }
-      } else {
-        // Fall back to standard JSON response
-        // Unwrap ok() envelope: { success, data: { response, … } } or legacy raw shape
-        const json = await res.json();
-        const data = json.data ?? json;
-        responseText = data.response || '';
-        if (data.media_url) {
-          responseMediaUrl = data.media_url;
-          responseMediaType = data.media_type as MediaType;
-        }
-      }
+      const payload = result.data.data ?? result.data;
+      const responseText = payload.response || '';
+      const responseMediaUrl = payload.media_url;
+      const responseMediaType = payload.media_type;
 
       // Detect media response (image or video generated by the AI)
       const isMediaResponse = !!responseMediaUrl && !!responseMediaType;
@@ -682,7 +638,7 @@ Please provide a helpful response.`;
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                   <Lightning size={12} weight="fill" className="text-primary" />
-                  {getModelDisplayName('chat', activeChatModel())}
+                  {getModelDisplayName('chat', orchestratorConfig.model)}
                 </span>
               </div>
             </div>

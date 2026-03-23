@@ -1,5 +1,4 @@
-import { think } from "../../lib/companion-brain.js";
-import { chatStream } from "../../lib/ai-client.js";
+import { orchestrate } from "../../services/ai/orchestrator.js";
 import { supabase } from "../../lib/_supabase.js";
 import {
   createCompanionState,
@@ -15,6 +14,7 @@ import {
 } from "../../lib/realtime/avatar-controller.js";
 import { formatSSE } from "../../lib/realtime/stream-handler.js";
 import { preflight, fail, CORS_HEADERS } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 /** Default estimated speech duration (ms) used for lip-sync frame generation. */
 const DEFAULT_SPEECH_DURATION_MS = 5000;
@@ -115,16 +115,17 @@ export async function handler(event) {
   };
 
   try {
-    const result = await think({
+    const result = await orchestrate({
+      task: "chat",
       message,
       user_id,
       conversation_id,
-      session_id: body.session_id,
       model: body.model,
-      getRecentConversation,
+      session_id: body.session_id,
       unfiltered: body.unfiltered,
       aiMood: body.aiMood,
       customInstructions: body.customInstructions,
+      getRecentConversation,
     });
 
     // ── State: responding ──
@@ -188,6 +189,7 @@ export async function handler(event) {
       });
     }
   } catch (err) {
+    log.error("[companion-stream]", "stream error:", err.message);
     sseBody += formatSSE("error", {
       error: err.message || "Internal stream error",
       timestamp: now(),

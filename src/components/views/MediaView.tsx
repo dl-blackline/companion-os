@@ -30,6 +30,8 @@ import { cn } from '@/lib/utils';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { IMAGE_REFINEMENT_ACTIONS, VIDEO_REFINEMENT_ACTIONS, buildRefinementPrompt } from '@/services/media-refinement-service';
 import { useAuth } from '@/context/auth-context';
+import { useAIControl } from '@/context/ai-control-context';
+import { runAIRequest } from '@/services/ai-orchestrator';
 
 /** Aspect ratio options for image generation */
 type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
@@ -331,6 +333,7 @@ function GenerationCard({
 
 export function MediaView({ companionState, setCompanionState, aiName }: MediaViewProps) {
   const { user: authUser } = useAuth();
+  const { orchestratorConfig } = useAIControl();
   const [activeTab, setActiveTab] = useState<MediaTab>('photo');
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<MediaStyle>('photorealistic');
@@ -351,6 +354,9 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
   const [isSaving, setIsSaving] = useState(false);
 
   const styles = activeTab === 'photo' ? PHOTO_STYLES : VIDEO_STYLES;
+  const imageEnabled = orchestratorConfig.capabilities.image;
+  const videoEnabled = orchestratorConfig.capabilities.video;
+  const canGenerateCurrentType = activeTab === 'photo' ? imageEnabled : videoEnabled;
 
   /** Run a single generation job for given prompt/style/ratio/type */
   const runGeneration = useCallback(
@@ -361,30 +367,30 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
       try {
         console.log('[MediaView] Starting generation:', { jobId, type, style, size });
 
-        const mediaRes = await fetch('/.netlify/functions/ai-orchestrator', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'media',
-            data: {
-              type: type === 'photo' ? 'image' : 'video',
-              prompt: currentPrompt,
-              options: { style, size },
-            },
-          }),
+        const mediaResult = await runAIRequest<{
+          data?: { url?: string; resultUrl?: string; prompt?: string; error?: string };
+          url?: string;
+          resultUrl?: string;
+          prompt?: string;
+          error?: string;
+        }>({
+          type: type === 'photo' ? 'image' : 'video',
+          prompt: currentPrompt,
+          userId: authUser?.id || 'default-user',
+          config: orchestratorConfig,
+          options: {
+            style,
+            size,
+          },
         });
 
-        const mediaData = await mediaRes.json();
-        console.log('[MediaView] Media API response:', { ok: mediaRes.ok, mediaData });
+        console.log('[MediaView] Media API response:', mediaResult);
 
-        // Unwrap the ok() envelope: { success, data: { url, ... } }
-        const payload = mediaData.data ?? mediaData;
+        const payload = mediaResult.data?.data ?? mediaResult.data ?? {};
 
-        // Check both HTTP status and response body: the gateway may return 200
-        // with { success: false } via raw() for backward compatibility.
-        if (!mediaRes.ok || mediaData.error || !mediaData.success) {
+        if (!mediaResult.success) {
           // Fallback to description mode when API not configured
-          const errMsg = mediaData.error ?? payload?.error ?? 'unknown';
+          const errMsg = mediaResult.error ?? payload?.error ?? 'unknown';
           console.warn('Media API unavailable, falling back to description mode:', errMsg);
 
           const descriptionPrompt = `You are a ${type === 'photo' ? 'photo' : 'video'} generation AI system named ${aiName}.
@@ -396,26 +402,20 @@ Style: ${style}
 
 Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photograph' : 'video'} looks like — as if describing the finished output to someone who cannot see it. Be highly specific about lighting, composition, subject, mood, and visual quality. Write in present tense as if the image/video already exists.`;
 
-          const res = await fetch('/.netlify/functions/ai-orchestrator', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'chat',
-              data: {
-                conversation_id: jobId,
-                user_id: 'default-user',
-                message: descriptionPrompt,
-              },
-            }),
+          const descriptionResult = await runAIRequest<{ data?: { response?: string }; response?: string }>({
+            type: 'chat',
+            message: descriptionPrompt,
+            userId: authUser?.id || 'default-user',
+            conversationId: jobId,
+            config: orchestratorConfig,
           });
 
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+          if (!descriptionResult.success || !descriptionResult.data) {
+            throw new Error(descriptionResult.error || 'Fallback description request failed');
           }
 
-          const data = await res.json();
-          console.log('[MediaView] Chat fallback response:', data);
+          const data = descriptionResult.data;
+          console.log('[MediaView] Chat fallback response:', descriptionResult);
           // Unwrap ok() envelope for chat response; also handle legacy raw() shape
           const description = data.data?.response ?? data.response;
           setGallery((prev) =>
@@ -456,10 +456,21 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
         setCompanionState('idle');
       }
     },
-    [aiName, setCompanionState]
+    [
+      aiName,
+      orchestratorConfig.max_tokens,
+      orchestratorConfig.model,
+      orchestratorConfig.temperature,
+      setCompanionState,
+    ]
   );
 
   const handleGenerate = async () => {
+    if (!canGenerateCurrentType) {
+      toast.error(`${activeTab === 'photo' ? 'Image' : 'Video'} capability is disabled in Control Center`);
+      return;
+    }
+
     if (!prompt.trim()) return;
 
     const newItem: MediaGeneration = {
@@ -501,24 +512,22 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
     if (!prompt.trim() || isEnhancing) return;
     setIsEnhancing(true);
     try {
-      const res = await fetch('/.netlify/functions/ai-orchestrator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'chat',
-          data: {
-            conversation_id: generateId(),
-            user_id: 'default-user',
-            message: `You are a creative prompt engineer for AI ${activeTab} generation. Enhance the following prompt to be more vivid, specific, and detailed while preserving the original intent. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: "${prompt.trim()}"`,
-          },
-        }),
+      const result = await runAIRequest<{ data?: { response?: string }; response?: string }>({
+        type: 'chat',
+        message: `You are a creative prompt engineer for AI ${activeTab} generation. Enhance the following prompt to be more vivid, specific, and detailed while preserving the original intent. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: "${prompt.trim()}"`,
+        userId: authUser?.id || 'default-user',
+        conversationId: generateId(),
+        config: orchestratorConfig,
       });
-      if (res.ok) {
-        const data = await res.json();
+
+      if (result.success && result.data) {
+        const data = result.data.data ?? result.data;
         if (data.response) {
           setPrompt(data.response.trim().replace(/^["']/, '').replace(/["']$/, ''));
           toast.success('Prompt enhanced');
         }
+      } else {
+        toast.error(result.error || 'Could not enhance prompt');
       }
     } catch {
       toast.error('Could not enhance prompt');
@@ -544,23 +553,19 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
 
     try {
       const prompt = buildRefinementPrompt(refinementAction, refinementPrompt || undefined);
-      const res = await fetch('/.netlify/functions/ai-orchestrator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'refine_media',
-          data: {
-            media_url: uploadedMedia.previewUrl,
-            media_type: uploadedMedia.mediaType,
-            action: refinementAction,
-            prompt,
-          },
-        }),
+      const result = await runAIRequest<{ data?: { url?: string; refined_url?: string }; url?: string; refined_url?: string }>({
+        type: uploadedMedia.mediaType,
+        prompt,
+        userId: authUser?.id || 'default-user',
+        config: orchestratorConfig,
+        options: {
+          action: refinementAction,
+          media_url: uploadedMedia.previewUrl,
+        },
       });
 
-      if (res.ok) {
-        const json = await res.json();
-        const data = json.data ?? json;
+      if (result.success && result.data) {
+        const data = result.data.data ?? result.data;
         if (data.url || data.refined_url) {
           setRefinedUrl(data.url || data.refined_url);
           toast.success('Media refined successfully');
@@ -568,8 +573,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
           toast.info('Refinement submitted — result will appear shortly');
         }
       } else {
-        const errData = await res.json().catch(() => ({ error: 'Refinement failed' }));
-        toast.error(errData.error || 'Refinement failed');
+        toast.error(result.error || 'Refinement failed');
       }
     } catch {
       toast.error('Could not refine media');
@@ -667,6 +671,14 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <button
                 key={tab}
                 onClick={() => {
+                  if (tab === 'photo' && !imageEnabled) {
+                    toast.error('Image capability is disabled in Control Center');
+                    return;
+                  }
+                  if (tab === 'video' && !videoEnabled) {
+                    toast.error('Video capability is disabled in Control Center');
+                    return;
+                  }
                   setActiveTab(tab);
                   setSelectedStyle(tab === 'photo' ? 'photorealistic' : 'cinematic');
                 }}
@@ -679,6 +691,8 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               >
                 {tab === 'photo' ? <Images size={14} /> : <FilmSlate size={14} />}
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'photo' && !imageEnabled ? ' (Off)' : null}
+                {tab === 'video' && !videoEnabled ? ' (Off)' : null}
               </button>
             ))}
           </div>
@@ -847,7 +861,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               {/* Generate button */}
               <Button
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || isGenerating}
+                disabled={!prompt.trim() || isGenerating || !canGenerateCurrentType}
                 className="w-full gap-2 rounded-xl h-11 font-semibold"
                 style={{ fontFamily: 'var(--font-space)' }}
               >

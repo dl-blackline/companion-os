@@ -20,10 +20,8 @@ import type {
 } from '@/types';
 import { success, error, appError } from '@/types';
 import { generateId } from '@/lib/helpers';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const API_BASE = '/.netlify/functions';
+import { DEFAULT_AI_CONTROL_CONFIG } from '@/types/ai-control';
+import { runAIRequest } from '@/services/ai-orchestrator';
 
 // ─── Analyzer System Prompt ───────────────────────────────────────────────────
 
@@ -159,37 +157,44 @@ export async function analyzeKnowledge(
 
     const userPrompt = buildUserPrompt(preprocessed, input);
 
-    const res = await fetch(`${API_BASE}/ai-orchestrator`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
+    const result = await runAIRequest<{ reply?: string; message?: string }>({
+      type: 'chat',
+      userId: 'default-user',
+      message: userPrompt,
+      config: {
+        ...DEFAULT_AI_CONTROL_CONFIG,
         model: 'gpt-4.1',
         temperature: 0.3,
-      }),
+      },
+      options: {
+        backendType: 'knowledge_chat',
+        data: {
+          action: 'chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          model: 'gpt-4.1',
+          temperature: 0.3,
+        },
+      },
     });
 
     stages.push({
       stage: 'classification',
       durationMs: Date.now() - analysisStart,
-      success: res.ok,
-      error: res.ok ? undefined : `API returned ${res.status}`,
+      success: result.success,
+      error: result.success ? undefined : result.error,
     });
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      return error(appError('server', (body as Record<string, string>).error || 'Analysis failed'));
+    if (!result.success || !result.data) {
+      return error(appError('server', result.error || 'Analysis failed'));
     }
 
     // Stage 3: Parse and extract
     const extractionStart = Date.now();
-    const json = await res.json() as Record<string, unknown>;
-    const data = (json.data ?? json) as { reply?: string; message?: string; response?: string };
-    const rawText = data.reply || data.message || data.response || '';
+    const data = result.data;
+    const rawText = data.reply || data.message || '';
     const parsed = parseAnalysisResponse(rawText);
     stages.push({
       stage: 'extraction',

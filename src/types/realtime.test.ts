@@ -12,6 +12,7 @@ import type {
   StreamLifecycleEvent,
   StreamInterruptEvent,
   StreamImageEvent,
+  StreamVoiceEvent,
   StreamStateEvent,
   RealtimeStreamEvent,
   SSEMessage,
@@ -193,6 +194,16 @@ describe('RealtimeStreamEvent union type', () => {
     expect(event.type).toBe('image_generated');
   });
 
+  it('accepts StreamVoiceEvent', () => {
+    const event: RealtimeStreamEvent = {
+      type: 'voice_generated',
+      audioUrl: 'data:audio/mpeg;base64,abc123',
+      durationMs: 5000,
+      timestamp: '2026-01-01T00:00:00Z',
+    };
+    expect(event.type).toBe('voice_generated');
+  });
+
   it('accepts StreamStateEvent', () => {
     const event: RealtimeStreamEvent = {
       type: 'state_change',
@@ -219,8 +230,8 @@ describe('SSEMessage type', () => {
 
 describe('SSEEventName type', () => {
   it('accepts all valid event names', () => {
-    const names: SSEEventName[] = ['token', 'state', 'image', 'done', 'error', 'interrupted'];
-    expect(names).toHaveLength(6);
+    const names: SSEEventName[] = ['token', 'state', 'image', 'voice', 'done', 'error', 'interrupted'];
+    expect(names).toHaveLength(7);
   });
 });
 

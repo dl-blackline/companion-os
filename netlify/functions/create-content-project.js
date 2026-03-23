@@ -1,5 +1,6 @@
 import { createProject, addWorkflowStep } from "../../lib/workflow-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -44,7 +45,7 @@ export async function handler(event) {
 
     return ok({ project });
   } catch (err) {
-    console.error("Create content project error:", err.message);
+    log.error("[create-content-project]", "handler error:", err.message);
     return fail("Failed to create content project", "ERR_INTERNAL", 500);
   }
 }
