@@ -23,8 +23,7 @@ function base64UrlDecode(str: string): string {
   let base64 = str.replace(/-/g, "+").replace(/_/g, "/")
   // Restore padding
   const pad = base64.length % 4
-  if (pad === 2) base64 += "=="
-  else if (pad === 3) base64 += "="
+  if (pad) base64 += "=".repeat(4 - pad)
   return atob(base64)
 }
 
