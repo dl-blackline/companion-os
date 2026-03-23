@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useAuth } from "@/context/auth-context"
+import { supabaseKeyError } from "@/lib/supabase-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +16,7 @@ export default function Login({ onNavigateToSignup, onNavigateToForgotPassword }
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(
-    configured ? null : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables."
+    supabaseKeyError ?? (configured ? null : "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.")
   )
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)

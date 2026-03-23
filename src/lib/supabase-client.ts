@@ -3,14 +3,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
-
-if (!supabaseConfigured) {
-  console.warn(
-    "Missing Supabase environment variables. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file."
-  )
-}
-
 /**
  * Decode a base64url-encoded string (used in JWTs) to a UTF-8 string.
  * JWTs use base64url encoding which differs from standard base64:
@@ -44,12 +36,28 @@ export function isServiceRoleKey(key: string): boolean {
   }
 }
 
-if (supabaseAnonKey && isServiceRoleKey(supabaseAnonKey)) {
-  throw new Error(
-    "Forbidden use of secret API key in browser: " +
+/**
+ * Non-null when VITE_SUPABASE_ANON_KEY was rejected because it contains a
+ * service_role JWT.  Exported so the Login page can display a specific error
+ * instead of crashing the entire app.
+ */
+export const supabaseKeyError: string | null =
+  supabaseAnonKey && isServiceRoleKey(supabaseAnonKey)
+    ? "Forbidden use of secret API key in browser: " +
       "VITE_SUPABASE_ANON_KEY contains a service_role key. " +
       "Use the anon (public) key for frontend code. " +
       "The service_role key must only be used in server-side code (e.g. Netlify functions)."
+    : null
+
+if (supabaseKeyError) {
+  console.error(`[supabase-client] ${supabaseKeyError}`)
+}
+
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey) && !supabaseKeyError
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn(
+    "Missing Supabase environment variables. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file."
   )
 }
 
