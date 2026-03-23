@@ -8,6 +8,7 @@ import { AuthProvider } from './context/auth-context'
 import { SettingsProvider } from './context/settings-context'
 import { VoiceProvider } from './context/voice-context'
 import { OrbAppearanceProvider } from './context/orb-appearance-context'
+import { AIControlProvider } from './context/ai-control-context'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import "./main.css"
@@ -21,13 +22,15 @@ createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <AuthProvider>
       <ProtectedRoute>
-        <SettingsProvider>
-          <OrbAppearanceProvider>
-            <VoiceProvider>
-              <App />
-            </VoiceProvider>
-          </OrbAppearanceProvider>
-        </SettingsProvider>
+        <AIControlProvider>
+          <SettingsProvider>
+            <OrbAppearanceProvider>
+              <VoiceProvider>
+                <App />
+              </VoiceProvider>
+            </OrbAppearanceProvider>
+          </SettingsProvider>
+        </AIControlProvider>
       </ProtectedRoute>
     </AuthProvider>
   </ErrorBoundary>

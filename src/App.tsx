@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Toaster } from '@/components/ui/sonner';
@@ -13,6 +13,7 @@ import { GoalsView } from '@/components/views/GoalsView';
 import { InsightsView } from '@/components/views/InsightsView';
 import { WorkflowsView } from '@/components/views/WorkflowsView';
 import { SettingsView } from '@/components/views/SettingsView';
+import { ControlCenterView } from '@/components/views/ControlCenterView';
 import { AgentsView } from '@/components/views/AgentsView';
 import { AdminConsoleView } from '@/components/views/AdminConsoleView';
 import { TarotView } from '@/components/views/TarotView';
@@ -20,27 +21,60 @@ import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
 import { useVoice } from '@/context/voice-context';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
+import { useAIControl } from '@/context/ai-control-context';
 import { List, X } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
 
+function sectionFromPathname(pathname: string): NavSection {
+  if (pathname === '/control-center') return 'control-center';
+  return 'home';
+}
+
+function pathnameFromSection(section: NavSection): string {
+  if (section === 'control-center') return '/control-center';
+  return '/';
+}
+
 function App() {
-  const [activeSection, setActiveSection] = useState<NavSection>('home');
+  const [activeSection, setActiveSection] = useState<NavSection>(() =>
+    sectionFromPathname(window.location.pathname)
+  );
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isActive: isGlobalVoiceActive, stopLiveTalk } = useVoice();
   const { isAdmin } = useAuth();
   const { settings } = useSettings();
+  const { orchestratorConfig } = useAIControl();
 
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
   const navigateTo = (section: string) => {
+    if (section === 'live-talk' && !orchestratorConfig.capabilities.voice) {
+      toast.error('Voice capability is disabled in Control Center');
+      return;
+    }
+
     if (section === 'live-talk' && isGlobalVoiceActive) {
       stopLiveTalk();
     }
     setActiveSection(section as NavSection);
+    const targetPath = pathnameFromSection(section as NavSection);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
     setIsMobileMenuOpen(false);
   };
+
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveSection(sectionFromPathname(window.location.pathname));
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const handleNavigate = (section: string) => {
     navigateTo(section);
@@ -91,6 +125,8 @@ function App() {
         return <InsightsView />;
       case 'agents':
         return <AgentsView />;
+      case 'control-center':
+        return <ControlCenterView />;
       case 'settings':
         return <SettingsView />;
       case 'tarot':

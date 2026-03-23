@@ -28,15 +28,11 @@ import { getModeConfig, getAllModes } from '@/lib/modes';
 import { getPromptGenerationAwareness } from '@/lib/prompt-studio';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { getModelSetting, getModelDisplayName } from '@/utils/model-cache';
+import { getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 import { useAuth } from '@/context/auth-context';
-
-/** Return the currently selected chat model id. */
-function activeChatModel(): string {
-  return getModelSetting('chat') || 'gpt-4.1';
-}
+import { useAIControl } from '@/context/ai-control-context';
 
 /** Convert a File to a base64-encoded data URL (works without server access). */
 async function fileToDataUrl(file: File): Promise<string> {
@@ -50,6 +46,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 export function ChatView() {
   const { user: authUser } = useAuth();
+  const { orchestratorConfig } = useAIControl();
   const [conversations, setConversations] = useLocalStorage<Conversation[]>('conversations', []);
   const [activeConvId, setActiveConvId] = useState<string | null>(
     (conversations && conversations.length > 0) ? conversations[0].id : null
@@ -155,6 +152,11 @@ export function ChatView() {
   };
 
   const handleSendMessage = async () => {
+    if (!orchestratorConfig.capabilities.chat) {
+      toast.error('Chat capability is disabled in Control Center');
+      return;
+    }
+
     if ((!input.trim() && !pendingMedia) || !activeConversation || isStreaming) return;
 
     let mediaUrl: string | undefined;
@@ -234,7 +236,12 @@ Please provide a helpful response.`;
             conversation_id: activeConversation.id,
             user_id: authUser?.id || 'default-user',
             message: fullPrompt,
-            model: activeChatModel(),
+            model: orchestratorConfig.model,
+            temperature: orchestratorConfig.temperature,
+            max_tokens: orchestratorConfig.max_tokens,
+            tone: orchestratorConfig.tone,
+            memory_enabled: orchestratorConfig.memory_enabled,
+            capabilities: orchestratorConfig.capabilities,
             stream: !mediaUrl, // Streaming is disabled for vision requests: the backend processes the full image before generating a response, so streaming adds no UX value and complicates the response handling.
             ...(mediaUrl && { media_url: mediaUrl }),
             ...(mediaType && { media_type: mediaType }),
@@ -681,7 +688,7 @@ Please provide a helpful response.`;
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                   <Lightning size={12} weight="fill" className="text-primary" />
-                  {getModelDisplayName('chat', activeChatModel())}
+                  {getModelDisplayName('chat', orchestratorConfig.model)}
                 </span>
               </div>
             </div>

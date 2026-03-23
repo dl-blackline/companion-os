@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { IMAGE_REFINEMENT_ACTIONS, VIDEO_REFINEMENT_ACTIONS, buildRefinementPrompt } from '@/services/media-refinement-service';
 import { useAuth } from '@/context/auth-context';
+import { useAIControl } from '@/context/ai-control-context';
 
 /** Aspect ratio options for image generation */
 type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
@@ -331,6 +332,7 @@ function GenerationCard({
 
 export function MediaView({ companionState, setCompanionState, aiName }: MediaViewProps) {
   const { user: authUser } = useAuth();
+  const { orchestratorConfig } = useAIControl();
   const [activeTab, setActiveTab] = useState<MediaTab>('photo');
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<MediaStyle>('photorealistic');
@@ -351,6 +353,9 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
   const [isSaving, setIsSaving] = useState(false);
 
   const styles = activeTab === 'photo' ? PHOTO_STYLES : VIDEO_STYLES;
+  const imageEnabled = orchestratorConfig.capabilities.image;
+  const videoEnabled = orchestratorConfig.capabilities.video;
+  const canGenerateCurrentType = activeTab === 'photo' ? imageEnabled : videoEnabled;
 
   /** Run a single generation job for given prompt/style/ratio/type */
   const runGeneration = useCallback(
@@ -369,7 +374,15 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
             data: {
               type: type === 'photo' ? 'image' : 'video',
               prompt: currentPrompt,
-              options: { style, size },
+              options: {
+                style,
+                size,
+                model: orchestratorConfig.model,
+                temperature: orchestratorConfig.temperature,
+                max_tokens: orchestratorConfig.max_tokens,
+                  tone: orchestratorConfig.tone,
+                  memory_enabled: orchestratorConfig.memory_enabled,
+              },
             },
           }),
         });
@@ -405,6 +418,11 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
                 conversation_id: jobId,
                 user_id: 'default-user',
                 message: descriptionPrompt,
+                model: orchestratorConfig.model,
+                temperature: orchestratorConfig.temperature,
+                max_tokens: orchestratorConfig.max_tokens,
+                tone: orchestratorConfig.tone,
+                memory_enabled: orchestratorConfig.memory_enabled,
               },
             }),
           });
@@ -456,10 +474,21 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
         setCompanionState('idle');
       }
     },
-    [aiName, setCompanionState]
+    [
+      aiName,
+      orchestratorConfig.max_tokens,
+      orchestratorConfig.model,
+      orchestratorConfig.temperature,
+      setCompanionState,
+    ]
   );
 
   const handleGenerate = async () => {
+    if (!canGenerateCurrentType) {
+      toast.error(`${activeTab === 'photo' ? 'Image' : 'Video'} capability is disabled in Control Center`);
+      return;
+    }
+
     if (!prompt.trim()) return;
 
     const newItem: MediaGeneration = {
@@ -510,6 +539,11 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
             conversation_id: generateId(),
             user_id: 'default-user',
             message: `You are a creative prompt engineer for AI ${activeTab} generation. Enhance the following prompt to be more vivid, specific, and detailed while preserving the original intent. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: "${prompt.trim()}"`,
+            model: orchestratorConfig.model,
+            temperature: orchestratorConfig.temperature,
+            max_tokens: orchestratorConfig.max_tokens,
+            tone: orchestratorConfig.tone,
+            memory_enabled: orchestratorConfig.memory_enabled,
           },
         }),
       });
@@ -665,6 +699,14 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <button
                 key={tab}
                 onClick={() => {
+                  if (tab === 'photo' && !imageEnabled) {
+                    toast.error('Image capability is disabled in Control Center');
+                    return;
+                  }
+                  if (tab === 'video' && !videoEnabled) {
+                    toast.error('Video capability is disabled in Control Center');
+                    return;
+                  }
                   setActiveTab(tab);
                   setSelectedStyle(tab === 'photo' ? 'photorealistic' : 'cinematic');
                 }}
@@ -677,6 +719,8 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               >
                 {tab === 'photo' ? <Images size={14} /> : <FilmSlate size={14} />}
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'photo' && !imageEnabled ? ' (Off)' : null}
+                {tab === 'video' && !videoEnabled ? ' (Off)' : null}
               </button>
             ))}
           </div>
@@ -845,7 +889,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               {/* Generate button */}
               <Button
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || isGenerating}
+                disabled={!prompt.trim() || isGenerating || !canGenerateCurrentType}
                 className="w-full gap-2 rounded-xl h-11 font-semibold"
                 style={{ fontFamily: 'var(--font-space)' }}
               >
