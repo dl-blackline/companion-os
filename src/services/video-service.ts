@@ -247,7 +247,8 @@ export async function analyzeVideo(
       return error(appError('server', (body as Record<string, string>).error || 'Video analysis failed', { retryable: true }));
     }
 
-    const data = await res.json() as { analysis_record?: MediaAnalysisResult; analysis?: MediaAnalysisResult };
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as { analysis_record?: MediaAnalysisResult; analysis?: MediaAnalysisResult };
     const analysis = data.analysis_record || data.analysis;
     if (!analysis) {
       return error(appError('processing_failed', 'No analysis result returned from backend'));

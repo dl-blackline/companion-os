@@ -148,7 +148,8 @@ export async function saveMemory(
       return error(appError('server', (body as Record<string, string>).error || 'Failed to save memory'));
     }
 
-    const data = await res.json() as { memory: Memory };
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as { memory: Memory };
     return success(data.memory);
   } catch (e) {
     return error(appError('network', (e as Error).message, { retryable: true }));
@@ -179,7 +180,8 @@ export async function searchMemories(
       return error(appError('server', (body as Record<string, string>).error || 'Memory search failed'));
     }
 
-    const data = await res.json() as { results: Array<{ memory: Memory; similarity: number }> };
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as { results: Array<{ memory: Memory; similarity: number }> };
 
     const scored: ScoredMemory[] = (data.results || []).map(item => {
       const mem = item.memory;
