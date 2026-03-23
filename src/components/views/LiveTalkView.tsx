@@ -32,6 +32,8 @@ import {
   type RealtimeVoiceEvent,
 } from '@/lib/realtime-voice-client';
 import { useVoice } from '@/context/voice-context';
+import { useAIControl } from '@/context/ai-control-context';
+import { runAIRequest } from '@/services/ai-orchestrator';
 
 /** Roleplay context tracked locally during a session */
 interface RoleplayContext {
@@ -91,6 +93,7 @@ export function LiveTalkView({
   aiName,
   onBack,
 }: LiveTalkViewProps) {
+  const { orchestratorConfig } = useAIControl();
   const [session, setSession] = useState<TalkSession>({
     id: generateId(),
     transcript: [],
@@ -220,17 +223,14 @@ export function LiveTalkView({
             const imageStyle = (toolArgs.style as string) || '';
             const fullPrompt = imageStyle ? `${imagePrompt}, style: ${imageStyle}` : imagePrompt;
 
-            fetch('/.netlify/functions/ai', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                type: 'media',
-                data: { type: 'image', prompt: fullPrompt },
-              }),
+            runAIRequest<{ data?: { url?: string }; url?: string }>({
+              type: 'image',
+              prompt: fullPrompt,
+              userId: 'default-user',
+              config: orchestratorConfig,
             })
-              .then((r) => r.json())
-              .then((json) => {
-                const imgData = json.data ?? json;
+              .then((result) => {
+                const imgData = result.data?.data ?? result.data ?? {};
                 if (imgData.url) {
                   const imageTurn: TalkTurn = {
                     id: generateId(),
@@ -249,7 +249,7 @@ export function LiveTalkView({
                   callId,
                   imgData.url
                     ? 'Image generated and displayed to the user.'
-                    : 'Image generation failed — no URL returned.'
+                    : result.error || 'Image generation failed — no URL returned.'
                 );
                 // Let the realtime state_change events drive the UI state
               })
@@ -270,17 +270,14 @@ export function LiveTalkView({
             const videoStyle = (toolArgs.style as string) || '';
             const fullVideoPrompt = videoStyle ? `${videoPrompt}, style: ${videoStyle}` : videoPrompt;
 
-            fetch('/.netlify/functions/ai', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                type: 'media',
-                data: { type: 'video', prompt: fullVideoPrompt },
-              }),
+            runAIRequest<{ data?: { url?: string }; url?: string }>({
+              type: 'video',
+              prompt: fullVideoPrompt,
+              userId: 'default-user',
+              config: orchestratorConfig,
             })
-              .then((r) => r.json())
-              .then((json) => {
-                const vidData = json.data ?? json;
+              .then((result) => {
+                const vidData = result.data?.data ?? result.data ?? {};
                 if (vidData.url) {
                   const videoTurn: TalkTurn = {
                     id: generateId(),
@@ -299,7 +296,7 @@ export function LiveTalkView({
                   callId,
                   vidData.url
                     ? 'Video generated and displayed to the user.'
-                    : 'Video generation failed — no URL returned.'
+                    : result.error || 'Video generation failed — no URL returned.'
                 );
               })
               .catch(() => {
@@ -342,24 +339,24 @@ export function LiveTalkView({
             const taskType = (toolArgs.taskType as string) || 'other';
             setStatusText('Running task…');
 
-            fetch('/.netlify/functions/ai', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                type: 'live_talk',
+            runAIRequest<{ data?: { response?: string }; response?: string }>({
+              type: 'chat',
+              message: taskDesc,
+              userId: 'default-user',
+              config: orchestratorConfig,
+              options: {
+                backendType: 'live_talk',
                 data: {
-                  // Pass intent_override so the backend skips re-detection
                   message: taskDesc,
                   intent_override: 'run_task',
                   task_type: taskType,
                   ai_name: aiName,
                   mode: 'neutral',
                 },
-              }),
+              },
             })
-              .then((r) => r.json())
-              .then((json) => {
-                const taskData = json.data ?? json;
+              .then((result) => {
+                const taskData = result.data?.data ?? result.data ?? {};
                 const taskText = taskData.response || 'Task completed.';
                 const taskTurn: TalkTurn = {
                   id: generateId(),
@@ -384,7 +381,7 @@ export function LiveTalkView({
         }
       }
     },
-    [aiName, setCompanionState]
+    [aiName, orchestratorConfig, setCompanionState]
   );
 
   // Start realtime voice session
@@ -558,11 +555,17 @@ Prefer using tools over just talking about doing something. If the user asks for
       const knowledgeRefs = knowledgeRefsRaw.length > 0 ? knowledgeRefsRaw : undefined;
 
       try {
-        const res = await fetch('/.netlify/functions/ai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'live_talk',
+        const result = await runAIRequest<{
+          data?: { response?: string; action?: { type?: string; mediaUrl?: string } };
+          response?: string;
+          action?: { type?: string; mediaUrl?: string };
+        }>({
+          type: 'chat',
+          message: text.trim(),
+          userId: 'default-user',
+          config: orchestratorConfig,
+          options: {
+            backendType: 'live_talk',
             data: {
               message: text.trim(),
               conversation_history: session.transcript.slice(-8),
@@ -571,17 +574,14 @@ Prefer using tools over just talking about doing something. If the user asks for
               roleplay_context: roleplayRef.current || undefined,
               knowledge_refs: knowledgeRefs,
             },
-          }),
+          },
         });
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('Live Talk API error:', res.status, errData);
-          throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Live Talk request failed');
         }
 
-        const json = await res.json();
-        const data = json.data ?? json;
+        const data = result.data.data ?? result.data;
         const responseText = data.response || '';
 
         // Handle action payloads (image generation, video generation, role-play, task)
