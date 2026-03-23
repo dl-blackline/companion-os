@@ -121,11 +121,11 @@ export async function handler(event) {
       user_id,
       conversation_id,
       model: body.model,
-      getRecentConversation,
       session_id: body.session_id,
       unfiltered: body.unfiltered,
       aiMood: body.aiMood,
       customInstructions: body.customInstructions,
+      getRecentConversation,
     });
 
     // ── State: responding ──
