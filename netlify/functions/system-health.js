@@ -90,13 +90,14 @@ async function checkMedia() {
 
 async function checkLeonardo() {
   try {
-    if (!process.env.LEONARDO_API_KEY) {
+    const leonardoApiKey = process.env.LEONARDO_API_KEY || process.env.LEONARDO_AI_Key;
+    if (!leonardoApiKey) {
       return "not_configured";
     }
     // Lightweight connectivity check — fetch the user info endpoint
     const res = await fetch("https://cloud.leonardo.ai/api/rest/v1/me", {
       headers: {
-        Authorization: `Bearer ${process.env.LEONARDO_API_KEY}`,
+        Authorization: `Bearer ${leonardoApiKey}`,
       },
     });
     return res.ok ? "ok" : "error";

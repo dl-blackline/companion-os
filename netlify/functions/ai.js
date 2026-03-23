@@ -412,9 +412,10 @@ async function handleRealtimeToken(data) {
   // (chat memory embeddings, vision analysis, etc.) but is not needed for the
   // realtime token endpoint itself.
   if (isNofilterModel(model)) {
-    if (!process.env.NOFILTER_GPT_API_KEY) {
-      log.error("[ai]", "NOFILTER_GPT_API_KEY is not configured for realtime token request");
-      return fail("NOFILTER_GPT_API_KEY is not configured", "ERR_CONFIG", 500);
+    const nofilterApiKey = process.env.NOFILTER_GPT_API_KEY || process.env.NOFILTER_GPT_API;
+    if (!nofilterApiKey) {
+      log.error("[ai]", "NOFILTER_GPT_API_KEY/NOFILTER_GPT_API is not configured for realtime token request");
+      return fail("NOFILTER_GPT_API_KEY (or NOFILTER_GPT_API) is not configured", "ERR_CONFIG", 500);
     }
   } else if (!process.env.OPENAI_API_KEY) {
     log.error("[ai]", "OPENAI_API_KEY is not configured for realtime token request");

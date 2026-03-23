@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -89,6 +89,11 @@ const CITATION_OPTIONS = [
   { value: 'always', label: 'Always' },
   { value: 'when-available', label: 'When Available' },
   { value: 'never', label: 'Never' },
+];
+
+const DEFAULT_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
 ];
 
 function SettingRow({
@@ -278,6 +283,47 @@ export function SettingsView() {
       if (data) setModelRegistry(data as ModelRegistry);
     });
   }, []);
+
+  const primary = import.meta.env.VITE_AI_PRIMARY_MODEL;
+  const fallback = import.meta.env.VITE_AI_FALLBACK_MODEL;
+
+  const envModels = useMemo(() => {
+    const envModels = [primary, fallback]
+      .filter((m): m is string => Boolean(m))
+      .map((m) => ({ id: m, name: m }));
+
+    const merged = envModels.length > 0 ? envModels : DEFAULT_MODELS;
+    return merged.length > 0 ? merged : DEFAULT_MODELS;
+  }, [primary, fallback]);
+
+  const finalModels = envModels.length ? envModels : DEFAULT_MODELS;
+
+  useEffect(() => {
+    console.log('AI ENV:', import.meta.env);
+    console.log('Models:', finalModels);
+  }, [finalModels]);
+
+  const chatModelOptions = useMemo(() => {
+    const registryChat = (modelRegistry?.chat ?? []).map((m) => ({ id: m.id, name: m.name }));
+    const byId = new Map<string, { id: string; name: string }>();
+
+    for (const model of [...finalModels, ...registryChat]) {
+      if (!byId.has(model.id)) byId.set(model.id, model);
+    }
+
+    const merged = Array.from(byId.values());
+    return merged.length > 0 ? merged : DEFAULT_MODELS;
+  }, [modelRegistry?.chat, finalModels]);
+
+  const selectedChatModel =
+    chatModelOptions.some((m) => m.id === settings.modelSettings.defaultModel)
+      ? settings.modelSettings.defaultModel
+      : primary || chatModelOptions[0].id;
+
+  const selectedFallbackChatModel =
+    chatModelOptions.some((m) => m.id === settings.modelSettings.fallbackModel)
+      ? settings.modelSettings.fallbackModel
+      : fallback || chatModelOptions[0].id;
 
   const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
     savePrefs({ voice_mode: mode });
@@ -690,12 +736,12 @@ export function SettingsView() {
                 <Separator />
                 <SettingRow label="Chat Model" description="Primary model used for all conversations.">
                   <Select
-                    value={settings.modelSettings.defaultModel}
+                    value={selectedChatModel}
                     onValueChange={(value) => updateModel({ defaultModel: value })}
                   >
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(modelRegistry?.chat ?? []).map((m) => (
+                      {chatModelOptions.map((m) => (
                         <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -704,12 +750,12 @@ export function SettingsView() {
                 <Separator />
                 <SettingRow label="Fallback Model" description="Used when the chat model is unavailable.">
                   <Select
-                    value={settings.modelSettings.fallbackModel}
+                    value={selectedFallbackChatModel}
                     onValueChange={(value) => updateModel({ fallbackModel: value })}
                   >
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(modelRegistry?.chat ?? []).map((m) => (
+                      {chatModelOptions.map((m) => (
                         <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                       ))}
                     </SelectContent>
