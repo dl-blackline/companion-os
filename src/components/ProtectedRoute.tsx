@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { useAuth } from "@/context/auth-context"
-import { supabaseConfigured, supabaseKeyError } from "@/lib/supabase-client"
+import { supabaseConfigured } from "@/lib/supabase-client"
 import Login from "@/pages/Login"
 import Signup from "@/pages/Signup"
 import ForgotPassword from "@/pages/ForgotPassword"
@@ -11,10 +11,10 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading, authState } = useAuth()
   const [authPage, setAuthPage] = useState<AuthPage>("login")
 
-  // Skip auth gate when Supabase is not configured (but NOT when it was
-  // blocked due to a service_role key — in that case show the login page
-  // so the misconfiguration error is visible to the operator).
-  if (!supabaseConfigured && !supabaseKeyError) {
+  // Skip auth gate when Supabase is not configured.
+  // (If a service_role key is used, supabase-client.ts throws at import
+  // time, so that case never reaches here.)
+  if (!supabaseConfigured) {
     return <>{children}</>
   }
 
