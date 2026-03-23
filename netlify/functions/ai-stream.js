@@ -153,7 +153,10 @@ export async function handler(event) {
         const { generateVoice } = await import("../../lib/media/voice-generator.js");
         log.info("[ai-stream]", "generating TTS audio", { user_id, chars: accumulated.length });
         const voiceResult = await generateVoice(accumulated, body.voiceId);
-        const estimatedDurationMs = Math.max(1000, accumulated.length * 60);
+        // Estimate duration based on average speaking rate (~150 words/min).
+        // ElevenLabs does not return duration metadata, so we approximate.
+        const wordCount = accumulated.split(/\s+/).length;
+        const estimatedDurationMs = Math.max(1000, Math.round((wordCount / 150) * 60_000));
         sseBody += formatSSE("voice", {
           audioUrl: voiceResult.url,
           durationMs: estimatedDurationMs,

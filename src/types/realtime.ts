@@ -114,7 +114,7 @@ export interface StreamImageEvent {
 /** Voice audio generated from the AI response via TTS. */
 export interface StreamVoiceEvent {
   readonly type: 'voice_generated';
-  /** Data URL or remote URL for the generated audio (e.g. data:audio/mpeg;base64,…). */
+  /** Inline data URL for the generated audio (data:audio/mpeg;base64,…). */
   readonly audioUrl: string;
   /** Estimated audio duration in milliseconds. */
   readonly durationMs: number;
