@@ -14,6 +14,18 @@ function fakeJwt(payload: Record<string, unknown>): string {
   return `${header}.${body}.fake-signature`;
 }
 
+/**
+ * Helper: create a fake JWT using base64url encoding (as real JWTs do).
+ * Replaces '+' with '-', '/' with '_', and strips trailing '='.
+ */
+function fakeJwtBase64Url(payload: Record<string, unknown>): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const body = btoa(JSON.stringify(payload))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${header}.${body}.fake-signature`;
+}
+
 describe('isServiceRoleKey', () => {
   it('returns true for a service_role JWT', () => {
     const key = fakeJwt({ role: 'service_role', iss: 'supabase', iat: 1 });
@@ -40,5 +52,15 @@ describe('isServiceRoleKey', () => {
 
   it('returns false for malformed base64 payload', () => {
     expect(isServiceRoleKey('aaa.!!!invalid.bbb')).toBe(false);
+  });
+
+  it('returns true for a base64url-encoded service_role JWT', () => {
+    const key = fakeJwtBase64Url({ role: 'service_role', iss: 'supabase', iat: 1 });
+    expect(isServiceRoleKey(key)).toBe(true);
+  });
+
+  it('returns false for a base64url-encoded anon JWT', () => {
+    const key = fakeJwtBase64Url({ role: 'anon', iss: 'supabase', iat: 1 });
+    expect(isServiceRoleKey(key)).toBe(false);
   });
 });
