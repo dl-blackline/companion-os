@@ -8,7 +8,7 @@
  *
  * Patterns checked:
  *   1. OpenAI secret keys: `sk-` followed by 20+ alphanumeric chars
- *   2. Supabase service_role JWTs (base64-encoded payload containing "service_role")
+ *   2. Supabase service_role JWTs (decoded from JWT-shaped tokens)
  *
  * Exits with code 1 if any match is found; 0 otherwise.
  */
@@ -18,22 +18,29 @@ import { join } from "path";
 
 const DIST_DIR = "dist";
 
-/** Patterns to search for in bundle files. */
-const SECRET_PATTERNS = [
-  {
-    // Real OpenAI keys: sk- followed by 20+ alphanumeric chars.
-    // Short occurrences like CSS "mask-" or "stroke-" won't match.
-    pattern: /sk-[A-Za-z0-9]{20,}/g,
-    name: "OpenAI API key (sk-…)",
-  },
-  {
-    // A base64-encoded "service_role" inside a JWT-shaped token.
-    // Matches the base64 encoding of "role":"service_role".
-    // This won't match the string literal "service_role" used in guard code.
-    pattern: /eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]*c2VydmljZV9yb2xl[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+/g,
-    name: "Supabase service_role JWT",
-  },
-];
+/** Matches OpenAI secret keys: sk- followed by 20+ alphanumeric characters. */
+const OPENAI_KEY_RE = /sk-[A-Za-z0-9]{20,}/g;
+
+/** Matches JWT-shaped tokens (header.payload.signature). */
+const JWT_RE = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/g;
+
+/**
+ * Decode a base64url string and check if it's a service_role JWT payload.
+ * Returns true if the decoded payload has `"role":"service_role"`.
+ */
+function isServiceRoleJwt(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = base64.length % 4;
+    if (pad) base64 += "=".repeat(4 - pad);
+    const payload = JSON.parse(Buffer.from(base64, "base64").toString("utf-8"));
+    return payload.role === "service_role";
+  } catch {
+    return false;
+  }
+}
 
 /** Recursively collect all files in a directory. */
 function collectFiles(dir) {
@@ -66,13 +73,22 @@ for (const file of files) {
 
   const content = readFileSync(file, "utf-8");
 
-  for (const { pattern, name } of SECRET_PATTERNS) {
-    // Reset lastIndex for global regex
-    pattern.lastIndex = 0;
-    const match = pattern.exec(content);
-    if (match) {
+  // Check 1: OpenAI secret keys
+  OPENAI_KEY_RE.lastIndex = 0;
+  let match;
+  while ((match = OPENAI_KEY_RE.exec(content)) !== null) {
+    console.error(
+      `✗ SECURITY: OpenAI API key (sk-…) found in ${file} (position ${match.index})`
+    );
+    found = true;
+  }
+
+  // Check 2: Supabase service_role JWTs (decode and inspect each JWT)
+  JWT_RE.lastIndex = 0;
+  while ((match = JWT_RE.exec(content)) !== null) {
+    if (isServiceRoleJwt(match[0])) {
       console.error(
-        `✗ SECURITY: ${name} found in ${file} (near position ${match.index})`
+        `✗ SECURITY: Supabase service_role JWT found in ${file} (position ${match.index})`
       );
       found = true;
     }
