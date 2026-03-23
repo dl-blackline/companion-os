@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "vite",
         "kill": "fuser -k 5000/tcp",
-        "build": "tsc -b --noCheck && vite build && node scripts/check-dist-secrets.mjs",
+        "build": "node scripts/scan-source-secrets.mjs && tsc -b --noCheck && vite build && node scripts/check-dist-secrets.mjs",
         "lint": "eslint .",
         "test": "vitest run",
         "test:watch": "vitest",
