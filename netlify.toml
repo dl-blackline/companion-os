@@ -4,6 +4,11 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Vite embeds VITE_* env vars into the frontend bundle by design.
+  # VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are public client-side
+  # values (Supabase enforces security via Row Level Security, not key
+  # secrecy).  Exclude them from the secrets scanner so the build passes.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
 
 [functions]
   directory = "netlify/functions"

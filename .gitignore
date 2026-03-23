@@ -36,3 +36,4 @@ pids
 
 .spark-workbench-id
 .env
+.netlify

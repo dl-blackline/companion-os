@@ -7,12 +7,15 @@
  * Routes through the unified think() pipeline with the "planning" capability.
  */
 
-import { supabase } from "../../lib/_supabase.js";
+import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { think } from "../../lib/companion-brain.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
+import { log } from "../../lib/_log.js";
 
 async function getRecentConversation(supabase, conversation_id) {
+  if (!supabaseConfigured) return [];
+
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
   const { data, error } = await supabase
@@ -23,7 +26,7 @@ async function getRecentConversation(supabase, conversation_id) {
     .limit(10);
 
   if (error) {
-    console.error("Recent conversation error:", error.message);
+    log.error("[daily-plan]", "recent conversation error:", error.message);
     return [];
   }
 
@@ -51,6 +54,8 @@ export async function handler(event) {
 
     const { user_id, conversation_id, message, model } = body;
 
+    log.info("[daily-plan]", `user=${user_id?.slice(0, 8)}`);
+
     const planMessage =
       message || "Create a daily plan for today based on my goals and tasks.";
 
@@ -69,7 +74,7 @@ export async function handler(event) {
       intent: result.intent,
     });
   } catch (err) {
-    console.error("Daily plan error:", err.message);
+    log.error("[daily-plan]", "handler error:", err.message);
     return fail(
       err.message || "Failed to generate daily plan",
       "ERR_PLANNING",

@@ -42,6 +42,7 @@ import {
   SignOut,
   Trash,
   Warning,
+  WarningCircle,
   FloppyDisk,
   Spinner,
 } from '@phosphor-icons/react';
@@ -165,7 +166,14 @@ function SliderSetting({
   );
 }
 
-type ServiceStatus = 'ok' | 'error' | 'checking' | 'idle';
+type ServiceStatus = 'ok' | 'error' | 'not_configured' | 'checking' | 'idle';
+
+/** Map a raw health-check value from the API to a local ServiceStatus. */
+function mapHealthStatus(raw: string): ServiceStatus {
+  if (raw === 'ok') return 'ok';
+  if (raw === 'not_configured') return 'not_configured';
+  return 'error';
+}
 
 interface DiagnosticsResult {
   openai: ServiceStatus;
@@ -199,6 +207,14 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
       <span className="flex items-center gap-1.5 text-xs text-green-500">
         <CheckCircle size={14} weight="fill" />
         Connected
+      </span>
+    );
+  }
+  if (status === 'not_configured') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-yellow-500">
+        <WarningCircle size={14} weight="fill" />
+        Not Configured
       </span>
     );
   }
@@ -298,11 +314,11 @@ export function SettingsView() {
       const hasVoice = !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
 
       setDiagnostics({
-        openai: data.openai === 'ok' ? 'ok' : 'error',
-        supabase: data.supabase === 'ok' ? 'ok' : 'error',
-        vector_search: data.vector_search === 'ok' ? 'ok' : 'error',
-        media: data.media === 'ok' ? 'ok' : 'error',
-        leonardo: data.leonardo === 'ok' ? 'ok' : 'error',
+        openai: mapHealthStatus(data.openai),
+        supabase: mapHealthStatus(data.supabase),
+        vector_search: mapHealthStatus(data.vector_search),
+        media: mapHealthStatus(data.media),
+        leonardo: mapHealthStatus(data.leonardo),
         realtime_voice: hasVoice ? 'ok' : 'error',
       });
     } catch {
