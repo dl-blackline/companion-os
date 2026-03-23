@@ -60,7 +60,8 @@ export async function saveMedia(
       ));
     }
 
-    const data = await res.json() as Record<string, unknown>;
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as Record<string, unknown>;
     const record: UserMediaRecord = {
       id: (data.id ?? data.media_id ?? crypto.randomUUID()) as string,
       userId: payload.userId,
@@ -112,7 +113,8 @@ export async function listUserMedia(
       return error(appError('server', (body as Record<string, string>).error || 'Failed to list media'));
     }
 
-    const data = await res.json() as { media?: Array<Record<string, unknown>> };
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as { media?: Array<Record<string, unknown>> };
     const records: UserMediaRecord[] = (data.media ?? []).map((m) => ({
       id: m.id as string,
       userId: m.user_id as string,

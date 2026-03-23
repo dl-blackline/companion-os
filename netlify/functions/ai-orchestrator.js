@@ -1,172 +1,897 @@
-import { ok, fail, preflight } from '../../lib/_responses.js';
-import { handler as aiGatewayHandler } from './_ai-core.js';
-import { handler as refineMediaHandler } from './_refine-media-core.js';
-import { handler as aiStreamHandler } from './_ai-stream-core.js';
-import { orchestrateSimple } from '../../services/ai/orchestrator.js';
+/**
+ * Unified AI Orchestrator
+ *
+ * Single entry point for ALL AI operations.  Every request type the platform
+ * supports is routed through this function so there is exactly one execution
+ * path to reason about, monitor, and secure.
+ *
+ * Supported types:
+ *   chat · memory · media · image · video · workflow · agent · realtime
+ *   voice · realtime_token · multimodal · live_talk · stream · knowledge
+ *   refine_media
+ */
 
-function toObject(value) {
-  return value && typeof value === 'object' ? value : {};
+import { supabase } from "../../lib/_supabase.js";
+import { orchestrate, orchestrateSimple, orchestrateEmbed } from "../../services/ai/orchestrator.js";
+import {
+  liveTalkSystem,
+  liveTalkIntentClassification,
+  liveTalkRoleplay,
+  liveTalkTask,
+  liveTalkMediaAck,
+} from "../../lib/prompt-templates.js";
+import {
+  createSession,
+  endSession,
+  getSession,
+} from "../../lib/realtime/session-manager.js";
+import {
+  createProject,
+  addWorkflowStep,
+  runWorkflow,
+} from "../../lib/workflow-engine.js";
+import { runMediaTask, generateMedia } from "../../lib/media-engine.js";
+import { optimizePrompt } from "../../lib/media/prompt-optimizer.js";
+import { processVoiceTurn, createRealtimeSession } from "../../lib/voice-engine.js";
+import { analyzeImage, describeVideo } from "../../lib/vision-analyzer.js";
+import { runTask } from "../../lib/multimodal-engine.js";
+import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
+import { isNofilterModel } from "../../lib/nofilter-client.js";
+import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
+import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
+import { log } from "../../lib/_log.js";
+
+
+async function getRecentConversation(supabase, conversation_id) {
+  const table = process.env.CHAT_HISTORY_TABLE || "messages";
+
+  const { data } = await supabase
+    .from(table)
+    .select("role, content")
+    .eq("conversation_id", conversation_id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  return (data || []).reverse();
 }
 
-function parseBody(event) {
+async function saveMessage(
+  supabase,
+  { conversation_id, user_id, role, content, embedding, media_url, media_type }
+) {
+  const table = process.env.CHAT_HISTORY_TABLE || "messages";
+
+  const row = {
+    conversation_id,
+    user_id,
+    role,
+    content,
+    embedding,
+    ...(media_url && { media_url }),
+    ...(media_type && { media_type }),
+  };
+
+  await supabase.from(table).insert(row);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   CHAT                                     */
+/* -------------------------------------------------------------------------- */
+
+async function handleChat(data) {
+  const { conversation_id, user_id, message, model, stream, media_url, media_type } = data;
+
+  if (!conversation_id || !user_id || !message) {
+    return fail(
+      "Missing required fields: conversation_id, user_id, message",
+      "ERR_VALIDATION",
+      400,
+    );
+  }
+
   try {
-    return JSON.parse(event.body || '{}');
-  } catch {
-    return null;
+    /* -------------------- VISION ANALYSIS (if media attached) ------------------- */
+
+    let visionAnalysis = null;
+    let recentHistory = [];
+
+    if (media_url) {
+      try {
+        // Load recent conversation history so the vision model has context
+        recentHistory = await getRecentConversation(supabase, conversation_id);
+
+        const visionSystemPrompt =
+          "You are an intelligent AI companion with the ability to analyze images and videos. " +
+          "Provide detailed, insightful analysis that connects to the ongoing conversation. " +
+          "Your observations help you better understand the user — treat each piece of media " +
+          "as an opportunity to learn and grow from what you see.";
+
+        if (media_type === "video") {
+          visionAnalysis = await describeVideo({
+            video_url: media_url,
+            prompt: message,
+            model,
+            systemPrompt: visionSystemPrompt,
+            conversationHistory: recentHistory,
+          });
+        } else {
+          visionAnalysis = await analyzeImage({
+            image_url: media_url,
+            prompt: message,
+            model,
+            systemPrompt: visionSystemPrompt,
+            conversationHistory: recentHistory,
+          });
+        }
+      } catch (visionErr) {
+        log.warn("[ai]", "vision analysis failed, falling back to text:", visionErr.message);
+      }
+    }
+
+    /* If vision analysis succeeded, use it as the response directly */
+    if (visionAnalysis) {
+      let assistantEmbedding = null;
+      try {
+        assistantEmbedding = await orchestrateEmbed(visionAnalysis);
+      } catch (err) {
+        log.warn("[ai]", "embedding generation failed:", err.message);
+      }
+
+      await Promise.all([
+        saveMessage(supabase, {
+          conversation_id,
+          user_id,
+          role: "user",
+          content: message,
+          embedding: null,
+          media_url,
+          media_type,
+        }),
+        saveMessage(supabase, {
+          conversation_id,
+          user_id,
+          role: "assistant",
+          content: visionAnalysis,
+          embedding: assistantEmbedding,
+        }),
+      ]);
+
+      return ok({
+        response: visionAnalysis,
+        intent: { intent: "vision_analysis", confidence: 1 },
+      });
+    }
+
+    /* ----------------------- COMPANION BRAIN ORCHESTRATION -------------------- */
+
+    const result = await orchestrate({
+      task: "chat",
+      message,
+      user_id,
+      conversation_id,
+      model,
+      getRecentConversation: (convId) =>
+        getRecentConversation(supabase, convId),
+    });
+
+    if (!result || !result.response) {
+      throw new Error("Companion Brain returned empty response");
+    }
+
+    /* ---- Determine if this is a media response (image / video / music) ---- */
+
+    const isMediaResponse = result.isMedia &&
+      result.response &&
+      typeof result.response === "object" &&
+      result.response.url;
+
+    // Determine the media type label for the DB content field
+    const mediaTypeLabel = isMediaResponse
+      ? (result.response.type || "media")
+      : null;
+
+    // Normalise media_type to the values the DB/frontend understands: "image" | "video"
+    const dbMediaType = isMediaResponse
+      ? (result.response.type === "video" ? "video" : "image")
+      : null;
+
+    const assistantTextContent = isMediaResponse
+      ? `[${mediaTypeLabel} generated]`
+      : result.response;
+
+    /* ----------------------------- SAFE EMBEDDING ---------------------------- */
+
+    let assistantEmbedding = null;
+
+    try {
+      assistantEmbedding = await orchestrateEmbed(assistantTextContent);
+    } catch (err) {
+      log.warn("[ai]", "embedding generation failed:", err.message);
+    }
+
+    await Promise.all([
+      saveMessage(supabase, {
+        conversation_id,
+        user_id,
+        role: "user",
+        content: message,
+        embedding: result.context?.embedding || null,
+      }),
+
+      saveMessage(supabase, {
+        conversation_id,
+        user_id,
+        role: "assistant",
+        content: assistantTextContent,
+        embedding: assistantEmbedding,
+        ...(isMediaResponse && { media_url: result.response.url }),
+        ...(isMediaResponse && { media_type: dbMediaType }),
+      }),
+    ]);
+
+    /* ---------------------- STREAMING VS STANDARD RESPONSE -------------------- */
+
+    if (stream && !isMediaResponse) {
+      const chunks = [];
+      const tokens = result.response.split(" ");
+      for (let i = 0; i < tokens.length; i++) {
+        chunks.push(
+          JSON.stringify({ token: i < tokens.length - 1 ? tokens[i] + " " : tokens[i], done: false }) + "\n"
+        );
+      }
+      chunks.push(JSON.stringify({ token: "", done: true }) + "\n");
+
+      return {
+        statusCode: 200,
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "application/x-ndjson",
+          "Transfer-Encoding": "chunked",
+        },
+        body: chunks.join(""),
+      };
+    }
+
+    if (isMediaResponse) {
+      return ok({
+        response: assistantTextContent,
+        media_url: result.response.url,
+        media_type: dbMediaType,
+        intent: result.intent || { intent: "media_generation", confidence: 1 },
+      });
+    }
+
+    return ok({
+      response: result.response,
+      intent: result.intent || { intent: "chat", confidence: 1 },
+    });
+  } catch (brainError) {
+    log.warn("[ai]", "companion brain failed, falling back to direct AI:", brainError.message);
+
+    /* --------------------------- ROUTER FALLBACK ---------------------------- */
+
+    try {
+      const aiResponse = await orchestrateSimple({
+        prompt: {
+          system: "You are a helpful, mature AI companion. Respond naturally and warmly.",
+          user: message,
+        },
+        model,
+        task: "chat_fallback",
+      });
+
+      return ok({
+        response: aiResponse,
+        intent: { intent: "chat", confidence: 1 },
+      });
+    } catch (routerError) {
+      log.error("[ai]", "router fallback failed:", routerError.message);
+
+      // Backward compat: soft-fail 200 so the frontend shows a friendly message
+      return raw(200, {
+        response: "I'm having trouble right now. Please try again in a moment.",
+      });
+    }
   }
 }
 
-async function invokeHandler(handler, originalEvent, body) {
-  return handler({
-    ...originalEvent,
-    httpMethod: 'POST',
-    body: JSON.stringify(body),
-  });
+/* -------------------------------------------------------------------------- */
+/*                                  MEMORY                                    */
+/* -------------------------------------------------------------------------- */
+
+async function handleMemory(data) {
+  const { action } = data;
+
+  if (action === "search") {
+    const embedding = await orchestrateEmbed(data.content);
+
+    const { data: results } = await supabase.rpc("match_messages", {
+      query_embedding: embedding,
+      match_count: 5,
+    });
+
+    return ok({ results });
+  }
+
+  if (action === "save") {
+    const embedding = await orchestrateEmbed(data.content);
+
+    const { data: saved } = await supabase
+      .from(process.env.CHAT_HISTORY_TABLE || "messages")
+      .insert({
+        conversation_id: data.conversation_id,
+        user_id: data.user_id,
+        role: data.role,
+        content: data.content,
+        embedding,
+      })
+      .select();
+
+    return ok({ data: saved });
+  }
+
+  return fail("Invalid memory action", "ERR_VALIDATION", 400);
 }
 
-function buildModelConfig(config = {}) {
-  return {
-    model: config.model || 'gpt-4o',
-    temperature: config.temperature,
-    max_tokens: config.max_tokens,
-    tone: config.tone,
-    memory_enabled: config.memory_enabled,
+/* -------------------------------------------------------------------------- */
+/*                                   MEDIA                                    */
+/* -------------------------------------------------------------------------- */
+
+async function handleMedia(data) {
+  if (!data.prompt) {
+    return fail("Prompt required", "ERR_VALIDATION", 400);
+  }
+
+  try {
+    const result = await runMediaTask({
+      type: data.media_type || data.type || "image",
+      prompt: data.prompt,
+      model: data.model,
+      options: data.options || {},
+    });
+
+    return ok(result);
+  } catch (err) {
+    log.error("[ai]", "media generation error:", err.message);
+    return fail(err.message, "ERR_MEDIA", 500);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  WORKFLOW                                  */
+/* -------------------------------------------------------------------------- */
+
+async function handleWorkflow(data) {
+  if (data.action === "create_project") {
+    const project = await createProject(data);
+
+    if (data.steps) {
+      await Promise.all(
+        data.steps.map((step, i) =>
+          addWorkflowStep({
+            project_id: project.id,
+            step_order: i + 1,
+            step_type: step.step_type,
+            config: step.config || {},
+          })
+        )
+      );
+    }
+
+    return ok({ project });
+  }
+
+  if (data.action === "run") {
+    const result = await runWorkflow(data.project_id);
+    return ok(result);
+  }
+
+  return fail("Invalid workflow action", "ERR_VALIDATION", 400);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  REALTIME                                  */
+/* -------------------------------------------------------------------------- */
+
+async function handleRealtime(data) {
+  if (data.action === "start") {
+    const session = await createSession(data);
+    return ok({ session });
+  }
+
+  if (data.action === "end") {
+    const existing = await getSession(data.session_id);
+
+    if (!existing) {
+      return fail("Session not found", "ERR_NOT_FOUND", 404);
+    }
+
+    const session = await endSession(data.session_id);
+    return ok({ session });
+  }
+
+  return fail("Invalid realtime action", "ERR_VALIDATION", 400);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              REALTIME TOKEN                                */
+/* -------------------------------------------------------------------------- */
+
+async function handleRealtimeToken(data) {
+  const model = data.model;
+  const voice = data.voice;
+
+  // Validate that the required API key is present for the requested provider.
+  // When a NoFilter model is requested, only NOFILTER_GPT_API_KEY is checked
+  // here; OPENAI_API_KEY is still required for other functions in this file
+  // (chat memory embeddings, vision analysis, etc.) but is not needed for the
+  // realtime token endpoint itself.
+  if (isNofilterModel(model)) {
+    const nofilterApiKey = process.env.NOFILTER_GPT_API_KEY || process.env.NOFILTER_GPT_API;
+    if (!nofilterApiKey) {
+      log.error("[ai]", "NOFILTER_GPT_API_KEY/NOFILTER_GPT_API is not configured for realtime token request");
+      return fail("NOFILTER_GPT_API_KEY (or NOFILTER_GPT_API) is not configured", "ERR_CONFIG", 500);
+    }
+  } else if (!process.env.OPENAI_API_KEY) {
+    log.error("[ai]", "OPENAI_API_KEY is not configured for realtime token request");
+    return fail("OpenAI API key not configured", "ERR_CONFIG", 500);
+  }
+
+  try {
+    const { client_secret, realtime_endpoint } = await createRealtimeSession({ model, voice });
+    return ok({ client_secret, realtime_endpoint });
+  } catch (err) {
+    log.error("[ai]", "realtime token error:", err.message);
+    return fail("Failed to create realtime session", "ERR_REALTIME", 500);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   VOICE                                    */
+/* -------------------------------------------------------------------------- */
+
+async function handleVoice(data) {
+  if (!data.text) {
+    return fail("Missing required field: text", "ERR_VALIDATION", 400);
+  }
+
+  try {
+    const result = await processVoiceTurn({
+      text: data.text,
+      systemPrompt: data.systemPrompt || "",
+      model: data.model,
+      voiceId: data.voiceId,
+      useElevenLabs: data.useElevenLabs || false,
+    });
+
+    return ok(result);
+  } catch (err) {
+    log.error("[ai]", "voice processing error:", err.message);
+    return fail(err.message, "ERR_VOICE", 500);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                MULTIMODAL                                  */
+/* -------------------------------------------------------------------------- */
+
+async function handleMultimodal(data) {
+  if (!data.taskType) {
+    return fail("Missing required field: taskType", "ERR_VALIDATION", 400);
+  }
+
+  try {
+    const result = await runTask({
+      type: data.taskType,
+      prompt: data.prompt,
+      model: data.model,
+      options: data.options || {},
+    });
+
+    return ok(result);
+  } catch (err) {
+    log.error("[ai]", "multimodal engine error:", err.message);
+    return fail(err.message, "ERR_MULTIMODAL", 500);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               LIVE TALK                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Detect the live talk intent using a fast, focused AI call via centralized client.
+ */
+async function detectLiveTalkIntent(message, historyContext) {
+  try {
+    const prompt = liveTalkIntentClassification({ message, historyContext });
+    const rawText = await orchestrateSimple({ prompt, model: "gpt-4.1-mini", task: "live_talk_intent" });
+    // Strip potential markdown fences
+    const cleaned = rawText.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    log.warn("[ai]", "live talk intent detection failed, defaulting to chat:", err.message);
+    return { type: "chat" };
+  }
+}
+
+/** Pattern that detects a user asking to stop/exit the current role-play. */
+const ROLEPLAY_EXIT_RE =
+  /\b(stop|end|exit|quit|cancel)\b.*\b(role.?play|character|scenario)\b/i;
+
+/**
+ * Handle enterprise-grade live talk requests:
+ * intent detection → image generation | role-play | task automation | chat
+ */
+async function handleLiveTalk(data) {
+  const {
+    message,
+    conversation_history = [],
+    mode = "neutral",
+    ai_name = "Companion",
+    roleplay_context,
+    intent_override,
+    task_type,
+    knowledge_refs,
+  } = data;
+
+  if (!message) {
+    return fail("Missing required field: message", "ERR_VALIDATION", 400);
+  }
+
+  // Build recent history context string for intent detection
+  const historyContext = conversation_history
+    .slice(-6)
+    .map((t) => `${t.role === "user" ? "User" : ai_name}: ${t.text}`)
+    .join("\n");
+
+  // Build knowledge context string if knowledge refs were provided
+  const knowledgeContext =
+    knowledge_refs && knowledge_refs.length > 0
+      ? `\n\nRelevant knowledge from user's personal knowledge base:\n${knowledge_refs
+          .map((ref) => `[${ref.type?.toUpperCase() ?? "NOTE"}] ${ref.title}: ${ref.content}`)
+          .join("\n\n")}`
+      : "";
+
+  // Fast-path: the realtime tool handler already resolved intent, so skip classification
+  if (intent_override === "run_task") {
+    const taskDesc = message;
+    const resolvedTaskType = task_type || "other";
+    const prompt = liveTalkTask({ aiName: ai_name, taskType: resolvedTaskType, taskDescription: taskDesc });
+    const taskResponse = await orchestrateSimple({ prompt, task: "live_talk_task" });
+    return ok({
+      response: taskResponse,
+      action: {
+        type: "task_completed",
+        taskType: resolvedTaskType,
+        description: taskDesc,
+      },
+    });
+  }
+
+  // If we are already in an active role-play, stay in character without
+  // re-detecting intent — unless the user explicitly asks to stop.
+  if (roleplay_context && !ROLEPLAY_EXIT_RE.test(message)) {
+    const prompt = liveTalkRoleplay({
+      character: roleplay_context.character,
+      scenario: roleplay_context.scenario,
+      historyContext,
+      message,
+    });
+    const roleplayResponse = await orchestrateSimple({ prompt, task: "live_talk_roleplay" });
+    return ok({
+      response: roleplayResponse,
+      action: {
+        type: "roleplay_continued",
+        character: roleplay_context.character,
+        scenario: roleplay_context.scenario,
+      },
+    });
+  }
+
+  // If there was an active role-play but the user asked to stop, exit it
+  if (roleplay_context && ROLEPLAY_EXIT_RE.test(message)) {
+    const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
+    const exitResponse = await orchestrateSimple({
+      prompt: {
+        system: systemPrompt,
+        user: `The user just ended a role-play as "${roleplay_context.character}". Acknowledge it briefly and warmly in one sentence.`,
+      },
+      task: "live_talk_exit",
+    });
+    return ok({
+      response: exitResponse,
+      action: { type: "roleplay_ended" },
+    });
+  }
+
+  // Detect intent
+  const intent = await detectLiveTalkIntent(message, historyContext);
+
+  switch (intent.type) {
+    case "generate_image": {
+      const imagePrompt = intent.imagePrompt || message;
+      try {
+        const imageResult = await runMediaTask({
+          type: "image",
+          prompt: imagePrompt,
+        });
+        const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "image", prompt: imagePrompt });
+        const voiceReply = await orchestrateSimple({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
+        return ok({
+          response: voiceReply,
+          action: {
+            type: "image_generated",
+            mediaUrl: imageResult.url,
+            mediaType: "image",
+            prompt: imagePrompt,
+          },
+        });
+      } catch (imgErr) {
+        log.error("[ai]", "live talk image generation error:", imgErr.message);
+        const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
+        const fallback = await orchestrateSimple({
+          prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
+          task: "live_talk_fallback",
+        });
+        return ok({ response: fallback });
+      }
+    }
+
+    case "generate_video": {
+      const videoPrompt = intent.videoPrompt || message;
+      try {
+        const videoResult = await runMediaTask({
+          type: "video",
+          prompt: videoPrompt,
+        });
+        const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "video", prompt: videoPrompt });
+        const voiceReply = await orchestrateSimple({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
+        return ok({
+          response: voiceReply,
+          action: {
+            type: "video_generated",
+            mediaUrl: videoResult.url || null,
+            mediaType: "video",
+            prompt: videoPrompt,
+          },
+        });
+      } catch (vidErr) {
+        log.error("[ai]", "live talk video generation error:", vidErr.message);
+        const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
+        const fallback = await orchestrateSimple({
+          prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
+          task: "live_talk_fallback",
+        });
+        return ok({ response: fallback });
+      }
+    }
+
+    case "roleplay": {
+      const character = intent.character || "a mysterious character";
+      const scenario =
+        intent.scenario || "an intriguing conversation with the user";
+      const prompt = liveTalkRoleplay({ character, scenario, historyContext: "", message });
+      const roleplayResponse = await orchestrateSimple({ prompt, task: "live_talk_roleplay" });
+      return ok({
+        response: roleplayResponse,
+        action: {
+          type: "roleplay_started",
+          character,
+          scenario,
+        },
+      });
+    }
+
+    case "run_task": {
+      const taskDesc = intent.taskDescription || message;
+      const prompt = liveTalkTask({ aiName: ai_name, taskType: intent.taskType || "other", taskDescription: taskDesc });
+      const taskResponse = await orchestrateSimple({ prompt, task: "live_talk_task" });
+      return ok({
+        response: taskResponse,
+        action: {
+          type: "task_completed",
+          taskType: intent.taskType || "other",
+          description: taskDesc,
+        },
+      });
+    }
+
+    default: {
+      // General conversational chat — include knowledge context if available
+      const systemPrompt = liveTalkSystem({ aiName: ai_name, mode }) +
+        (knowledgeContext
+          ? `\n\nWhen relevant, reference the user's personal knowledge base below to give more personalized answers.${knowledgeContext}`
+          : "");
+      const chatResponse = await orchestrateSimple({
+        prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
+        task: "live_talk_chat",
+      });
+      return ok({ response: chatResponse });
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              REFINE MEDIA                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Build a refinement prompt for the given action and optional user instructions.
+ */
+function buildRefinementPrompt(action, mediaType, customPrompt) {
+  const base = {
+    enhance: `Enhance this ${mediaType}: improve overall quality, lighting, clarity, and color balance`,
+    upscale: `Upscale this ${mediaType} to higher resolution while preserving detail`,
+    stylize: customPrompt || `Apply a cinematic, professional style to this ${mediaType}`,
+    denoise: `Remove noise and grain from this ${mediaType} while preserving detail`,
+    colorize: `Improve the color grading and vibrancy of this ${mediaType}`,
+    restore: `Restore this ${mediaType}: fix artifacts, damage, and quality issues`,
+    "background-remove": `Remove the background from this image, isolating the main subject`,
+    "super-resolution": `Apply super-resolution enhancement for maximum quality`,
+    custom: customPrompt || `Improve this ${mediaType}`,
   };
+
+  return base[action] || customPrompt || `Enhance this ${mediaType}`;
 }
 
-async function routeKnowledge(input, config) {
-  const msgList = Array.isArray(input.messages) ? input.messages : [];
-  const systemMsg =
-    input.systemPrompt ||
-    msgList.find((m) => m && m.role === 'system')?.content ||
-    'You are a precise knowledge analysis assistant.';
-  const userMsg =
-    input.userPrompt ||
-    msgList.find((m) => m && m.role === 'user')?.content ||
-    input.message ||
-    '';
+async function handleRefineMedia(data) {
+  const { media_url, media_type, action, prompt, model, options } = data;
 
-  const reply = await orchestrateSimple({
-    prompt: { system: String(systemMsg), user: String(userMsg) },
-    model: config.model || 'gpt-4.1',
-    task: 'knowledge_analysis',
+  if (!media_url) {
+    return fail("media_url is required", "ERR_VALIDATION", 400);
+  }
+
+  if (!media_type || !["image", "video"].includes(media_type)) {
+    return fail("media_type must be 'image' or 'video'", "ERR_VALIDATION", 400);
+  }
+
+  if (!action) {
+    return fail("action is required", "ERR_VALIDATION", 400);
+  }
+
+  const refinementPrompt = buildRefinementPrompt(action, media_type, prompt);
+  const optimizedPrompt = await optimizePrompt(refinementPrompt, media_type);
+
+  const generationResult = await generateMedia({
+    type: media_type,
+    prompt: `${optimizedPrompt}. Reference source: ${media_url}`,
+    model: model || undefined,
+    options: {
+      ...options,
+      source_url: media_url,
+      refinement_action: action,
+    },
   });
 
-  return ok({ reply });
+  return ok({
+    id: generationResult.id || crypto.randomUUID(),
+    url: generationResult.url,
+    refined_url: generationResult.url,
+    model: generationResult.model,
+    provider: generationResult.provider,
+    prompt: optimizedPrompt,
+    action,
+    taskId: generationResult.taskId,
+  });
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                KNOWLEDGE                                   */
+/* -------------------------------------------------------------------------- */
+
+async function handleKnowledge(data) {
+  const { messages, model, temperature } = data;
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return fail("messages array is required", "ERR_VALIDATION", 400);
+  }
+
+  const systemMsg = messages.find((m) => m.role === "system");
+  const userMsg = messages.find((m) => m.role === "user");
+
+  const response = await aiChat({
+    prompt: {
+      system: systemMsg?.content || "You are a helpful AI assistant.",
+      user: userMsg?.content || "",
+    },
+    model: model || "gpt-4.1",
+    temperature: temperature ?? 0.3,
+    task: "knowledge_analysis",
+  });
+
+  return ok({ response });
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   GATEWAY                                  */
+/* -------------------------------------------------------------------------- */
 
 export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') {
+  if (event.httpMethod === "OPTIONS") {
     return preflight();
   }
 
-  if (event.httpMethod !== 'POST') {
-    return fail('Method not allowed', 'ERR_METHOD', 405);
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    return fail('OPENAI_API_KEY is not configured', 'ERR_CONFIG', 500);
-  }
-
-  const parsed = parseBody(event);
-  if (!parsed) {
-    return fail('Invalid JSON body', 'ERR_VALIDATION', 400);
-  }
-
-  const type = parsed.type;
-  const input = toObject(parsed.input);
-  const config = toObject(parsed.config);
-  const options = toObject(input.options);
-  const modelConfig = buildModelConfig(config);
-
-  if (!type) {
-    return fail('Missing required field: type', 'ERR_VALIDATION', 400);
+  if (event.httpMethod !== "POST") {
+    return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
   try {
-    if (type === 'chat') {
-      if (options.backendType === 'live_talk') {
-        const liveTalkData = {
-          ...toObject(options.data),
-          ...modelConfig,
-        };
-        return invokeHandler(aiGatewayHandler, event, { type: 'live_talk', data: liveTalkData });
-      }
+    // Input validation: payload size check
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
 
-      if (options.backendType === 'knowledge_chat') {
-        return routeKnowledge(options.data || {}, modelConfig);
-      }
+    const body = sanitizeDeep(JSON.parse(event.body));
 
-      const chatData = {
-        conversation_id: input.conversationId || 'orchestrator-conversation',
-        user_id: input.userId || 'default-user',
-        message: input.message || input.prompt || '',
-        ...(input.mediaUrl ? { media_url: input.mediaUrl } : {}),
-        ...(input.mediaType ? { media_type: input.mediaType } : {}),
-        ...modelConfig,
-      };
+    log.info("[ai-orchestrator]", "gateway request:", { type: body.type });
 
-      return invokeHandler(aiGatewayHandler, event, { type: 'chat', data: chatData });
+    const { type, data, action } = body;
+
+    const payload = data || body;
+
+    if (action && typeof payload === "object") {
+      payload.action = payload.action || action;
     }
 
-    if (type === 'image' || type === 'video') {
-      if (options.action) {
-        const refineBody = {
-          media_url: options.media_url,
-          media_type: type,
-          action: options.action,
-          prompt: input.prompt || input.message || '',
-          model: config.model,
-          options,
-        };
-        return invokeHandler(refineMediaHandler, event, refineBody);
-      }
+    switch (type) {
+      case "chat":
+        return await handleChat(payload);
 
-      const mediaData = {
-        type,
-        prompt: input.prompt || input.message || '',
-        options: {
-          ...options,
-          ...modelConfig,
-        },
-      };
+      case "memory":
+        return await handleMemory(payload);
 
-      return invokeHandler(aiGatewayHandler, event, { type: 'media', data: mediaData });
+      case "media":
+        return await handleMedia(payload);
+
+      // Explicit image/video aliases — route through the media handler
+      case "image":
+        return await handleMedia({ ...payload, media_type: "image" });
+
+      case "video":
+        return await handleMedia({ ...payload, media_type: "video" });
+
+      case "workflow":
+        return await handleWorkflow(payload);
+
+      case "agent":
+        return await handleWorkflow(payload);
+
+      case "realtime":
+        return await handleRealtime(payload);
+
+      case "voice":
+        return await handleVoice(payload);
+
+      case "realtime_token":
+        return await handleRealtimeToken(payload);
+
+      case "multimodal":
+        return await handleMultimodal(payload);
+
+      case "live_talk":
+        return await handleLiveTalk(payload);
+
+      // Streaming chat — delegates to handleChat with stream flag forced on
+      case "stream":
+        return await handleChat({ ...payload, stream: true });
+
+      // Knowledge analysis (structured AI calls with messages array)
+      case "knowledge":
+        return await handleKnowledge(payload);
+
+      // Media refinement (enhance, upscale, stylize, etc.)
+      case "refine_media":
+        return await handleRefineMedia(payload);
+
+      default:
+        return fail("Invalid request type", "ERR_VALIDATION", 400);
     }
-
-    if (type === 'voice') {
-      if (options.backendType === 'realtime_token') {
-        const realtimeData = {
-          ...toObject(options.data),
-          model: config.model || toObject(options.data).model || 'gpt-4o-realtime-preview',
-        };
-
-        const result = await invokeHandler(aiGatewayHandler, event, {
-          type: 'realtime_token',
-          data: realtimeData,
-        });
-
-        return result;
-      }
-
-      const voiceData = {
-        text: input.message || input.prompt || '',
-        ...modelConfig,
-      };
-
-      return invokeHandler(aiGatewayHandler, event, { type: 'voice', data: voiceData });
-    }
-
-    if (type === 'knowledge') {
-      return routeKnowledge(input, modelConfig);
-    }
-
-    if (type === 'stream') {
-      return invokeHandler(aiStreamHandler, event, input);
-    }
-
-    return fail(`Unsupported orchestrator type: ${type}`, 'ERR_VALIDATION', 400);
   } catch (err) {
-    return fail(err instanceof Error ? err.message : 'Orchestrator failed', 'ERR_INTERNAL', 500);
+    log.error("[ai-orchestrator]", "gateway error:", err.message);
+
+    // Backward compat: soft-fail 200 so the frontend shows a friendly message
+    return raw(200, {
+      response: "I'm having trouble connecting to the AI service right now.",
+    });
   }
 }
