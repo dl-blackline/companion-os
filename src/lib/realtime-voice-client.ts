@@ -377,7 +377,7 @@ export class RealtimeVoiceClient {
   // ── Private ──
 
   private async fetchEphemeralKey(): Promise<{ key: string; endpoint: string }> {
-    const res = await fetch('/.netlify/functions/ai', {
+    const res = await fetch('/.netlify/functions/ai-orchestrator', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

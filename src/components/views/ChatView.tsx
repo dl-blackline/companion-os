@@ -225,7 +225,7 @@ Respond as the ${modeConfig.name} mode with the following characteristics:
 
 Please provide a helpful response.`;
 
-      const res = await fetch('/.netlify/functions/ai', {
+      const res = await fetch('/.netlify/functions/ai-orchestrator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

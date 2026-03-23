@@ -159,7 +159,7 @@ export async function analyzeKnowledge(
 
     const userPrompt = buildUserPrompt(preprocessed, input);
 
-    const res = await fetch(`${API_BASE}/ai`, {
+    const res = await fetch(`${API_BASE}/ai-orchestrator`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

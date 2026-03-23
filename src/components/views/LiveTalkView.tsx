@@ -220,7 +220,7 @@ export function LiveTalkView({
             const imageStyle = (toolArgs.style as string) || '';
             const fullPrompt = imageStyle ? `${imagePrompt}, style: ${imageStyle}` : imagePrompt;
 
-            fetch('/.netlify/functions/ai', {
+            fetch('/.netlify/functions/ai-orchestrator', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -269,7 +269,7 @@ export function LiveTalkView({
             const videoStyle = (toolArgs.style as string) || '';
             const fullVideoPrompt = videoStyle ? `${videoPrompt}, style: ${videoStyle}` : videoPrompt;
 
-            fetch('/.netlify/functions/ai', {
+            fetch('/.netlify/functions/ai-orchestrator', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -340,7 +340,7 @@ export function LiveTalkView({
             const taskType = (toolArgs.taskType as string) || 'other';
             setStatusText('Running task…');
 
-            fetch('/.netlify/functions/ai', {
+            fetch('/.netlify/functions/ai-orchestrator', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -555,7 +555,7 @@ Prefer using tools over just talking about doing something. If the user asks for
       const knowledgeRefs = knowledgeRefsRaw.length > 0 ? knowledgeRefsRaw : undefined;
 
       try {
-        const res = await fetch('/.netlify/functions/ai', {
+        const res = await fetch('/.netlify/functions/ai-orchestrator', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

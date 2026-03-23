@@ -361,7 +361,7 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
       try {
         console.log('[MediaView] Starting generation:', { jobId, type, style, size });
 
-        const mediaRes = await fetch('/.netlify/functions/ai', {
+        const mediaRes = await fetch('/.netlify/functions/ai-orchestrator', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -396,7 +396,7 @@ Style: ${style}
 
 Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photograph' : 'video'} looks like — as if describing the finished output to someone who cannot see it. Be highly specific about lighting, composition, subject, mood, and visual quality. Write in present tense as if the image/video already exists.`;
 
-          const res = await fetch('/.netlify/functions/ai', {
+          const res = await fetch('/.netlify/functions/ai-orchestrator', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -501,7 +501,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
     if (!prompt.trim() || isEnhancing) return;
     setIsEnhancing(true);
     try {
-      const res = await fetch('/.netlify/functions/ai', {
+      const res = await fetch('/.netlify/functions/ai-orchestrator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -544,19 +544,23 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
 
     try {
       const prompt = buildRefinementPrompt(refinementAction, refinementPrompt || undefined);
-      const res = await fetch('/.netlify/functions/refine-media', {
+      const res = await fetch('/.netlify/functions/ai-orchestrator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          media_url: uploadedMedia.previewUrl,
-          media_type: uploadedMedia.mediaType,
-          action: refinementAction,
-          prompt,
+          type: 'refine_media',
+          data: {
+            media_url: uploadedMedia.previewUrl,
+            media_type: uploadedMedia.mediaType,
+            action: refinementAction,
+            prompt,
+          },
         }),
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data ?? json;
         if (data.url || data.refined_url) {
           setRefinedUrl(data.url || data.refined_url);
           toast.success('Media refined successfully');

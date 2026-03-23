@@ -45,16 +45,19 @@ export async function refineMedia(
   request: MediaRefinementRequest,
 ): Promise<AsyncResult<MediaRefinementResult>> {
   try {
-    const res = await fetch(`${API_BASE}/refine-media`, {
+    const res = await fetch(`${API_BASE}/ai-orchestrator`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        media_url: request.mediaUrl,
-        media_type: request.mediaType,
-        action: request.action,
-        prompt: request.prompt,
-        model: request.model,
-        options: request.options,
+        type: 'refine_media',
+        data: {
+          media_url: request.mediaUrl,
+          media_type: request.mediaType,
+          action: request.action,
+          prompt: request.prompt,
+          model: request.model,
+          options: request.options,
+        },
       }),
     });
 
