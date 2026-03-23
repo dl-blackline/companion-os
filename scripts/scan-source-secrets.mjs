@@ -43,7 +43,7 @@ const OPENAI_KEY_RE = /sk-[A-Za-z0-9]{20,}/g;
  * Matches hardcoded Bearer tokens: "Bearer " followed by a long credential.
  * Skips template-literal expressions (Bearer ${...}).
  */
-const BEARER_RE = /Bearer [A-Za-z0-9_\-.+/]{20,}/g;
+const BEARER_RE = /Bearer [A-Za-z0-9_\-.+/]{40,}/g;
 
 /** Matches JWT-shaped tokens (header.payload.signature). */
 const JWT_RE = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/g;
@@ -60,7 +60,7 @@ function isSafeContext(content, matchIndex) {
   const line = content.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
 
   // Skip lines that define regex patterns (detecting keys, not containing them)
-  if (/\/.*sk-.*\/[gimsuy]*/.test(line) && /Re|regex|pattern|RE\b/i.test(line)) {
+  if (/\/.*sk-.*\/[gimsuy]*/.test(line) && /(?:regex|pattern|_RE\b|KEY_RE\b)/i.test(line)) {
     return true;
   }
 
@@ -141,9 +141,13 @@ for (const dir of SCAN_DIRS) {
     // Check 2: Hardcoded Bearer tokens
     BEARER_RE.lastIndex = 0;
     while ((match = BEARER_RE.exec(content)) !== null) {
+      // Get the full line for context analysis
+      const lineStart = content.lastIndexOf("\n", match.index) + 1;
+      const lineEnd = content.indexOf("\n", match.index);
+      const line = content.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+
       // Skip dynamic Bearer tokens (template literals like `Bearer ${var}`)
-      const before = content.slice(Math.max(0, match.index - 20), match.index);
-      if (/\$\{/.test(before) || /process\.env/.test(before)) continue;
+      if (/\$\{/.test(line) || /process\.env/.test(line)) continue;
 
       // Skip if the token part is a template expression
       const tokenPart = match[0].slice(7); // after "Bearer "
