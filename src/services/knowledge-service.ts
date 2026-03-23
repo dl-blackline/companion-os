@@ -187,8 +187,9 @@ export async function analyzeKnowledge(
 
     // Stage 3: Parse and extract
     const extractionStart = Date.now();
-    const data = await res.json() as { reply?: string; message?: string };
-    const rawText = data.reply || data.message || '';
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as { reply?: string; message?: string; response?: string };
+    const rawText = data.reply || data.message || data.response || '';
     const parsed = parseAnalysisResponse(rawText);
     stages.push({
       stage: 'extraction',

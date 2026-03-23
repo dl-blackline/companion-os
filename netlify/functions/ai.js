@@ -276,6 +276,7 @@ async function handleChat(data) {
 
       // Backward compat: soft-fail 200 so the frontend shows a friendly message
       return raw(200, {
+        response: "I'm having trouble right now. Please try again in a moment.",
       });
     }
   }

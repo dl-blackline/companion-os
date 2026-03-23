@@ -68,7 +68,8 @@ export async function refineMedia(
       ));
     }
 
-    const data = await res.json() as Record<string, unknown>;
+    const json = await res.json() as Record<string, unknown>;
+    const data = (json.data ?? json) as Record<string, unknown>;
     const result: MediaRefinementResult = {
       id: (data.id as string) || crypto.randomUUID(),
       originalUrl: request.mediaUrl,

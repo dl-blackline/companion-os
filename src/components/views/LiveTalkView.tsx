@@ -577,7 +577,9 @@ Prefer using tools over just talking about doing something. If the user asks for
           throw new Error(errData.error || `Chat request failed with status ${res.status}`);
         }
 
-        const data = await res.json();
+        const json = await res.json();
+        // Unwrap ok() envelope: { success, data: { response, … } } or legacy raw shape
+        const data = json.data ?? json;
         const responseText = data.response || '';
 
         // Handle action payloads (image generation, video generation, role-play, task)

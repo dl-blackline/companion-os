@@ -33,7 +33,8 @@ export function usePreferences(): UsePreferencesReturn {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
-        const { prefs: loaded } = await res.json();
+        const json = await res.json();
+        const { prefs: loaded } = json.data ?? json;
         if (!cancelled && loaded) {
           setPrefs((prev) => ({ ...prev, ...loaded }));
         }
