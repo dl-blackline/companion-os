@@ -154,6 +154,7 @@ export async function orchestrate({
   capability,
   getRecentConversation,
   extra,
+  ...rest
 }) {
   const resolvedModel = model || MODEL_CONFIG.chat;
   const startMs = Date.now();
@@ -171,6 +172,7 @@ export async function orchestrate({
       capability: capability || task,
       getRecentConversation,
       extra,
+      ...rest,
     });
 
     const durationMs = Date.now() - startMs;
@@ -180,6 +182,8 @@ export async function orchestrate({
       response: result.response,
       intent: result.intent,
       isMedia: result.isMedia || false,
+      context: result.context,
+      toolResults: result.toolResults,
       model: resolvedModel,
       task,
     };

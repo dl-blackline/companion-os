@@ -42,7 +42,7 @@ export async function handler(event) {
 
     return ok({ logs: data || [], total: count || 0, page, limit });
   } catch (err) {
-    console.error("audit-log error:", err);
+    log.error("[audit-log]", "handler error:", err.message);
     return fail(err.message, "ERR_INTERNAL", 500);
   }
 }

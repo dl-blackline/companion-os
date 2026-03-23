@@ -1,5 +1,6 @@
-import { chat } from "../../lib/ai-client.js";
+import { orchestrateSimple } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -15,7 +16,7 @@ export async function handler(event) {
       user: message,
     };
 
-    const reply = await chat({ prompt, model });
+    const reply = await orchestrateSimple({ prompt, model, task: "debug" });
 
     return ok({
       status: "ok",
@@ -23,7 +24,7 @@ export async function handler(event) {
       reply: reply,
     });
   } catch (error) {
-    console.error("AI debug error:", error);
+    log.error("[ai-debug]", "handler error:", error.message);
 
     return fail(error.message, "ERR_INTERNAL", 500);
   }

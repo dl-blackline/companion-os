@@ -1,6 +1,5 @@
 import { supabase } from "../../lib/_supabase.js";
-import { think } from "../../lib/companion-brain.js";
-import { chat as aiChat, embed } from "../../lib/ai-client.js";
+import { orchestrate, orchestrateSimple, orchestrateEmbed } from "../../services/ai/orchestrator.js";
 import {
   liveTalkSystem,
   liveTalkIntentClassification,
@@ -26,6 +25,7 @@ import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 import { isNofilterModel } from "../../lib/nofilter-client.js";
 import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
 import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
+import { log } from "../../lib/_log.js";
 
 
 async function getRecentConversation(supabase, conversation_id) {
@@ -110,7 +110,7 @@ async function handleChat(data) {
           });
         }
       } catch (visionErr) {
-        console.warn("Vision analysis failed, falling back to text:", visionErr.message);
+        log.warn("[ai]", "vision analysis failed, falling back to text:", visionErr.message);
       }
     }
 
@@ -118,9 +118,9 @@ async function handleChat(data) {
     if (visionAnalysis) {
       let assistantEmbedding = null;
       try {
-        assistantEmbedding = await embed(visionAnalysis);
+        assistantEmbedding = await orchestrateEmbed(visionAnalysis);
       } catch (err) {
-        console.warn("Embedding generation failed:", err.message);
+        log.warn("[ai]", "embedding generation failed:", err.message);
       }
 
       await Promise.all([
@@ -150,7 +150,8 @@ async function handleChat(data) {
 
     /* ----------------------- COMPANION BRAIN ORCHESTRATION -------------------- */
 
-    const result = await think({
+    const result = await orchestrate({
+      task: "chat",
       message,
       user_id,
       conversation_id,
@@ -189,9 +190,9 @@ async function handleChat(data) {
     let assistantEmbedding = null;
 
     try {
-      assistantEmbedding = await embed(assistantTextContent);
+      assistantEmbedding = await orchestrateEmbed(assistantTextContent);
     } catch (err) {
-      console.warn("Embedding generation failed:", err.message);
+      log.warn("[ai]", "embedding generation failed:", err.message);
     }
 
     await Promise.all([
@@ -251,20 +252,18 @@ async function handleChat(data) {
       intent: result.intent || { intent: "chat", confidence: 1 },
     });
   } catch (brainError) {
-    console.warn(
-      "Companion Brain failed, falling back to direct AI:",
-      brainError.message
-    );
+    log.warn("[ai]", "companion brain failed, falling back to direct AI:", brainError.message);
 
     /* --------------------------- ROUTER FALLBACK ---------------------------- */
 
     try {
-      const aiResponse = await aiChat({
+      const aiResponse = await orchestrateSimple({
         prompt: {
           system: "You are a helpful, mature AI companion. Respond naturally and warmly.",
           user: message,
         },
         model,
+        task: "chat_fallback",
       });
 
       return ok({
@@ -272,7 +271,7 @@ async function handleChat(data) {
         intent: { intent: "chat", confidence: 1 },
       });
     } catch (routerError) {
-      console.error("Router failed:", routerError);
+      log.error("[ai]", "router fallback failed:", routerError.message);
 
       // Backward compat: soft-fail 200 so the frontend shows a friendly message
       return raw(200, {
@@ -289,7 +288,7 @@ async function handleMemory(data) {
   const { action } = data;
 
   if (action === "search") {
-    const embedding = await embed(data.content);
+    const embedding = await orchestrateEmbed(data.content);
 
     const { data: results } = await supabase.rpc("match_messages", {
       query_embedding: embedding,
@@ -300,7 +299,7 @@ async function handleMemory(data) {
   }
 
   if (action === "save") {
-    const embedding = await embed(data.content);
+    const embedding = await orchestrateEmbed(data.content);
 
     const { data: saved } = await supabase
       .from(process.env.CHAT_HISTORY_TABLE || "messages")
@@ -338,7 +337,7 @@ async function handleMedia(data) {
 
     return ok(result);
   } catch (err) {
-    console.error("Media generation error:", err.message);
+    log.error("[ai]", "media generation error:", err.message);
     return fail(err.message, "ERR_MEDIA", 500);
   }
 }
@@ -414,11 +413,11 @@ async function handleRealtimeToken(data) {
   // realtime token endpoint itself.
   if (isNofilterModel(model)) {
     if (!process.env.NOFILTER_GPT_API_KEY) {
-      console.error("[ai] NOFILTER_GPT_API_KEY is not configured for realtime token request");
+      log.error("[ai]", "NOFILTER_GPT_API_KEY is not configured for realtime token request");
       return fail("NOFILTER_GPT_API_KEY is not configured", "ERR_CONFIG", 500);
     }
   } else if (!process.env.OPENAI_API_KEY) {
-    console.error("[ai] OPENAI_API_KEY is not configured for realtime token request");
+    log.error("[ai]", "OPENAI_API_KEY is not configured for realtime token request");
     return fail("OpenAI API key not configured", "ERR_CONFIG", 500);
   }
 
@@ -426,7 +425,7 @@ async function handleRealtimeToken(data) {
     const { client_secret, realtime_endpoint } = await createRealtimeSession({ model, voice });
     return ok({ client_secret, realtime_endpoint });
   } catch (err) {
-    console.error("Realtime token error:", err.message);
+    log.error("[ai]", "realtime token error:", err.message);
     return fail("Failed to create realtime session", "ERR_REALTIME", 500);
   }
 }
@@ -451,7 +450,7 @@ async function handleVoice(data) {
 
     return ok(result);
   } catch (err) {
-    console.error("Voice processing error:", err.message);
+    log.error("[ai]", "voice processing error:", err.message);
     return fail(err.message, "ERR_VOICE", 500);
   }
 }
@@ -475,7 +474,7 @@ async function handleMultimodal(data) {
 
     return ok(result);
   } catch (err) {
-    console.error("Multimodal engine error:", err.message);
+    log.error("[ai]", "multimodal engine error:", err.message);
     return fail(err.message, "ERR_MULTIMODAL", 500);
   }
 }
@@ -490,12 +489,12 @@ async function handleMultimodal(data) {
 async function detectLiveTalkIntent(message, historyContext) {
   try {
     const prompt = liveTalkIntentClassification({ message, historyContext });
-    const rawText = await aiChat({ prompt, model: "gpt-4.1-mini", task: "live_talk_intent" });
+    const rawText = await orchestrateSimple({ prompt, model: "gpt-4.1-mini", task: "live_talk_intent" });
     // Strip potential markdown fences
     const cleaned = rawText.replace(/```json|```/g, "").trim();
     return JSON.parse(cleaned);
   } catch (err) {
-    console.warn("Live talk intent detection failed, defaulting to chat:", err.message);
+    log.warn("[ai]", "live talk intent detection failed, defaulting to chat:", err.message);
     return { type: "chat" };
   }
 }
@@ -543,7 +542,7 @@ async function handleLiveTalk(data) {
     const taskDesc = message;
     const resolvedTaskType = task_type || "other";
     const prompt = liveTalkTask({ aiName: ai_name, taskType: resolvedTaskType, taskDescription: taskDesc });
-    const taskResponse = await aiChat({ prompt, task: "live_talk_task" });
+    const taskResponse = await orchestrateSimple({ prompt, task: "live_talk_task" });
     return ok({
       response: taskResponse,
       action: {
@@ -563,7 +562,7 @@ async function handleLiveTalk(data) {
       historyContext,
       message,
     });
-    const roleplayResponse = await aiChat({ prompt, task: "live_talk_roleplay" });
+    const roleplayResponse = await orchestrateSimple({ prompt, task: "live_talk_roleplay" });
     return ok({
       response: roleplayResponse,
       action: {
@@ -577,7 +576,7 @@ async function handleLiveTalk(data) {
   // If there was an active role-play but the user asked to stop, exit it
   if (roleplay_context && ROLEPLAY_EXIT_RE.test(message)) {
     const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
-    const exitResponse = await aiChat({
+    const exitResponse = await orchestrateSimple({
       prompt: {
         system: systemPrompt,
         user: `The user just ended a role-play as "${roleplay_context.character}". Acknowledge it briefly and warmly in one sentence.`,
@@ -602,7 +601,7 @@ async function handleLiveTalk(data) {
           prompt: imagePrompt,
         });
         const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "image", prompt: imagePrompt });
-        const voiceReply = await aiChat({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
+        const voiceReply = await orchestrateSimple({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
         return ok({
           response: voiceReply,
           action: {
@@ -613,9 +612,9 @@ async function handleLiveTalk(data) {
           },
         });
       } catch (imgErr) {
-        console.error("Live talk image generation error:", imgErr);
+        log.error("[ai]", "live talk image generation error:", imgErr.message);
         const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
-        const fallback = await aiChat({
+        const fallback = await orchestrateSimple({
           prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
           task: "live_talk_fallback",
         });
@@ -631,7 +630,7 @@ async function handleLiveTalk(data) {
           prompt: videoPrompt,
         });
         const ackPrompt = liveTalkMediaAck({ aiName: ai_name, mediaType: "video", prompt: videoPrompt });
-        const voiceReply = await aiChat({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
+        const voiceReply = await orchestrateSimple({ prompt: ackPrompt, model: "gpt-4.1-mini", task: "live_talk_ack" });
         return ok({
           response: voiceReply,
           action: {
@@ -642,9 +641,9 @@ async function handleLiveTalk(data) {
           },
         });
       } catch (vidErr) {
-        console.error("Live talk video generation error:", vidErr);
+        log.error("[ai]", "live talk video generation error:", vidErr.message);
         const systemPrompt = liveTalkSystem({ aiName: ai_name, mode });
-        const fallback = await aiChat({
+        const fallback = await orchestrateSimple({
           prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
           task: "live_talk_fallback",
         });
@@ -657,7 +656,7 @@ async function handleLiveTalk(data) {
       const scenario =
         intent.scenario || "an intriguing conversation with the user";
       const prompt = liveTalkRoleplay({ character, scenario, historyContext: "", message });
-      const roleplayResponse = await aiChat({ prompt, task: "live_talk_roleplay" });
+      const roleplayResponse = await orchestrateSimple({ prompt, task: "live_talk_roleplay" });
       return ok({
         response: roleplayResponse,
         action: {
@@ -671,7 +670,7 @@ async function handleLiveTalk(data) {
     case "run_task": {
       const taskDesc = intent.taskDescription || message;
       const prompt = liveTalkTask({ aiName: ai_name, taskType: intent.taskType || "other", taskDescription: taskDesc });
-      const taskResponse = await aiChat({ prompt, task: "live_talk_task" });
+      const taskResponse = await orchestrateSimple({ prompt, task: "live_talk_task" });
       return ok({
         response: taskResponse,
         action: {
@@ -688,7 +687,7 @@ async function handleLiveTalk(data) {
         (knowledgeContext
           ? `\n\nWhen relevant, reference the user's personal knowledge base below to give more personalized answers.${knowledgeContext}`
           : "");
-      const chatResponse = await aiChat({
+      const chatResponse = await orchestrateSimple({
         prompt: { system: systemPrompt, user: `${historyContext}\n\nUser: ${message}` },
         task: "live_talk_chat",
       });
@@ -717,7 +716,7 @@ export async function handler(event) {
 
     const body = sanitizeDeep(JSON.parse(event.body));
 
-    console.log("AI Gateway Request:", body);
+    log.info("[ai]", "gateway request:", { type: body.type });
 
     const { type, data, action } = body;
 
@@ -762,7 +761,7 @@ export async function handler(event) {
         return fail("Invalid request type", "ERR_VALIDATION", 400);
     }
   } catch (err) {
-    console.error("AI gateway error:", err);
+    log.error("[ai]", "gateway error:", err.message);
 
     // Backward compat: soft-fail 200 so the frontend shows a friendly message
     return raw(200, {

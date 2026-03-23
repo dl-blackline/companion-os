@@ -1,4 +1,5 @@
-import { think, listCapabilities } from "../../lib/companion-brain.js";
+import { orchestrate } from "../../services/ai/orchestrator.js";
+import { listCapabilities } from "../../lib/companion-brain.js";
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
@@ -83,7 +84,8 @@ export async function handler(event) {
   try {
     log.info("[companion-brain]", `user=${user_id?.slice(0, 8)} capability=${body.capability ?? "auto"}`);
 
-    const result = await think({
+    const result = await orchestrate({
+      task: body.capability || "chat",
       message,
       user_id,
       conversation_id,

@@ -8,7 +8,7 @@
  */
 
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
-import { think } from "../../lib/companion-brain.js";
+import { orchestrate } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
@@ -57,7 +57,8 @@ export async function handler(event) {
 
     log.info("[roleplay]", `user=${user_id?.slice(0, 8)} character=${character ?? "default"}`);
 
-    const result = await think({
+    const result = await orchestrate({
+      task: "roleplay",
       message,
       user_id,
       conversation_id: conversation_id || user_id,
