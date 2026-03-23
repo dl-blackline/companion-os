@@ -8,10 +8,12 @@
  *   1. Request an ephemeral key from the server
  *   2. Create a WebRTC peer connection
  *   3. Attach microphone audio track
- *   4. Establish connection via SDP offer/answer with OpenAI
+ *   4. Establish connection via SDP offer/answer with the realtime provider
  *   5. Receive AI audio stream and play it through an <audio> element
  *   6. Listen to data channel events for state transitions & transcripts
  */
+
+import { requestRealtimeToken } from '@/services/ai-orchestrator';
 
 export type RealtimeVoiceState = 'disconnected' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 
@@ -377,29 +379,7 @@ export class RealtimeVoiceClient {
   // ── Private ──
 
   private async fetchEphemeralKey(): Promise<{ key: string; endpoint: string }> {
-    const res = await fetch('/.netlify/functions/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'realtime_token',
-        data: {
-          model: this.model,
-          voice: this.voice,
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(errData.error || `Failed to get ephemeral key: ${res.status}`);
-    }
-
-    const json = await res.json();
-    const data = json.data ?? json;
-    return {
-      key: data.client_secret,
-      endpoint: data.realtime_endpoint || 'https://api.openai.com/v1/realtime',
-    };
+    return requestRealtimeToken(this.model, this.voice);
   }
 
   private setupDataChannel(): void {

@@ -9,10 +9,8 @@ import type {
   RefinementAction,
 } from '@/types';
 import { success, error, appError } from '@/types';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const API_BASE = '/.netlify/functions';
+import { DEFAULT_AI_CONTROL_CONFIG } from '@/types/ai-control';
+import { runAIRequest } from '@/services/ai-orchestrator';
 
 /** Available refinement actions by media type. */
 export const IMAGE_REFINEMENT_ACTIONS: readonly { value: RefinementAction; label: string; description: string }[] = [
@@ -45,31 +43,45 @@ export async function refineMedia(
   request: MediaRefinementRequest,
 ): Promise<AsyncResult<MediaRefinementResult>> {
   try {
-    const res = await fetch(`${API_BASE}/refine-media`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        media_url: request.mediaUrl,
-        media_type: request.mediaType,
+    const result = await runAIRequest<{
+      id?: string;
+      url?: string;
+      refined_url?: string;
+      model?: string;
+      provider?: string;
+      data?: {
+        id?: string;
+        url?: string;
+        refined_url?: string;
+        model?: string;
+        provider?: string;
+      };
+    }>({
+      type: request.mediaType,
+      userId: 'default-user',
+      prompt: request.prompt,
+      config: {
+        ...DEFAULT_AI_CONTROL_CONFIG,
+        ...(request.model ? { model: request.model } : {}),
+      },
+      options: {
         action: request.action,
-        prompt: request.prompt,
-        model: request.model,
-        options: request.options,
-      }),
+        media_url: request.mediaUrl,
+        ...(request.options ?? {}),
+      },
     });
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      const msg = (body as Record<string, string>).error || `Refinement failed (${res.status})`;
+    if (!result.success || !result.data) {
+      const msg = result.error || 'Refinement failed';
       return error(appError(
-        res.status === 429 ? 'rate_limit' : 'server',
+        'server',
         msg,
-        { retryable: res.status >= 500 || res.status === 429 },
+        { retryable: true },
       ));
     }
 
-    const data = await res.json() as Record<string, unknown>;
-    const result: MediaRefinementResult = {
+    const data = (result.data.data ?? result.data) as Record<string, unknown>;
+    const refined: MediaRefinementResult = {
       id: (data.id as string) || crypto.randomUUID(),
       originalUrl: request.mediaUrl,
       refinedUrl: (data.url ?? data.refined_url ?? '') as string,
@@ -79,7 +91,7 @@ export async function refineMedia(
       createdAt: Date.now(),
     };
 
-    return success(result);
+    return success(refined);
   } catch (e) {
     return error(appError('network', (e as Error).message, { retryable: true }));
   }

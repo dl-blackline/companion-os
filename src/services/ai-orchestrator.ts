@@ -27,6 +27,11 @@ export interface AIOrchestratorOutput<T = unknown> {
   };
 }
 
+export interface RealtimeTokenResponse {
+  key: string;
+  endpoint: string;
+}
+
 async function getRelevantMemory(_userId: string, _input: AIOrchestratorInput): Promise<unknown[]> {
   return [];
 }
@@ -44,6 +49,40 @@ function assertCapability(input: AIOrchestratorInput): void {
 }
 
 async function callAI(input: AIOrchestratorInput, model: string, memoryContext: unknown[]): Promise<unknown> {
+  if (input.options?.backendType === 'realtime_token') {
+    const res = await fetch('/.netlify/functions/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'realtime_token',
+        data: {
+          ...(input.options?.data as Record<string, unknown>),
+          model,
+        },
+      }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error((json as { error?: string }).error || `Realtime token request failed (${res.status})`);
+    }
+    return json;
+  }
+
+  if (input.options?.backendType === 'knowledge_chat') {
+    const res = await fetch('/.netlify/functions/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input.options?.data ?? {}),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error((json as { error?: string }).error || `Knowledge request failed (${res.status})`);
+    }
+    return json;
+  }
+
   if (input.type === 'chat') {
     const backendType = input.options?.backendType === 'live_talk' ? 'live_talk' : 'chat';
     const chatData =
@@ -205,4 +244,52 @@ export async function runAIRequest<T = unknown>(input: AIOrchestratorInput): Pro
       },
     };
   }
+}
+
+export async function requestRealtimeToken(
+  model: string,
+  voice: string,
+): Promise<RealtimeTokenResponse> {
+  const result = await runAIRequest<{ data?: { client_secret?: string; realtime_endpoint?: string } }>({
+    type: 'voice',
+    message: '',
+    userId: 'default-user',
+    config: {
+      model,
+      tone: 'direct',
+      memory_enabled: false,
+      temperature: 0,
+      max_tokens: 1,
+      capabilities: {
+        chat: true,
+        voice: true,
+        image: true,
+        video: true,
+      },
+    },
+    options: {
+      backendType: 'realtime_token',
+      data: {
+        model,
+        voice,
+      },
+    },
+  });
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to get realtime token');
+  }
+
+  const payload = (result.data.data ?? result.data) as {
+    client_secret?: string;
+    realtime_endpoint?: string;
+  };
+  const key = payload.client_secret;
+  const endpoint = payload.realtime_endpoint;
+
+  if (!key || !endpoint) {
+    throw new Error('Realtime token response missing required fields');
+  }
+
+  return { key, endpoint };
 }
