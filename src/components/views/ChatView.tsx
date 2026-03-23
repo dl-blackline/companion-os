@@ -33,7 +33,7 @@ import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 import { useAuth } from '@/context/auth-context';
 import { useAIControl } from '@/context/ai-control-context';
-import { runAIRequest } from '@/services/ai-orchestrator';
+import { runAI } from '@/services/ai-orchestrator';
 
 /** Convert a File to a base64-encoded data URL (works without server access). */
 async function fileToDataUrl(file: File): Promise<string> {
@@ -228,20 +228,22 @@ Respond as the ${modeConfig.name} mode with the following characteristics:
 
 Please provide a helpful response.`;
 
-      const result = await runAIRequest<{
+      const result = await runAI<{
         data?: { response?: string; media_url?: string; media_type?: MediaType };
         response?: string;
         media_url?: string;
         media_type?: MediaType;
       }>({
         type: 'chat',
-        message: fullPrompt,
-        userId: authUser?.id || 'default-user',
-        conversationId: activeConversation.id,
+        input: {
+          message: fullPrompt,
+          userId: authUser?.id || 'default-user',
+          conversationId: activeConversation.id,
+          history: activeConversation.messages.map((m) => `${m.role}: ${m.content}`),
+          mediaUrl,
+          mediaType,
+        },
         config: orchestratorConfig,
-        history: activeConversation.messages.map((m) => `${m.role}: ${m.content}`),
-        mediaUrl,
-        mediaType,
       });
 
       if (!result.success || !result.data) {

@@ -27,7 +27,7 @@ describe('useCompanionStream service contract', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('sends correct request shape to the ai-stream endpoint', async () => {
+  it('sends correct request shape to the ai-orchestrator endpoint', async () => {
     let capturedUrl = '';
     let capturedBody: Record<string, unknown> | null = null;
 
@@ -41,10 +41,41 @@ describe('useCompanionStream service contract', () => {
     });
 
     // Simulate what the hook does internally
-    const res = await fetch('/.netlify/functions/ai-stream', {
+    const res = await fetch('/.netlify/functions/ai-orchestrator', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        type: 'stream',
+        input: {
+          message: 'Hello',
+          user_id: 'user-1',
+          conversation_id: 'conv-1',
+          session_id: 'session-1',
+          model: 'gpt-4.1',
+          system_prompt: 'Be helpful',
+          task: 'chat',
+          includeAvatarState: true,
+        },
+        config: {
+          model: 'gpt-4.1',
+          tone: 'direct',
+          memory_enabled: true,
+          temperature: 0.7,
+          max_tokens: 2000,
+          capabilities: {
+            chat: true,
+            voice: true,
+            image: true,
+            video: true,
+          },
+        },
+      }),
+    });
+
+    expect(capturedUrl).toBe('/.netlify/functions/ai-orchestrator');
+    expect(capturedBody).toEqual({
+      type: 'stream',
+      input: {
         message: 'Hello',
         user_id: 'user-1',
         conversation_id: 'conv-1',
@@ -53,19 +84,20 @@ describe('useCompanionStream service contract', () => {
         system_prompt: 'Be helpful',
         task: 'chat',
         includeAvatarState: true,
-      }),
-    });
-
-    expect(capturedUrl).toBe('/.netlify/functions/ai-stream');
-    expect(capturedBody).toEqual({
-      message: 'Hello',
-      user_id: 'user-1',
-      conversation_id: 'conv-1',
-      session_id: 'session-1',
-      model: 'gpt-4.1',
-      system_prompt: 'Be helpful',
-      task: 'chat',
-      includeAvatarState: true,
+      },
+      config: {
+        model: 'gpt-4.1',
+        tone: 'direct',
+        memory_enabled: true,
+        temperature: 0.7,
+        max_tokens: 2000,
+        capabilities: {
+          chat: true,
+          voice: true,
+          image: true,
+          video: true,
+        },
+      },
     });
   });
 
@@ -138,10 +170,10 @@ describe('useCompanionStream service contract', () => {
       return new Response('Server Error', { status: 500 });
     });
 
-    const res = await fetch('/.netlify/functions/ai-stream', {
+    const res = await fetch('/.netlify/functions/ai-orchestrator', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Hello', user_id: 'u1' }),
+      body: JSON.stringify({ type: 'stream', input: { message: 'Hello', user_id: 'u1' } }),
     });
 
     expect(res.ok).toBe(false);

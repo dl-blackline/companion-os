@@ -31,7 +31,7 @@ import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { IMAGE_REFINEMENT_ACTIONS, VIDEO_REFINEMENT_ACTIONS, buildRefinementPrompt } from '@/services/media-refinement-service';
 import { useAuth } from '@/context/auth-context';
 import { useAIControl } from '@/context/ai-control-context';
-import { runAIRequest } from '@/services/ai-orchestrator';
+import { runAI } from '@/services/ai-orchestrator';
 
 /** Aspect ratio options for image generation */
 type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
@@ -367,7 +367,7 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
       try {
         console.log('[MediaView] Starting generation:', { jobId, type, style, size });
 
-        const mediaResult = await runAIRequest<{
+        const mediaResult = await runAI<{
           data?: { url?: string; resultUrl?: string; prompt?: string; error?: string };
           url?: string;
           resultUrl?: string;
@@ -375,13 +375,15 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
           error?: string;
         }>({
           type: type === 'photo' ? 'image' : 'video',
-          prompt: currentPrompt,
-          userId: authUser?.id || 'default-user',
-          config: orchestratorConfig,
-          options: {
-            style,
-            size,
+          input: {
+            prompt: currentPrompt,
+            userId: authUser?.id || 'default-user',
+            options: {
+              style,
+              size,
+            },
           },
+          config: orchestratorConfig,
         });
 
         console.log('[MediaView] Media API response:', mediaResult);
@@ -402,11 +404,13 @@ Style: ${style}
 
 Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photograph' : 'video'} looks like — as if describing the finished output to someone who cannot see it. Be highly specific about lighting, composition, subject, mood, and visual quality. Write in present tense as if the image/video already exists.`;
 
-          const descriptionResult = await runAIRequest<{ data?: { response?: string }; response?: string }>({
+          const descriptionResult = await runAI<{ data?: { response?: string }; response?: string }>({
             type: 'chat',
-            message: descriptionPrompt,
-            userId: authUser?.id || 'default-user',
-            conversationId: jobId,
+            input: {
+              message: descriptionPrompt,
+              userId: authUser?.id || 'default-user',
+              conversationId: jobId,
+            },
             config: orchestratorConfig,
           });
 
@@ -512,11 +516,13 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
     if (!prompt.trim() || isEnhancing) return;
     setIsEnhancing(true);
     try {
-      const result = await runAIRequest<{ data?: { response?: string }; response?: string }>({
+      const result = await runAI<{ data?: { response?: string }; response?: string }>({
         type: 'chat',
-        message: `You are a creative prompt engineer for AI ${activeTab} generation. Enhance the following prompt to be more vivid, specific, and detailed while preserving the original intent. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: "${prompt.trim()}"`,
-        userId: authUser?.id || 'default-user',
-        conversationId: generateId(),
+        input: {
+          message: `You are a creative prompt engineer for AI ${activeTab} generation. Enhance the following prompt to be more vivid, specific, and detailed while preserving the original intent. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: "${prompt.trim()}"`,
+          userId: authUser?.id || 'default-user',
+          conversationId: generateId(),
+        },
         config: orchestratorConfig,
       });
 
@@ -553,15 +559,17 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
 
     try {
       const prompt = buildRefinementPrompt(refinementAction, refinementPrompt || undefined);
-      const result = await runAIRequest<{ data?: { url?: string; refined_url?: string }; url?: string; refined_url?: string }>({
+      const result = await runAI<{ data?: { url?: string; refined_url?: string }; url?: string; refined_url?: string }>({
         type: uploadedMedia.mediaType,
-        prompt,
-        userId: authUser?.id || 'default-user',
-        config: orchestratorConfig,
-        options: {
-          action: refinementAction,
-          media_url: uploadedMedia.previewUrl,
+        input: {
+          prompt,
+          userId: authUser?.id || 'default-user',
+          options: {
+            action: refinementAction,
+            media_url: uploadedMedia.previewUrl,
+          },
         },
+        config: orchestratorConfig,
       });
 
       if (result.success && result.data) {

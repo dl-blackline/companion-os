@@ -5,12 +5,12 @@ import { parseSSEResponse } from '@/services/realtime-session-service';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const AI_STREAM_URL = '/.netlify/functions/ai-stream';
+const AI_STREAM_URL = '/.netlify/functions/ai-orchestrator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface UseCompanionStreamOptions {
-  /** Netlify function URL override (defaults to ai-stream). */
+  /** Netlify function URL override (defaults to ai-orchestrator). */
   endpoint?: string;
 }
 
@@ -109,16 +109,32 @@ export function useCompanionStream(options: UseCompanionStreamOptions = {}) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: request.message,
-            user_id: request.userId,
-            conversation_id: request.conversationId,
-            session_id: request.sessionId,
-            model: request.model,
-            system_prompt: request.systemPrompt,
-            task: request.task,
-            includeAvatarState: request.includeAvatarState ?? true,
-            includeVoice: request.includeVoice ?? false,
-            voiceId: request.voiceId,
+            type: 'stream',
+            input: {
+              message: request.message,
+              user_id: request.userId,
+              conversation_id: request.conversationId,
+              session_id: request.sessionId,
+              model: request.model,
+              system_prompt: request.systemPrompt,
+              task: request.task,
+              includeAvatarState: request.includeAvatarState ?? true,
+              includeVoice: request.includeVoice ?? false,
+              voiceId: request.voiceId,
+            },
+            config: {
+              model: request.model || 'gpt-4o',
+              tone: 'direct',
+              memory_enabled: true,
+              temperature: 0.7,
+              max_tokens: 2000,
+              capabilities: {
+                chat: true,
+                voice: true,
+                image: true,
+                video: true,
+              },
+            },
           }),
           signal: controller.signal,
         });

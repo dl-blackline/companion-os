@@ -33,7 +33,7 @@ import {
 } from '@/lib/realtime-voice-client';
 import { useVoice } from '@/context/voice-context';
 import { useAIControl } from '@/context/ai-control-context';
-import { runAIRequest } from '@/services/ai-orchestrator';
+import { runAI } from '@/services/ai-orchestrator';
 
 /** Roleplay context tracked locally during a session */
 interface RoleplayContext {
@@ -223,10 +223,12 @@ export function LiveTalkView({
             const imageStyle = (toolArgs.style as string) || '';
             const fullPrompt = imageStyle ? `${imagePrompt}, style: ${imageStyle}` : imagePrompt;
 
-            runAIRequest<{ data?: { url?: string }; url?: string }>({
+            runAI<{ data?: { url?: string }; url?: string }>({
               type: 'image',
-              prompt: fullPrompt,
-              userId: 'default-user',
+              input: {
+                prompt: fullPrompt,
+                userId: 'default-user',
+              },
               config: orchestratorConfig,
             })
               .then((result) => {
@@ -270,10 +272,12 @@ export function LiveTalkView({
             const videoStyle = (toolArgs.style as string) || '';
             const fullVideoPrompt = videoStyle ? `${videoPrompt}, style: ${videoStyle}` : videoPrompt;
 
-            runAIRequest<{ data?: { url?: string }; url?: string }>({
+            runAI<{ data?: { url?: string }; url?: string }>({
               type: 'video',
-              prompt: fullVideoPrompt,
-              userId: 'default-user',
+              input: {
+                prompt: fullVideoPrompt,
+                userId: 'default-user',
+              },
               config: orchestratorConfig,
             })
               .then((result) => {
@@ -339,21 +343,23 @@ export function LiveTalkView({
             const taskType = (toolArgs.taskType as string) || 'other';
             setStatusText('Running task…');
 
-            runAIRequest<{ data?: { response?: string }; response?: string }>({
+            runAI<{ data?: { response?: string }; response?: string }>({
               type: 'chat',
-              message: taskDesc,
-              userId: 'default-user',
-              config: orchestratorConfig,
-              options: {
-                backendType: 'live_talk',
-                data: {
-                  message: taskDesc,
-                  intent_override: 'run_task',
-                  task_type: taskType,
-                  ai_name: aiName,
-                  mode: 'neutral',
+              input: {
+                message: taskDesc,
+                userId: 'default-user',
+                options: {
+                  backendType: 'live_talk',
+                  data: {
+                    message: taskDesc,
+                    intent_override: 'run_task',
+                    task_type: taskType,
+                    ai_name: aiName,
+                    mode: 'neutral',
+                  },
                 },
               },
+              config: orchestratorConfig,
             })
               .then((result) => {
                 const taskData = result.data?.data ?? result.data ?? {};
@@ -555,26 +561,28 @@ Prefer using tools over just talking about doing something. If the user asks for
       const knowledgeRefs = knowledgeRefsRaw.length > 0 ? knowledgeRefsRaw : undefined;
 
       try {
-        const result = await runAIRequest<{
+        const result = await runAI<{
           data?: { response?: string; action?: { type?: string; mediaUrl?: string } };
           response?: string;
           action?: { type?: string; mediaUrl?: string };
         }>({
           type: 'chat',
-          message: text.trim(),
-          userId: 'default-user',
-          config: orchestratorConfig,
-          options: {
-            backendType: 'live_talk',
-            data: {
-              message: text.trim(),
-              conversation_history: session.transcript.slice(-8),
-              mode: 'neutral',
-              ai_name: aiName,
-              roleplay_context: roleplayRef.current || undefined,
-              knowledge_refs: knowledgeRefs,
+          input: {
+            message: text.trim(),
+            userId: 'default-user',
+            options: {
+              backendType: 'live_talk',
+              data: {
+                message: text.trim(),
+                conversation_history: session.transcript.slice(-8),
+                mode: 'neutral',
+                ai_name: aiName,
+                roleplay_context: roleplayRef.current || undefined,
+                knowledge_refs: knowledgeRefs,
+              },
             },
           },
+          config: orchestratorConfig,
         });
 
         if (!result.success || !result.data) {

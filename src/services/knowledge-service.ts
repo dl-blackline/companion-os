@@ -21,7 +21,7 @@ import type {
 import { success, error, appError } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { DEFAULT_AI_CONTROL_CONFIG } from '@/types/ai-control';
-import { runAIRequest } from '@/services/ai-orchestrator';
+import { runAI } from '@/services/ai-orchestrator';
 
 // ─── Analyzer System Prompt ───────────────────────────────────────────────────
 
@@ -157,26 +157,22 @@ export async function analyzeKnowledge(
 
     const userPrompt = buildUserPrompt(preprocessed, input);
 
-    const result = await runAIRequest<{ reply?: string; message?: string }>({
-      type: 'chat',
-      userId: 'default-user',
-      message: userPrompt,
+    const result = await runAI<{ reply?: string; message?: string }>({
+      type: 'knowledge',
+      input: {
+        userId: 'default-user',
+        message: userPrompt,
+        systemPrompt,
+        userPrompt,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      },
       config: {
         ...DEFAULT_AI_CONTROL_CONFIG,
         model: 'gpt-4.1',
         temperature: 0.3,
-      },
-      options: {
-        backendType: 'knowledge_chat',
-        data: {
-          action: 'chat',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          model: 'gpt-4.1',
-          temperature: 0.3,
-        },
       },
     });
 
@@ -193,7 +189,7 @@ export async function analyzeKnowledge(
 
     // Stage 3: Parse and extract
     const extractionStart = Date.now();
-    const data = result.data;
+    const data = (result.data as { data?: { reply?: string; message?: string } }).data ?? result.data;
     const rawText = data.reply || data.message || '';
     const parsed = parseAnalysisResponse(rawText);
     stages.push({

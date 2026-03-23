@@ -10,7 +10,7 @@ import type {
 } from '@/types';
 import { success, error, appError } from '@/types';
 import { DEFAULT_AI_CONTROL_CONFIG } from '@/types/ai-control';
-import { runAIRequest } from '@/services/ai-orchestrator';
+import { runAI } from '@/services/ai-orchestrator';
 
 /** Available refinement actions by media type. */
 export const IMAGE_REFINEMENT_ACTIONS: readonly { value: RefinementAction; label: string; description: string }[] = [
@@ -43,7 +43,7 @@ export async function refineMedia(
   request: MediaRefinementRequest,
 ): Promise<AsyncResult<MediaRefinementResult>> {
   try {
-    const result = await runAIRequest<{
+    const result = await runAI<{
       id?: string;
       url?: string;
       refined_url?: string;
@@ -58,16 +58,18 @@ export async function refineMedia(
       };
     }>({
       type: request.mediaType,
-      userId: 'default-user',
-      prompt: request.prompt,
+      input: {
+        userId: 'default-user',
+        prompt: request.prompt,
+        options: {
+          action: request.action,
+          media_url: request.mediaUrl,
+          ...(request.options ?? {}),
+        },
+      },
       config: {
         ...DEFAULT_AI_CONTROL_CONFIG,
         ...(request.model ? { model: request.model } : {}),
-      },
-      options: {
-        action: request.action,
-        media_url: request.mediaUrl,
-        ...(request.options ?? {}),
       },
     });
 

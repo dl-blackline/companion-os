@@ -1,7 +1,9 @@
 import type { MediaType } from '@/types';
 import type { AIControlConfig } from '@/types/ai-control';
 
-export type OrchestratorRequestType = 'chat' | 'image' | 'video' | 'voice';
+export type OrchestratorRequestType = 'chat' | 'image' | 'video' | 'voice' | 'knowledge';
+
+const ORCHESTRATOR_URL = '/.netlify/functions/ai-orchestrator';
 
 export interface AIOrchestratorInput {
   type: OrchestratorRequestType;
@@ -14,6 +16,12 @@ export interface AIOrchestratorInput {
   mediaUrl?: string;
   mediaType?: MediaType;
   options?: Record<string, unknown>;
+}
+
+export interface AIRunInput {
+  type: OrchestratorRequestType;
+  input: Record<string, unknown>;
+  config: AIControlConfig;
 }
 
 export interface AIOrchestratorOutput<T = unknown> {
@@ -31,195 +39,32 @@ export interface RealtimeTokenResponse {
   key: string;
   endpoint: string;
 }
-
-async function getRelevantMemory(_userId: string, _input: AIOrchestratorInput): Promise<unknown[]> {
-  return [];
-}
-
-function chooseModel(input: AIOrchestratorInput): string {
-  return input.config.model || 'gpt-4o';
-}
-
-function assertCapability(input: AIOrchestratorInput): void {
-  const caps = input.config.capabilities;
-  if (input.type === 'chat' && !caps.chat) throw new Error('Chat capability is disabled');
-  if (input.type === 'voice' && !caps.voice) throw new Error('Voice capability is disabled');
-  if (input.type === 'image' && !caps.image) throw new Error('Image capability is disabled');
-  if (input.type === 'video' && !caps.video) throw new Error('Video capability is disabled');
-}
-
-async function callAI(input: AIOrchestratorInput, model: string, memoryContext: unknown[]): Promise<unknown> {
-  if (input.options?.backendType === 'realtime_token') {
-    const res = await fetch('/.netlify/functions/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'realtime_token',
-        data: {
-          ...(input.options?.data as Record<string, unknown>),
-          model,
-        },
-      }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error((json as { error?: string }).error || `Realtime token request failed (${res.status})`);
-    }
-    return json;
-  }
-
-  if (input.options?.backendType === 'knowledge_chat') {
-    const res = await fetch('/.netlify/functions/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input.options?.data ?? {}),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error((json as { error?: string }).error || `Knowledge request failed (${res.status})`);
-    }
-    return json;
-  }
-
-  if (input.type === 'chat') {
-    const backendType = input.options?.backendType === 'live_talk' ? 'live_talk' : 'chat';
-    const chatData =
-      backendType === 'live_talk'
-        ? {
-            ...(input.options?.data as Record<string, unknown>),
-            model,
-            temperature: input.config.temperature,
-            max_tokens: input.config.max_tokens,
-            tone: input.config.tone,
-            memory_enabled: input.config.memory_enabled,
-            memory_context: memoryContext,
-          }
-        : {
-            conversation_id: input.conversationId || 'orchestrator-conversation',
-            user_id: input.userId || 'default-user',
-            message: input.message || input.prompt || '',
-            model,
-            temperature: input.config.temperature,
-            max_tokens: input.config.max_tokens,
-            tone: input.config.tone,
-            memory_enabled: input.config.memory_enabled,
-            memory_context: memoryContext,
-            ...(input.mediaUrl ? { media_url: input.mediaUrl } : {}),
-            ...(input.mediaType ? { media_type: input.mediaType } : {}),
-          };
-
-    const res = await fetch('/.netlify/functions/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: backendType,
-        data: chatData,
-      }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error((json as { error?: string }).error || `Chat request failed (${res.status})`);
-    }
-    return json;
-  }
-
-  if (input.type === 'image' || input.type === 'video') {
-    const isRefine = input.options?.action != null;
-
-    if (isRefine) {
-      const res = await fetch('/.netlify/functions/refine-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          media_url: input.options?.media_url,
-          media_type: input.type,
-          action: input.options?.action,
-          prompt: input.prompt,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error((json as { error?: string }).error || `Refine request failed (${res.status})`);
-      }
-      return json;
-    }
-
-    const res = await fetch('/.netlify/functions/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'media',
-        data: {
-          type: input.type,
-          prompt: input.prompt || input.message || '',
-          options: {
-            ...(input.options || {}),
-            model,
-            temperature: input.config.temperature,
-            max_tokens: input.config.max_tokens,
-            tone: input.config.tone,
-            memory_enabled: input.config.memory_enabled,
-            memory_context: memoryContext,
-          },
-        },
-      }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error((json as { error?: string }).error || `Media request failed (${res.status})`);
-    }
-    return json;
-  }
-
-  if (input.type === 'voice') {
-    const res = await fetch('/.netlify/functions/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'voice',
-        data: {
-          text: input.message || input.prompt || '',
-          model,
-          temperature: input.config.temperature,
-          max_tokens: input.config.max_tokens,
-          tone: input.config.tone,
-        },
-      }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error((json as { error?: string }).error || `Voice request failed (${res.status})`);
-    }
-    return json;
-  }
-
-  throw new Error(`Unsupported request type: ${input.type}`);
-}
-
-export async function runAIRequest<T = unknown>(input: AIOrchestratorInput): Promise<AIOrchestratorOutput<T>> {
+export async function runAI<T = unknown>(payload: AIRunInput): Promise<AIOrchestratorOutput<T>> {
   const startedAt = performance.now();
-  const model = chooseModel(input);
+  const model = payload.config.model || 'gpt-4o';
 
   try {
-    assertCapability(input);
-
-    const memoryContext =
-      input.config.memory_enabled && input.userId
-        ? await getRelevantMemory(input.userId, input)
-        : [];
-
-    console.log('[ORCHESTRATOR]', {
-      model,
-      type: input.type,
-      config: input.config,
+    const res = await fetch(ORCHESTRATOR_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
-    const response = await callAI(input, model, memoryContext);
+    const response = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error((response as { error?: string }).error || `Orchestrator request failed (${res.status})`);
+    }
+
+    if (
+      response &&
+      typeof response === 'object' &&
+      'success' in (response as Record<string, unknown>) &&
+      (response as { success?: boolean }).success === false
+    ) {
+      throw new Error((response as { error?: string }).error || 'Orchestrator response failed');
+    }
+
     const latency = performance.now() - startedAt;
 
     return {
@@ -228,7 +73,7 @@ export async function runAIRequest<T = unknown>(input: AIOrchestratorInput): Pro
       meta: {
         model_used: model,
         latency,
-        type: input.type,
+        type: payload.type,
       },
     };
   } catch (error) {
@@ -240,20 +85,48 @@ export async function runAIRequest<T = unknown>(input: AIOrchestratorInput): Pro
       meta: {
         model_used: model,
         latency,
-        type: input.type,
+        type: payload.type,
       },
     };
   }
+}
+
+export async function runAIRequest<T = unknown>(input: AIOrchestratorInput): Promise<AIOrchestratorOutput<T>> {
+  const payload: AIRunInput = {
+    type: input.type,
+    config: input.config,
+    input: {
+      message: input.message,
+      prompt: input.prompt,
+      userId: input.userId,
+      conversationId: input.conversationId,
+      history: input.history,
+      mediaUrl: input.mediaUrl,
+      mediaType: input.mediaType,
+      options: input.options,
+    },
+  };
+
+  return runAI<T>(payload);
 }
 
 export async function requestRealtimeToken(
   model: string,
   voice: string,
 ): Promise<RealtimeTokenResponse> {
-  const result = await runAIRequest<{ data?: { client_secret?: string; realtime_endpoint?: string } }>({
+  const result = await runAI<{ data?: { client_secret?: string; realtime_endpoint?: string } }>({
     type: 'voice',
-    message: '',
-    userId: 'default-user',
+    input: {
+      message: '',
+      userId: 'default-user',
+      options: {
+        backendType: 'realtime_token',
+        data: {
+          model,
+          voice,
+        },
+      },
+    },
     config: {
       model,
       tone: 'direct',
@@ -265,13 +138,6 @@ export async function requestRealtimeToken(
         voice: true,
         image: true,
         video: true,
-      },
-    },
-    options: {
-      backendType: 'realtime_token',
-      data: {
-        model,
-        voice,
       },
     },
   });
