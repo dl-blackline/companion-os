@@ -3,7 +3,7 @@
  * Verifies live Supabase schema/security contracts against runtime assumptions.
  *
  * Requires:
- * 1) Supabase project linked (`supabase link --project-ref <ref>`)
+ * 1) Either SUPABASE_DB_URL env var or linked Supabase project
  * 2) Supabase CLI auth available in current environment
  */
 
@@ -11,6 +11,18 @@ import { execSync } from "node:child_process";
 
 function runCommand(command) {
   return execSync(command, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+}
+
+function getQueryMode() {
+  const rawDbUrl = process.env.SUPABASE_DB_URL?.trim();
+  if (!rawDbUrl) return { mode: "linked", dbUrlArg: "" };
+
+  const looksEncoded =
+    rawDbUrl.startsWith("postgres%3A") ||
+    rawDbUrl.startsWith("postgresql%3A");
+
+  const encoded = looksEncoded ? rawDbUrl : encodeURIComponent(rawDbUrl);
+  return { mode: "db-url", dbUrlArg: `--db-url ${encoded}` };
 }
 
 function parseJsonFromCliOutput(output) {
@@ -36,7 +48,9 @@ function parseJsonFromCliOutput(output) {
 
 function query(sql) {
   const escapedSql = sql.replace(/"/g, '\\"').replace(/\n/g, " ");
-  const cmd = `npx -y supabase db query --linked --output json "${escapedSql}" 2>&1`;
+  const { mode, dbUrlArg } = getQueryMode();
+  const modeArg = mode === "db-url" ? dbUrlArg : "--linked";
+  const cmd = `npx -y supabase db query ${modeArg} --output json "${escapedSql}" 2>&1`;
   const raw = runCommand(cmd);
   return parseJsonFromCliOutput(raw);
 }
