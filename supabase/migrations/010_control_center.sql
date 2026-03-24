@@ -19,20 +19,31 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role);
 
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 
+-- SECURITY DEFINER function checks admin status without triggering RLS on user_roles,
+-- preventing infinite recursion (PostgreSQL error 42P17).
+CREATE OR REPLACE FUNCTION public.is_admin(uid uuid DEFAULT auth.uid())
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = uid AND role = 'admin'
+  );
+$$;
+
 -- Admins can view/manage all roles; users can see their own
 CREATE POLICY "user_roles_select" ON user_roles
   FOR SELECT USING (
     user_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    OR is_admin(auth.uid())
   );
 
 CREATE POLICY "user_roles_admin_write" ON user_roles
   FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    is_admin(auth.uid())
   );
 
 -- ─── User Entitlements ───────────────────────────────────────
@@ -61,9 +72,7 @@ CREATE POLICY "entitlements_self_select" ON user_entitlements
 
 CREATE POLICY "entitlements_admin_all" ON user_entitlements
   FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    is_admin(auth.uid())
   );
 
 -- ─── Feature Flags ───────────────────────────────────────────
@@ -91,17 +100,13 @@ ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "feature_flags_read_public" ON feature_flags
   FOR SELECT USING (
     admin_only = false
-    OR EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    OR is_admin(auth.uid())
   );
 
 -- Only admins can write
 CREATE POLICY "feature_flags_admin_write" ON feature_flags
   FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    is_admin(auth.uid())
   );
 
 -- Seed default feature flags
@@ -143,9 +148,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 -- Only admins can view audit logs
 CREATE POLICY "audit_logs_admin_read" ON audit_logs
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    is_admin(auth.uid())
   );
 
 -- Insert is done server-side (service role), not by clients
@@ -183,9 +186,7 @@ CREATE POLICY "tickets_self_select" ON support_tickets
 -- Admins can see/write all tickets
 CREATE POLICY "tickets_admin_all" ON support_tickets
   FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    is_admin(auth.uid())
   );
 
 -- ─── User Preferences ────────────────────────────────────────
@@ -207,9 +208,7 @@ CREATE POLICY "prefs_self" ON user_preferences
 
 CREATE POLICY "prefs_admin_read" ON user_preferences
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
+    is_admin(auth.uid())
   );
 
 -- ─── Updated-at triggers ─────────────────────────────────────
