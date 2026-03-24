@@ -342,7 +342,7 @@ describe('Password reset', () => {
     });
 
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith('reset@test.com', {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     expect(resetResult?.error).toBeNull();
   });

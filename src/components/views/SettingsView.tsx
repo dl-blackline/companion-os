@@ -92,11 +92,6 @@ const CITATION_OPTIONS = [
   { value: 'never', label: 'Never' },
 ];
 
-const DEFAULT_MODELS = [
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-];
-
 function SettingRow({
   icon: Icon,
   label,
@@ -285,41 +280,30 @@ export function SettingsView() {
     });
   }, []);
 
-  const primary = import.meta.env.VITE_AI_PRIMARY_MODEL;
-  const fallback = import.meta.env.VITE_AI_FALLBACK_MODEL;
-
-  const envModels = useMemo(() => {
-    const envModels = [primary, fallback]
-      .filter((m): m is string => Boolean(m))
-      .map((m) => ({ id: m, name: m }));
-
-    const merged = envModels.length > 0 ? envModels : DEFAULT_MODELS;
-    return merged.length > 0 ? merged : DEFAULT_MODELS;
-  }, [primary, fallback]);
-
-  const finalModels = envModels.length ? envModels : DEFAULT_MODELS;
-
-  const chatModelOptions = useMemo(() => {
-    const registryChat = (modelRegistry?.chat ?? []).map((m) => ({ id: m.id, name: m.name }));
-    const byId = new Map<string, { id: string; name: string }>();
-
-    for (const model of [...finalModels, ...registryChat]) {
-      if (!byId.has(model.id)) byId.set(model.id, model);
+  // Full chat model list from the backend registry (already includes any env overrides).
+  const chatModelOptions = useMemo((): { id: string; name: string }[] => {
+    const list = (modelRegistry?.chat ?? []).map((m) => ({ id: m.id, name: m.name }));
+    // Always ensure sensible defaults are present even if registry is empty
+    if (list.length === 0) {
+      return [
+        { id: 'gpt-4.1', name: 'GPT-4.1' },
+        { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+        { id: 'gpt-4o', name: 'GPT-4o' },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+      ];
     }
-
-    const merged = Array.from(byId.values());
-    return merged.length > 0 ? merged : DEFAULT_MODELS;
-  }, [modelRegistry?.chat, finalModels]);
+    return list;
+  }, [modelRegistry?.chat]);
 
   const selectedChatModel =
     chatModelOptions.some((m) => m.id === settings.modelSettings.defaultModel)
       ? settings.modelSettings.defaultModel
-      : primary || chatModelOptions[0].id;
+      : chatModelOptions[0]?.id ?? 'gpt-4.1';
 
   const selectedFallbackChatModel =
     chatModelOptions.some((m) => m.id === settings.modelSettings.fallbackModel)
       ? settings.modelSettings.fallbackModel
-      : fallback || chatModelOptions[0].id;
+      : chatModelOptions[1]?.id ?? chatModelOptions[0]?.id ?? 'gpt-4.1-mini';
 
   const handleVoiceModeChange = (mode: 'continuous' | 'push-to-talk') => {
     savePrefs({ voice_mode: mode });

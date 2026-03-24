@@ -1,5 +1,6 @@
-import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
+import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 
 // PostgREST error code for "row not found" (single-row select returned 0 rows)
 const PGRST_NOT_FOUND = "PGRST116";
@@ -37,7 +38,12 @@ export async function handler(event) {
     }
 
     if (event.httpMethod === "POST") {
-      const body = JSON.parse(event.body || "{}");
+      let body;
+      try {
+        body = JSON.parse(event.body || "{}");
+      } catch {
+        return fail("Invalid JSON body", "ERR_VALIDATION", 400);
+      }
       const { prefs } = body;
 
       if (!prefs || typeof prefs !== "object") {

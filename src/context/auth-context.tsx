@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: { message: "Please enter a valid email address." } as AuthError }
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/reset-password`,
     })
     return { error }
   }

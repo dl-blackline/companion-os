@@ -462,11 +462,12 @@ describe('refineMedia', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toContain('/refine-media');
+    expect(url).toContain('/ai-orchestrator');
     const body = JSON.parse(options.body);
-    expect(body.media_url).toBe('https://example.com/original.jpg');
-    expect(body.media_type).toBe('image');
-    expect(body.action).toBe('enhance');
+    expect(body.type).toBe('refine_media');
+    expect(body.input.media_url).toBe('https://example.com/original.jpg');
+    expect(body.input.media_type).toBe('image');
+    expect(body.input.action).toBe('enhance');
   });
 
   it('returns success on ok response', async () => {

@@ -57,15 +57,14 @@ export async function refineMedia(
         provider?: string;
       };
     }>({
-      type: request.mediaType,
+      type: 'refine_media',
       input: {
-        userId: 'default-user',
-        prompt: request.prompt,
-        options: {
-          action: request.action,
-          media_url: request.mediaUrl,
-          ...(request.options ?? {}),
-        },
+        media_url: request.mediaUrl,
+        media_type: request.mediaType,
+        action: request.action,
+        ...(request.prompt ? { prompt: request.prompt } : {}),
+        ...(request.model ? { model: request.model } : {}),
+        ...(request.options ? { options: request.options } : {}),
       },
       config: {
         ...DEFAULT_AI_CONTROL_CONFIG,

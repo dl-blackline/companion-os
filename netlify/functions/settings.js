@@ -2,6 +2,14 @@ import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { log } from "../../lib/_log.js";
 
+async function getUserFromToken(token) {
+  if (!token || !supabase) return null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  return user || null;
+}
+
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return preflight();
@@ -11,19 +19,20 @@ export async function handler(event) {
     return fail("Server configuration error: missing Supabase credentials", "ERR_CONFIG", 500);
   }
 
+  const authHeader = event.headers?.authorization || event.headers?.Authorization;
+  const token = authHeader?.replace("Bearer ", "");
+  const user = await getUserFromToken(token);
+
+  if (!user) {
+    return fail("Unauthorized", "ERR_AUTH", 401);
+  }
+
   try {
     if (event.httpMethod === "GET") {
-      const user_id =
-        event.queryStringParameters && event.queryStringParameters.user_id;
-
-      if (!user_id) {
-        return fail("Missing required parameter: user_id", "ERR_VALIDATION", 400);
-      }
-
       const { data, error } = await supabase
         .from("personality_profiles")
         .select("*")
-        .eq("user_id", user_id)
+        .eq("user_id", user.id)
         .single();
 
       if (error && error.code !== "PGRST116") {
@@ -35,16 +44,23 @@ export async function handler(event) {
     }
 
     if (event.httpMethod === "POST") {
-      const { user_id, settings } = JSON.parse(event.body);
+      let body;
+      try {
+        body = JSON.parse(event.body || "{}");
+      } catch {
+        return fail("Invalid JSON body", "ERR_VALIDATION", 400);
+      }
 
-      if (!user_id || !settings) {
-        return fail("Missing required fields: user_id, settings", "ERR_VALIDATION", 400);
+      const { settings } = body;
+
+      if (!settings || typeof settings !== "object") {
+        return fail("Missing required field: settings", "ERR_VALIDATION", 400);
       }
 
       const { data, error } = await supabase
         .from("personality_profiles")
         .upsert(
-          { user_id, ...settings, updated_at: new Date().toISOString() },
+          { user_id: user.id, ...settings, updated_at: new Date().toISOString() },
           { onConflict: "user_id" }
         )
         .select()

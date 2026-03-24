@@ -79,7 +79,18 @@ async function saveMessage(
 /* -------------------------------------------------------------------------- */
 
 async function handleChat(data) {
-  const { conversation_id, user_id, message, model, stream, media_url, media_type } = data;
+  const {
+    conversation_id,
+    user_id,
+    message,
+    model,
+    stream,
+    media_url,
+    media_type,
+    // conversation_history may be provided by the frontend (from localStorage)
+    // so the backend can use real context even when Supabase history is sparse.
+    conversation_history,
+  } = data;
 
   if (!conversation_id || !user_id || !message) {
     return fail(
@@ -88,6 +99,15 @@ async function handleChat(data) {
       400,
     );
   }
+
+  // Resolver: if the frontend supplied history, prefer that (avoids cold-start
+  // context gaps when the DB hasn't been seeded yet).  Fall back to Supabase.
+  const resolveHistory = async (convId) => {
+    if (Array.isArray(conversation_history) && conversation_history.length > 0) {
+      return conversation_history.slice(-10);
+    }
+    return getRecentConversation(supabase, convId);
+  };
 
   try {
     /* -------------------- VISION ANALYSIS (if media attached) ------------------- */
@@ -98,7 +118,7 @@ async function handleChat(data) {
     if (media_url) {
       try {
         // Load recent conversation history so the vision model has context
-        recentHistory = await getRecentConversation(supabase, conversation_id);
+        recentHistory = await resolveHistory(conversation_id);
 
         const visionSystemPrompt =
           "You are an intelligent AI companion with the ability to analyze images and videos. " +
@@ -170,8 +190,7 @@ async function handleChat(data) {
       user_id,
       conversation_id,
       model,
-      getRecentConversation: (convId) =>
-        getRecentConversation(supabase, convId),
+      getRecentConversation: resolveHistory,
     });
 
     if (!result || !result.response) {
@@ -807,6 +826,34 @@ async function handleKnowledge(data) {
 /*                                   GATEWAY                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Normalize a raw payload object — accept both snake_case (backend-native)
+ * and camelCase (frontend convention) field names for the chat handler.
+ * This avoids a hard dependency on which naming convention callers use.
+ */
+function normalizePayload(p) {
+  if (!p || typeof p !== "object") return p;
+  return {
+    ...p,
+    conversation_id: p.conversation_id ?? p.conversationId,
+    user_id: p.user_id ?? p.userId,
+    media_url: p.media_url ?? p.mediaUrl,
+    media_type: p.media_type ?? p.mediaType,
+  };
+}
+
+async function getUserFromEventAuth(event) {
+  const authHeader = event.headers?.authorization || event.headers?.Authorization;
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token || !supabase) return null;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+
+  return user || null;
+}
+
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return preflight();
@@ -825,9 +872,18 @@ export async function handler(event) {
 
     log.info("[ai-orchestrator]", "gateway request:", { type: body.type });
 
-    const { type, data, action } = body;
+    // Accept both 'data' (backend-native) and 'input' (frontend convention).
+    // Also hoist 'config.model' into the payload so callers that send the model
+    // inside a config block don't need to duplicate it in the data object.
+    const { type, data, input, action, config } = body;
+    const rawPayload = data || input || {};
+    const modelFromConfig = config?.model;
+    const payload = normalizePayload({
+      ...rawPayload,
+      ...(modelFromConfig && !rawPayload.model ? { model: modelFromConfig } : {}),
+    });
 
-    const payload = data || body;
+    const authUser = await getUserFromEventAuth(event).catch(() => null);
 
     if (action && typeof payload === "object") {
       payload.action = payload.action || action;
@@ -835,6 +891,12 @@ export async function handler(event) {
 
     switch (type) {
       case "chat":
+        if (!authUser) {
+          return fail("Unauthorized", "ERR_AUTH", 401);
+        }
+        if (payload && typeof payload === "object") {
+          payload.user_id = authUser.id;
+        }
         return await handleChat(payload);
 
       case "memory":
@@ -873,6 +935,9 @@ export async function handler(event) {
 
       // Streaming chat — delegates to handleChat with stream flag forced on
       case "stream":
+        if (authUser && payload && typeof payload === "object") {
+          payload.user_id = authUser.id;
+        }
         return await handleChat({ ...payload, stream: true });
 
       // Knowledge analysis (structured AI calls with messages array)

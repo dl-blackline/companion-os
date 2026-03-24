@@ -1,6 +1,11 @@
 /**
  * Local model cache — provides instant reads/writes for model preferences
- * and caches the available model list built from local defaults/env.
+ * and caches the available model list fetched from the backend registry.
+ *
+ * On first access the registry is loaded from /.netlify/functions/models and
+ * stored in localStorage so subsequent page loads are instant.  Env-var
+ * overrides (VITE_AI_PRIMARY_MODEL / VITE_AI_FALLBACK_MODEL) are merged in
+ * so operators can highlight preferred models without changing the registry.
  */
 
 // ---------------------------------------------------------------------------
@@ -41,58 +46,57 @@ export function setModelSetting(type, value) {
 }
 
 // ---------------------------------------------------------------------------
-// Available models cache (built locally from env/defaults)
+// Available models cache (fetched from backend, with env-override merge)
 // ---------------------------------------------------------------------------
 
 const AVAILABLE_MODELS_KEY = 'available_models';
 
-const DEFAULT_CHAT_MODELS = [
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
-];
-
-const DEFAULT_MODEL_REGISTRY = {
-  chat: DEFAULT_CHAT_MODELS,
+// Minimal built-in fallback — shown only when the backend is unreachable.
+const FALLBACK_MODEL_REGISTRY = {
+  chat: [
+    { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'openai' },
+    { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'openai' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
+  ],
   image: [{ id: 'openai-image', name: 'OpenAI Image', provider: 'openai' }],
   video: [{ id: 'sora', name: 'Sora', provider: 'openai' }],
   music: [{ id: 'suno', name: 'Suno', provider: 'suno' }],
   voice: [{ id: 'elevenlabs', name: 'ElevenLabs', provider: 'elevenlabs' }],
 };
 
-function toLabel(modelId) {
-  return modelId
-    .split('-')
-    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
-    .join('-');
-}
-
-function buildChatModelsFromEnv() {
+/**
+ * Merge env-var primary/fallback models into the chat list so operator
+ * overrides are always visible at the top of the selector.
+ */
+function mergeEnvModels(registry) {
   const primary = import.meta.env.VITE_AI_PRIMARY_MODEL;
   const fallback = import.meta.env.VITE_AI_FALLBACK_MODEL;
-  const ids = [primary, fallback].filter(Boolean);
-  const uniqueIds = [...new Set(ids)];
-  if (uniqueIds.length === 0) return DEFAULT_CHAT_MODELS;
-  return uniqueIds.map((id) => ({
-    id,
-    name: toLabel(id),
-    provider: 'env',
-  }));
-}
+  const envIds = [primary, fallback].filter(Boolean);
+  if (envIds.length === 0) return registry;
 
-function buildLocalModelRegistry() {
+  const existingIds = new Set((registry.chat || []).map((m) => m.id));
+  const envEntries = envIds
+    .filter((id) => !existingIds.has(id))
+    .map((id) => ({ id, name: id, provider: 'env' }));
+
   return {
-    ...DEFAULT_MODEL_REGISTRY,
-    chat: buildChatModelsFromEnv(),
+    ...registry,
+    chat: [...envEntries, ...(registry.chat || [])],
   };
 }
 
 export function getCachedModels() {
   try {
     const raw = localStorage.getItem(AVAILABLE_MODELS_KEY);
-    return raw ? JSON.parse(raw) : buildLocalModelRegistry();
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return mergeEnvModels(parsed);
+    }
   } catch {
-    return buildLocalModelRegistry();
+    // ignore parse errors
   }
+  return mergeEnvModels(FALLBACK_MODEL_REGISTRY);
 }
 
 export function setCachedModels(models) {
@@ -104,12 +108,26 @@ export function setCachedModels(models) {
 }
 
 /**
- * Build the model registry from env/defaults and cache it locally.
+ * Fetch the full model registry from the backend and cache it locally.
+ * Falls back to env-based defaults if the fetch fails.
  */
 export async function preloadModels() {
-  const models = buildLocalModelRegistry();
-  setCachedModels(models);
-  return models;
+  try {
+    const res = await fetch('/.netlify/functions/models', { method: 'GET' });
+    if (res.ok) {
+      const json = await res.json();
+      // Backend wraps in { success, data } — unwrap if needed
+      const registry = json.data ?? json;
+      if (registry && typeof registry === 'object' && registry.chat) {
+        setCachedModels(registry);
+        return mergeEnvModels(registry);
+      }
+    }
+  } catch {
+    // Network unavailable (dev with no local functions, cold start, etc.)
+  }
+  // Fall back to cached or built-in defaults
+  return getCachedModels();
 }
 
 // ---------------------------------------------------------------------------

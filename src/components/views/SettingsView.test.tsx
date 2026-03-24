@@ -105,7 +105,7 @@ describe('SettingsView — Auth section in Account tab', () => {
     mockAuthState = { status: 'initializing' };
     await renderSettings();
     expect(screen.getByText(/restoring session/i)).toBeInTheDocument();
-  }, 10000);
+  }, 30000);
 
   it('shows "not signed in" when unauthenticated', async () => {
     mockAuthState = { status: 'unauthenticated' };

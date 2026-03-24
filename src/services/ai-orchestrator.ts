@@ -1,7 +1,14 @@
 import type { MediaType } from '@/types';
 import type { AIControlConfig } from '@/types/ai-control';
+import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 
-export type OrchestratorRequestType = 'chat' | 'image' | 'video' | 'voice' | 'knowledge';
+export type OrchestratorRequestType =
+  | 'chat'
+  | 'image'
+  | 'video'
+  | 'voice'
+  | 'knowledge'
+  | 'refine_media';
 
 const ORCHESTRATOR_URL = '/.netlify/functions/ai-orchestrator';
 
@@ -43,10 +50,24 @@ export async function runAI<T = unknown>(payload: AIRunInput): Promise<AIOrchest
   const startedAt = performance.now();
   const model = payload.config.model || 'gpt-4o';
 
+  // Include the session access token so the backend can opportunistically
+  // verify the caller's identity (non-blocking — requests still work without).
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (supabaseConfigured) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+    } catch {
+      // If session fetch fails, proceed without auth header
+    }
+  }
+
   try {
     const res = await fetch(ORCHESTRATOR_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     });
 
