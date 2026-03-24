@@ -80,11 +80,22 @@ Backend behavior:
 - Keep SECRETS_SCAN_OMIT_KEYS aligned with public VITE_* keys and SUPABASE_ANON_KEY if that key is intentionally embedded as public anon value.
 - Ensure Supabase redirect URL allow-list includes your production /reset-password URL.
 
+## Supabase Contract Verification
+- Run verification locally:
+   - npm run verify:supabase
+- CI workflow:
+   - .github/workflows/supabase-contract-verify.yml
+   - Runs on pull requests to main, pushes to main, and manual dispatch.
+- Required GitHub Actions secret:
+   - SUPABASE_DB_URL
+   - Value should be a direct Postgres connection string for the target Supabase project.
+
 ## Operational Checklist (Pre-Deploy)
 1. Verify environment variables are set with correct key types.
 2. Run npm run test and npm run build.
-3. Confirm migration 016 is applied in target Supabase project.
-4. Smoke test:
+3. Run npm run verify:supabase.
+4. Confirm migration 016 is applied in target Supabase project.
+5. Smoke test:
    - signup/login/logout
    - forgot password + reset-password flow
    - chat send/receive with persisted history

@@ -86,6 +86,19 @@ function main() {
   const missingFns = requiredFunctions.filter((name) => !fnSet.has(name));
   assertCheck(missingFns.length === 0, `Missing functions: ${missingFns.join(", ")}`, failures);
 
+  // 2b) Required extensions exist.
+  const requiredExtensions = ["vector", "pgcrypto", "pg_trgm"];
+  const extensionRows = query(
+    "SELECT extname FROM pg_extension WHERE extname = ANY(ARRAY['vector','pgcrypto','pg_trgm']) ORDER BY extname"
+  );
+  const extensionSet = new Set(extensionRows.map((r) => r.extname));
+  const missingExtensions = requiredExtensions.filter((name) => !extensionSet.has(name));
+  assertCheck(
+    missingExtensions.length === 0,
+    `Missing extensions: ${missingExtensions.join(", ")}`,
+    failures
+  );
+
   // 3) Storage bucket contract.
   const bucketRows = query(
     "SELECT id, public, file_size_limit FROM storage.buckets WHERE id = 'media_uploads'"
@@ -100,6 +113,20 @@ function main() {
       failures
     );
   }
+
+  // 3b) Storage object policies for media_uploads should cover CRUD paths.
+  const storagePolicyRows = query(
+    "SELECT policyname, cmd FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND (qual ILIKE '%media_uploads%' OR with_check ILIKE '%media_uploads%')"
+  );
+  const storageCmds = new Set(storagePolicyRows.map((r) => r.cmd));
+  const missingStorageCmds = ["SELECT", "INSERT", "UPDATE", "DELETE"].filter(
+    (cmd) => !storageCmds.has(cmd)
+  );
+  assertCheck(
+    missingStorageCmds.length === 0,
+    `Missing media_uploads storage policy commands: ${missingStorageCmds.join(", ")}`,
+    failures
+  );
 
   // 4) Runtime compatibility columns introduced in migration 019.
   const runtimeColumns = query(
@@ -145,6 +172,18 @@ function main() {
     failures
   );
 
+  // 6) Legacy policy names should be gone after cleanup migration.
+  const legacyPolicyRows = query(
+    "SELECT tablename, policyname FROM pg_policies WHERE schemaname='public' AND policyname ILIKE 'users can access %' ORDER BY tablename, policyname"
+  );
+  assertCheck(
+    legacyPolicyRows.length === 0,
+    `Legacy policies still present: ${legacyPolicyRows
+      .map((r) => `${r.tablename}:${r.policyname}`)
+      .join(", ")}`,
+    failures
+  );
+
   if (failures.length > 0) {
     console.error("Supabase contract verification FAILED:\n");
     for (const failure of failures) {
@@ -156,8 +195,9 @@ function main() {
   console.log("Supabase contract verification passed.");
   console.log(`Checked tables: ${rlsRows.length}`);
   console.log(`Checked functions: ${requiredFunctions.length}`);
+  console.log(`Checked extensions: ${requiredExtensions.length}`);
   console.log("Checked storage bucket: media_uploads");
-  console.log("Checked runtime compatibility columns and policy deduplication");
+  console.log("Checked storage object policies, runtime compatibility columns, and policy hygiene");
 }
 
 try {
