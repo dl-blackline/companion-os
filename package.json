@@ -10,6 +10,7 @@
         "lint": "eslint .",
         "test": "vitest run",
         "test:watch": "vitest",
+        "verify:supabase": "node scripts/verify-supabase-contract.mjs",
         "optimize": "vite optimize",
         "preview": "vite preview"
     },
