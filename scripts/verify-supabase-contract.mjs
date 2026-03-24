@@ -62,10 +62,39 @@ function assertCheck(condition, message, failures) {
 function main() {
   const failures = [];
 
+  // Tables intentionally kept as service-role-only (RLS enabled + no policies).
+  const allowedNoPolicyTables = new Set([
+    "active_projects",
+    "agent_activity",
+    "background_jobs",
+    "job_queue",
+  ]);
+
   // 1) RLS enabled on all public tables.
   const rlsRows = query("SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public' ORDER BY tablename");
   const rlsOff = rlsRows.filter((r) => !r.rowsecurity);
   assertCheck(rlsOff.length === 0, `RLS disabled on tables: ${rlsOff.map((r) => r.tablename).join(", ")}`, failures);
+
+  // 1b) No-policy tables should be exactly the allowed service-role-only set.
+  const noPolicyRows = query(
+    "SELECT t.tablename FROM pg_tables t LEFT JOIN pg_policies p ON p.schemaname='public' AND p.tablename=t.tablename WHERE t.schemaname='public' GROUP BY t.tablename HAVING count(p.policyname)=0 ORDER BY t.tablename"
+  );
+  const noPolicyTables = noPolicyRows.map((r) => r.tablename);
+  const unexpectedNoPolicy = noPolicyTables.filter((name) => !allowedNoPolicyTables.has(name));
+  const missingAllowedNoPolicy = Array.from(allowedNoPolicyTables).filter(
+    (name) => !noPolicyTables.includes(name)
+  );
+
+  assertCheck(
+    unexpectedNoPolicy.length === 0,
+    `Unexpected no-policy tables: ${unexpectedNoPolicy.join(", ")}`,
+    failures
+  );
+  assertCheck(
+    missingAllowedNoPolicy.length === 0,
+    `Expected service-role-only tables changed/missing: ${missingAllowedNoPolicy.join(", ")}`,
+    failures
+  );
 
   // 2) Required functions exist.
   const requiredFunctions = [
@@ -85,6 +114,19 @@ function main() {
   const fnSet = new Set(functionRows.map((r) => r.routine_name));
   const missingFns = requiredFunctions.filter((name) => !fnSet.has(name));
   assertCheck(missingFns.length === 0, `Missing functions: ${missingFns.join(", ")}`, failures);
+
+  // 2c) SECURITY DEFINER functions must use explicit search_path.
+  const secDefRows = query(
+    "SELECT proname, pg_get_functiondef(p.oid) AS definition FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname='public' AND p.prosecdef = true ORDER BY proname"
+  );
+  const secDefWithoutSearchPath = secDefRows
+    .filter((r) => !/SET\s+search_path/i.test(r.definition))
+    .map((r) => r.proname);
+  assertCheck(
+    secDefWithoutSearchPath.length === 0,
+    `SECURITY DEFINER functions missing search_path: ${secDefWithoutSearchPath.join(", ")}`,
+    failures
+  );
 
   // 2b) Required extensions exist.
   const requiredExtensions = ["vector", "pgcrypto", "pg_trgm"];
@@ -196,6 +238,7 @@ function main() {
   console.log(`Checked tables: ${rlsRows.length}`);
   console.log(`Checked functions: ${requiredFunctions.length}`);
   console.log(`Checked extensions: ${requiredExtensions.length}`);
+  console.log(`Checked service-role-only no-policy tables: ${allowedNoPolicyTables.size}`);
   console.log("Checked storage bucket: media_uploads");
   console.log("Checked storage object policies, runtime compatibility columns, and policy hygiene");
 }
