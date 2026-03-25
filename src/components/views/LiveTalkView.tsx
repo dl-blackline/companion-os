@@ -883,10 +883,7 @@ Prefer using tools over just talking about doing something. If the user asks for
           <ArrowLeft size={16} />
           Back
         </Button>
-        <span
-          className="text-sm font-semibold tracking-widest uppercase text-muted-foreground"
-          style={{ fontFamily: 'var(--font-space)' }}
-        >
+        <span className="font-space text-sm font-semibold tracking-widest uppercase text-muted-foreground">
           Live Talk
         </span>
         <div className="flex items-center gap-2">
@@ -959,8 +956,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'oklch(0.60 0.22 310)' }}
+                      className="live-talk-dot-thinking w-2 h-2 rounded-full"
                       animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
                       transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.22 }}
                     />
@@ -980,8 +976,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'oklch(0.65 0.22 60)' }}
+                      className="live-talk-dot-image w-2 h-2 rounded-full"
                       animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
                       transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.20 }}
                     />
@@ -1001,8 +996,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'oklch(0.60 0.24 180)' }}
+                      className="live-talk-dot-video w-2 h-2 rounded-full"
                       animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
                       transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.22 }}
                     />

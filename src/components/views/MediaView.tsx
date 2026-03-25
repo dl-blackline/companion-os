@@ -142,13 +142,11 @@ function GenerationCard({
         className="group relative rounded-2xl overflow-hidden border border-border bg-card/60 backdrop-blur-sm"
       >
         {/* Visual placeholder / result area */}
-        <div className="aspect-[4/3] flex items-center justify-center relative overflow-hidden"
-          style={{
-            background:
-              item.status === 'complete'
-                ? 'radial-gradient(circle at 40% 35%, oklch(0.30 0.10 285) 0%, oklch(0.20 0.05 270) 100%)'
-                : 'oklch(0.20 0.02 260)',
-          }}
+        <div
+          className={cn(
+            'aspect-[4/3] flex items-center justify-center relative overflow-hidden',
+            item.status === 'complete' ? 'media-stage-complete' : 'media-stage-idle'
+          )}
         >
           {item.status === 'generating' && (
             <div className="flex flex-col items-center gap-3">
@@ -179,10 +177,7 @@ function GenerationCard({
           )}
           {item.status === 'complete' && !item.resultUrl && (
             <div className="flex flex-col items-center gap-2 p-4 text-center">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ background: 'oklch(0.40 0.14 285 / 0.40)' }}
-              >
+              <div className="media-empty-art w-12 h-12 rounded-full flex items-center justify-center">
                 {item.type === 'video' ? (
                   <FilmSlate size={20} weight="fill" className="text-[oklch(0.70_0.18_65)]" />
                 ) : (
@@ -267,7 +262,7 @@ function GenerationCard({
               <p className="text-xs font-medium text-foreground line-clamp-1 flex-1">{item.prompt}</p>
               <button
                 onClick={handleCopyPrompt}
-                className="shrink-0 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
+                className="shrink-0 opacity-0 group-hover:opacity-60 hover:opacity-100! transition-opacity"
                 title="Copy prompt"
               >
                 <Copy size={11} className="text-muted-foreground" />
@@ -643,21 +638,12 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
   return (
     <div className="relative flex flex-col h-full bg-background overflow-hidden">
       {/* Ambient background */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 50% at 50% 20%, oklch(0.30 0.10 300 / 0.30) 0%, transparent 70%)',
-        }}
-      />
+      <div className="media-ambient-glow pointer-events-none absolute inset-0" />
 
       {/* Header */}
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 md:px-6 pt-5 pb-4 border-b border-border/50">
         <div>
-          <h2
-            className="text-lg font-bold tracking-tight"
-            style={{ fontFamily: 'var(--font-space)' }}
-          >
+          <h2 className="font-space text-lg font-bold tracking-tight">
             Create
           </h2>
           <p className="text-xs text-muted-foreground">Photo & video generation · Upload & refine</p>
@@ -870,8 +856,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <Button
                 onClick={handleGenerate}
                 disabled={!prompt.trim() || isGenerating || !canGenerateCurrentType}
-                className="w-full gap-2 rounded-xl h-11 font-semibold"
-                style={{ fontFamily: 'var(--font-space)' }}
+                className="font-space w-full gap-2 rounded-xl h-11 font-semibold"
               >
                 <Sparkle size={16} weight="fill" />
                 {isGenerating
@@ -1022,10 +1007,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
         <div className="flex-1 min-w-0">
           {gallery.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{ background: 'oklch(0.28 0.08 285 / 0.35)' }}
-              >
+              <div className="media-gallery-empty w-16 h-16 rounded-2xl flex items-center justify-center">
                 {activeTab === 'photo' ? (
                   <Images size={28} weight="fill" className="text-muted-foreground" />
                 ) : (

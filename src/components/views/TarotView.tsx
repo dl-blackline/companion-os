@@ -30,12 +30,8 @@ export function TarotView() {
           >
             {/* Ambient glow */}
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="tarot-ambient-glow absolute inset-0 pointer-events-none"
               aria-hidden="true"
-              style={{
-                background:
-                  'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)',
-              }}
             />
 
             {/* Symbol */}
@@ -46,10 +42,7 @@ export function TarotView() {
               className="relative"
             >
               <div className="text-6xl select-none" aria-hidden="true">✦</div>
-              <div
-                className="absolute inset-0 blur-2xl opacity-30"
-                style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.6) 0%, transparent 70%)' }}
-              />
+              <div className="tarot-symbol-glow absolute inset-0 blur-2xl opacity-30" />
             </motion.div>
 
             {/* Heading */}
@@ -106,7 +99,7 @@ export function TarotView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}
               onClick={store.startIntake}
-              className="px-10 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-neutral-950"
+              className="px-10 py-4 rounded-full bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-neutral-950"
               aria-label="Begin your tarot reading"
             >
               Begin Your Reading

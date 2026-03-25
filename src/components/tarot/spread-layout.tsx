@@ -16,7 +16,7 @@ export function SpreadLayout({ cards, revealedCount, onCardReveal }: SpreadLayou
     >
       {/* Spread connector line (decorative) */}
       <div className="relative w-full max-w-xs hidden sm:flex items-center justify-center">
-        <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
+        <div className="absolute inset-x-0 top-1/2 h-px bg-linear-to-r from-transparent via-amber-400/20 to-transparent" />
       </div>
 
       {/* Cards row */}

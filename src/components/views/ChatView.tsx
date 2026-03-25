@@ -384,7 +384,7 @@ export function ChatView() {
                     e.stopPropagation();
                     handleDeleteConversation(conv.id);
                   }}
-                  className="absolute top-2 right-8 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                  className="absolute top-2 right-8 opacity-0 group-hover:opacity-60 hover:opacity-100! transition-opacity p-1 rounded hover:bg-destructive/10 hover:text-destructive"
                   title="Delete conversation"
                 >
                   <Trash size={13} />
@@ -555,9 +555,9 @@ export function ChatView() {
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}<span className="inline-block w-0.5 h-4 bg-primary/80 ml-0.5 animate-pulse align-text-bottom" aria-hidden="true" /><span className="sr-only"> Generating response…</span></p>
                     ) : (
                       <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce anim-delay-150" />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce anim-delay-300" />
                       </div>
                     )}
                   </div>

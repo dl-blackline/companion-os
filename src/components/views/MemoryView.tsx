@@ -1057,12 +1057,18 @@ export function MemoryView() {
                           Images up to 10 MB · Videos up to 100 MB
                         </p>
                       </div>
+                      <label htmlFor="memory-media-upload" className="sr-only">
+                        Upload image or video
+                      </label>
                       <input
+                        id="memory-media-upload"
                         ref={fileInputRef}
                         type="file"
                         accept={[...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_VIDEO_TYPES].join(',')}
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaFile(f); }}
                         className="hidden"
+                        title="Upload image or video"
+                        aria-label="Upload image or video"
                       />
                     </div>
                   )}
@@ -1087,6 +1093,8 @@ export function MemoryView() {
                         <button
                           onClick={clearMediaUpload}
                           className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 transition-colors"
+                          title="Remove media preview"
+                          aria-label="Remove media preview"
                         >
                           <X size={14} />
                         </button>

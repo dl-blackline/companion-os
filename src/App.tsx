@@ -151,7 +151,7 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] w-screen overflow-hidden bg-background text-foreground">
+    <div className="flex min-h-dvh w-screen overflow-hidden bg-background text-foreground">
       {/* Mobile header with hamburger */}
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[oklch(0.17_0.012_255/0.96)] border-b border-border/80 backdrop-blur-md safe-area-top">

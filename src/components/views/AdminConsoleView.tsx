@@ -549,7 +549,7 @@ function UsersTab() {
                 </TableRow>
               ) : (
                 filtered.map((user) => (
-                  <TableRow key={user.id} className="border-border hover:bg-white/[0.02]">
+                  <TableRow key={user.id} className="border-border hover:bg-white/2">
                     <TableCell className="font-mono text-xs text-foreground">{user.email}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{user.display_name ?? '—'}</TableCell>
                     <TableCell><RoleBadge role={user.role} /></TableCell>
@@ -899,11 +899,16 @@ function FeatureFlagsTab() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{flag.description}</p>
                         <div className="mt-1.5 flex items-center gap-2">
-                          <div className="h-1.5 w-24 bg-white/10 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{ width: `${flag.rollout_percentage}%` }}
-                            />
+                          <div className="flag-rollout-meter" aria-hidden="true">
+                            {Array.from({ length: 20 }, (_, index) => (
+                              <span
+                                key={`${flag.id}-${index}`}
+                                className={cn(
+                                  'flag-rollout-segment',
+                                  index < Math.round(flag.rollout_percentage / 5) && 'flag-rollout-segment-active'
+                                )}
+                              />
+                            ))}
                           </div>
                           <span className="text-xs text-muted-foreground">{flag.rollout_percentage}% rollout</span>
                         </div>
@@ -1048,7 +1053,7 @@ function SupportTab() {
                 </TableRow>
               ) : (
                 filtered.map((ticket) => (
-                  <TableRow key={ticket.id} className="border-border hover:bg-white/[0.02] cursor-pointer" onClick={() => openTicket(ticket)}>
+                  <TableRow key={ticket.id} className="border-border hover:bg-white/2 cursor-pointer" onClick={() => openTicket(ticket)}>
                     <TableCell className="font-medium text-sm text-foreground max-w-48 truncate">{ticket.title}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{ticket.user_email ?? ticket.user_id}</TableCell>
                     <TableCell>
@@ -1237,7 +1242,7 @@ function AuditLogsTab() {
                 </TableRow>
               ) : (
                 filtered.map((entry) => (
-                  <TableRow key={entry.id} className="border-border hover:bg-white/[0.02]">
+                  <TableRow key={entry.id} className="border-border hover:bg-white/2">
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(entry.created_at).toLocaleString()}
                     </TableCell>
