@@ -7,25 +7,39 @@
  * 2) Supabase CLI auth available in current environment
  */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
-function runCommand(file, args) {
-  return execFileSync(file, args, {
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
+function quoteForShell(value) {
+  if (value === "") return '""';
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) return value;
+  return `"${String(value).replace(/(["\\$`])/g, "\\$1")}"`;
+}
+
+function runNpx(args) {
+  if (process.platform === "win32") {
+    const command = `npx ${args.map(quoteForShell).join(" ")} 2>&1`;
+    return execSync(command, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+  }
+
+  try {
+    return execFileSync("npx", args, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const stdout = error?.stdout ? String(error.stdout) : "";
+    const stderr = error?.stderr ? String(error.stderr) : "";
+    const message = (stdout + stderr).trim() || error?.message || "Unknown command failure";
+    throw new Error(message);
+  }
 }
 
 function getQueryModeArgs() {
   const rawDbUrl = process.env.SUPABASE_DB_URL?.trim();
   if (!rawDbUrl) return ["--linked"];
 
-  const looksEncoded =
-    rawDbUrl.startsWith("postgres%3A") ||
-    rawDbUrl.startsWith("postgresql%3A");
-
-  const encoded = looksEncoded ? rawDbUrl : encodeURIComponent(rawDbUrl);
-  return ["--db-url", encoded];
+  // Supabase CLI expects a raw connection string for --db-url.
+  return ["--db-url", rawDbUrl];
 }
 
 function parseJsonFromCliOutput(output) {
@@ -51,12 +65,13 @@ function parseJsonFromCliOutput(output) {
 
 function query(sql) {
   const normalizedSql = sql.replace(/\n/g, " ");
-  const raw = runCommand("npx", [
+  const modeArgs = getQueryModeArgs();
+  const raw = runNpx([
     "-y",
     "supabase",
     "db",
     "query",
-    ...getQueryModeArgs(),
+    ...modeArgs,
     "--output",
     "json",
     normalizedSql,
