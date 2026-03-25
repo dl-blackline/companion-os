@@ -132,13 +132,13 @@
   }
 
   ::selection {
-    background: oklch(0.63 0.1 215 / 0.35);
-    color: oklch(0.96 0.01 255);
+    background: rgba(89, 144, 189, 0.35);
+    color: #f3f6fb;
   }
 
   [data-slot='card'] {
-    background: linear-gradient(170deg, oklch(0.2 0.014 255 / 0.95), oklch(0.17 0.014 255 / 0.96));
-    border-color: oklch(0.34 0.014 255 / 0.85);
+    background: linear-gradient(170deg, rgba(35, 41, 52, 0.95), rgba(28, 33, 43, 0.96));
+    border-color: rgba(80, 91, 107, 0.85);
     box-shadow: 0 16px 36px rgba(4, 6, 12, 0.36), inset 0 1px 0 rgba(236, 243, 255, 0.04);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
@@ -152,8 +152,8 @@
   [data-slot='input'],
   textarea,
   select {
-    background-color: oklch(0.17 0.014 255 / 0.9);
-    border-color: oklch(0.34 0.014 255 / 0.8);
+    background-color: rgba(26, 31, 41, 0.9);
+    border-color: rgba(80, 91, 107, 0.8);
   }
 }
 
@@ -246,13 +246,13 @@
   letter-spacing: 0.18em;
   font-size: 11px;
   font-weight: 700;
-  color: oklch(0.76 0.02 244);
+  color: #a8b4c7;
   margin-bottom: 8px;
 }
 
 .executive-subtitle {
   font-size: 14px;
-  color: oklch(0.74 0.012 255);
+  color: #9ca8b8;
   max-width: 76ch;
 }
 
@@ -262,8 +262,8 @@
 }
 
 .executive-kpi {
-  background: linear-gradient(160deg, oklch(0.22 0.018 255 / 0.95), oklch(0.18 0.014 255 / 0.95));
-  border: 1px solid oklch(0.34 0.016 255 / 0.82);
+  background: linear-gradient(160deg, rgba(38, 45, 56, 0.95), rgba(30, 35, 45, 0.95));
+  border: 1px solid rgba(81, 93, 110, 0.82);
   border-radius: 14px;
   padding: 14px;
 }
@@ -299,14 +299,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, oklch(0.66 0.11 215 / 0.22), oklch(0.73 0.08 84 / 0.18));
-  border: 1px solid oklch(0.63 0.1 215 / 0.45);
+  background: linear-gradient(160deg, rgba(93, 150, 196, 0.22), rgba(186, 160, 92, 0.18));
+  border: 1px solid rgba(98, 149, 192, 0.45);
   box-shadow: 0 10px 24px rgba(5, 10, 20, 0.42);
 }
 
 .auth-card {
-  border: 1px solid oklch(0.34 0.014 255 / 0.85);
-  background: linear-gradient(165deg, oklch(0.2 0.014 255 / 0.96), oklch(0.17 0.014 255 / 0.96));
+  border: 1px solid rgba(80, 91, 107, 0.85);
+  background: linear-gradient(165deg, rgba(35, 41, 52, 0.96), rgba(28, 33, 43, 0.96));
   box-shadow: 0 20px 40px rgba(4, 8, 14, 0.46);
 }
 
@@ -354,9 +354,10 @@
 }
 
 .glass-card {
-  background: linear-gradient(165deg, oklch(0.21 0.015 255 / 0.88), oklch(0.17 0.014 255 / 0.94));
-  border: 1px solid oklch(0.35 0.014 255 / 0.78);
+  background: linear-gradient(165deg, rgba(36, 43, 54, 0.88), rgba(28, 33, 43, 0.94));
+  border: 1px solid rgba(83, 95, 110, 0.78);
   box-shadow: 0 18px 36px rgba(6, 8, 16, 0.35);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 
@@ -410,8 +411,6 @@
 
 .settings-tabs-list {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
 
 .settings-tabs-list::-webkit-scrollbar {
@@ -548,7 +547,7 @@
 }
 
 .floating-orb-btn:focus-visible {
-  outline: 2px solid oklch(0.66 0.1 215);
+  outline: 2px solid #68a8de;
   outline-offset: 3px;
 }
 
@@ -558,7 +557,7 @@
 .floating-orb--speaking,
 .floating-orb--error,
 .floating-orb--muted {
-  background: radial-gradient(circle at 35% 30%, oklch(0.71 0.1 214), oklch(0.44 0.08 220));
+  background: radial-gradient(circle at 35% 30%, #9bbfdd, #426f93);
 }
 
 .floating-orb--connecting,
@@ -570,7 +569,7 @@
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  border: 2px solid oklch(0.66 0.1 215 / 0.5);
+  border: 2px solid rgba(104, 168, 222, 0.5);
   animation: floating-orb-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
   pointer-events: none;
 }
@@ -591,10 +590,11 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: oklch(0.84 0.01 255);
-  background: oklch(0.2 0.014 255 / 0.9);
+  color: #d3dbe7;
+  background: rgba(34, 40, 50, 0.9);
   padding: 2px 10px;
   border-radius: 999px;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   white-space: nowrap;
   text-align: center;
@@ -604,9 +604,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: oklch(0.16 0.014 255 / 0.94);
+  background: rgba(23, 28, 37, 0.94);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid oklch(0.34 0.014 255 / 0.55);
+  border: 1px solid rgba(80, 91, 107, 0.55);
   border-radius: 14px;
   padding: 8px;
   margin-bottom: 6px;
@@ -621,18 +622,18 @@
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: oklch(0.93 0.01 255);
+  color: #edf1f7;
   cursor: pointer;
   font-size: 13px;
   transition: background 0.15s ease;
 }
 
 .floating-orb-panel-btn:hover {
-  background: oklch(0.3 0.014 255 / 0.5);
+  background: rgba(56, 66, 80, 0.5);
 }
 
 .floating-orb-panel-btn--danger {
-  color: oklch(0.72 0.16 26);
+  color: #dc7a61;
 }
 
 .floating-orb-panel-voice {
@@ -644,10 +645,10 @@
 
 .floating-orb-panel-select {
   flex: 1;
-  background: oklch(0.22 0.01 255 / 0.6);
-  border: 1px solid oklch(0.34 0.014 255 / 0.5);
+  background: rgba(39, 45, 55, 0.6);
+  border: 1px solid rgba(80, 91, 107, 0.5);
   border-radius: 8px;
-  color: oklch(0.93 0.01 255);
+  color: #edf1f7;
   padding: 4px 8px;
   font-size: 12px;
   cursor: pointer;
@@ -664,6 +665,7 @@
   }
 
   .glass-card {
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
   }
 
