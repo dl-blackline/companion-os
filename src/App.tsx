@@ -8,6 +8,7 @@ import { useVoice } from '@/context/voice-context';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useAIControl } from '@/context/ai-control-context';
+import { useOrbAppearance } from '@/context/orb-appearance-context';
 import { List } from '@phosphor-icons/react/List';
 import { X } from '@phosphor-icons/react/X';
 import { toast } from 'sonner';
@@ -60,7 +61,19 @@ function App() {
   const { isAdmin } = useAuth();
   const { settings } = useSettings();
   const { orchestratorConfig } = useAIControl();
+  const { orbColor, mode: orbMode } = useOrbAppearance();
   const reduceMotion = useReducedMotion();
+
+  const stateLabel = companionState.replace('-', ' ');
+  const stateDotClass = companionState === 'idle'
+    ? 'bg-zinc-400'
+    : companionState === 'listening'
+      ? 'bg-sky-300'
+      : companionState === 'speaking'
+        ? 'bg-emerald-300'
+        : companionState === 'thinking'
+          ? 'bg-violet-300'
+          : 'bg-zinc-200';
 
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
@@ -168,7 +181,8 @@ function App() {
     <div className="visual-shell flex min-h-dvh w-screen overflow-hidden bg-background text-foreground">
       {/* Mobile header with hamburger */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[oklch(0.16_0.012_255/0.92)] border-b border-border/80 backdrop-blur-xl safe-area-top">
+        <div className="fixed top-0 left-0 right-0 z-30 px-4 py-3 bg-[oklch(0.16_0.012_255/0.92)] border-b border-border/80 backdrop-blur-xl safe-area-top">
+          <div className="flex items-center justify-between">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="flex items-center justify-center w-11 h-11 rounded-xl bg-black/20 hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
@@ -181,7 +195,22 @@ function App() {
           >
             {settings.aiName}
           </span>
-          <div className="w-11 rounded-xl border border-border/60 bg-black/20 h-11" />
+          <div className="w-11 rounded-xl border border-border/60 bg-black/20 h-11" aria-hidden="true" />
+          </div>
+
+          <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-0.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/65 bg-black/25 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-foreground whitespace-nowrap">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Runtime
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/65 bg-black/25 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-foreground whitespace-nowrap">
+              <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass}`} />
+              {stateLabel}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/65 bg-black/25 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-foreground whitespace-nowrap">
+              Orb {orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}
+            </span>
+          </div>
         </div>
       )}
 
