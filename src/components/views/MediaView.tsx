@@ -6,24 +6,22 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { toast } from 'sonner';
-import {
-  Images,
-  FilmSlate,
-  Sparkle,
-  DownloadSimple,
-  Trash,
-  ClockCounterClockwise,
-  ArrowsOutSimple,
-  ArrowCounterClockwise,
-  Copy,
-  MagicWand,
-  Warning,
-  UploadSimple,
-  FloppyDisk,
-  SpeakerHigh,
-  SpeakerSlash,
-  ArrowClockwise,
-} from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react/ArrowClockwise';
+import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
+import { ArrowsOutSimple } from '@phosphor-icons/react/ArrowsOutSimple';
+import { ClockCounterClockwise } from '@phosphor-icons/react/ClockCounterClockwise';
+import { Copy } from '@phosphor-icons/react/Copy';
+import { DownloadSimple } from '@phosphor-icons/react/DownloadSimple';
+import { FilmSlate } from '@phosphor-icons/react/FilmSlate';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { Images } from '@phosphor-icons/react/Images';
+import { MagicWand } from '@phosphor-icons/react/MagicWand';
+import { SpeakerHigh } from '@phosphor-icons/react/SpeakerHigh';
+import { SpeakerSlash } from '@phosphor-icons/react/SpeakerSlash';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { Warning } from '@phosphor-icons/react/Warning';
 import type { CompanionState, MediaGeneration, MediaStyle, VideoAudioMode, RefinementAction } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { cn } from '@/lib/utils';

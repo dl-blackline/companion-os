@@ -11,7 +11,7 @@ import { OfferGrid } from '@/components/tarot/offer-grid';
 import { EmailCapture } from '@/components/tarot/email-capture';
 import { FooterDisclaimer } from '@/components/tarot/footer-disclaimer';
 import { READING_PREAMBLE } from '@/lib/copy/disclaimers';
-import { ArrowLeft } from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
 
 export function TarotView() {
   const store = useReadingStore();

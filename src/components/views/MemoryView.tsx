@@ -17,26 +17,24 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import {
-  Brain,
-  Plus,
-  MagnifyingGlass,
-  Star,
-  Trash,
-  PencilSimple,
-  Tag,
-  Shield,
-  CheckCircle,
-  X,
-  UploadSimple,
-  Image as ImageIcon,
-  VideoCamera,
-  SpinnerGap,
-  Eye,
-  ThumbsUp,
-  ThumbsDown,
-  ImageSquare,
-} from '@phosphor-icons/react';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { Eye } from '@phosphor-icons/react/Eye';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { ImageSquare } from '@phosphor-icons/react/ImageSquare';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { SpinnerGap } from '@phosphor-icons/react/SpinnerGap';
+import { Star } from '@phosphor-icons/react/Star';
+import { Tag } from '@phosphor-icons/react/Tag';
+import { ThumbsDown } from '@phosphor-icons/react/ThumbsDown';
+import { ThumbsUp } from '@phosphor-icons/react/ThumbsUp';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { Memory, MemoryCategory, PrivacyLevel, MemoryCandidate, UploadedMedia } from '@/types';
 import { generateId, getRelativeTime, formatDateTime } from '@/lib/helpers';
 import { motion, AnimatePresence } from 'framer-motion';

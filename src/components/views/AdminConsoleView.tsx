@@ -1,25 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Users,
-  UserPlus,
-  ShieldCheck,
-  Flag,
-  Ticket,
-  ClipboardText,
-  ArrowsClockwise,
-  CheckCircle,
-  WarningCircle,
-  XCircle,
-  Question,
-  Gauge,
-  MagnifyingGlass,
-  CaretLeft,
-  CaretRight,
-  PencilSimple,
-  Spinner,
-  Shield,
-} from '@phosphor-icons/react';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { CaretLeft } from '@phosphor-icons/react/CaretLeft';
+import { CaretRight } from '@phosphor-icons/react/CaretRight';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { ClipboardText } from '@phosphor-icons/react/ClipboardText';
+import { Flag } from '@phosphor-icons/react/Flag';
+import { Gauge } from '@phosphor-icons/react/Gauge';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Question } from '@phosphor-icons/react/Question';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { Ticket } from '@phosphor-icons/react/Ticket';
+import { UserPlus } from '@phosphor-icons/react/UserPlus';
+import { Users } from '@phosphor-icons/react/Users';
+import { WarningCircle } from '@phosphor-icons/react/WarningCircle';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase-client';

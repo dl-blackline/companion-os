@@ -48,12 +48,16 @@ export default defineConfig({
             return 'theme-vendor';
           }
 
-          if (
-            packageName === '@phosphor-icons/react' ||
-            packageName === 'lucide-react' ||
-            packageName === '@heroicons/react'
-          ) {
-            return 'icons-vendor';
+          if (packageName === '@phosphor-icons/react') {
+            return 'phosphor-vendor';
+          }
+
+          if (packageName === 'lucide-react') {
+            return 'lucide-vendor';
+          }
+
+          if (packageName === '@heroicons/react') {
+            return 'heroicons-vendor';
           }
 
           if (

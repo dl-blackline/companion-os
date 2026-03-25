@@ -8,7 +8,8 @@ import { useVoice } from '@/context/voice-context';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useAIControl } from '@/context/ai-control-context';
-import { List, X } from '@phosphor-icons/react';
+import { List } from '@phosphor-icons/react/List';
+import { X } from '@phosphor-icons/react/X';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
 

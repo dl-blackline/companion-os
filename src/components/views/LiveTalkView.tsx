@@ -6,20 +6,18 @@ import { CompanionOrb } from '@/components/CompanionOrb';
 import { BackgroundGlow } from '@/components/ui/background-glow';
 import { AudioVisualizer } from '@/components/voice/audio-visualizer';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  Microphone,
-  MicrophoneSlash,
-  ArrowLeft,
-  SpeakerSimpleHigh,
-  SpeakerSimpleSlash,
-  Trash,
-  MagicWand,
-  Image as ImageIcon,
-  Lightning,
-  X,
-  VideoCamera,
-  Books,
-} from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
+import { Books } from '@phosphor-icons/react/Books';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { MagicWand } from '@phosphor-icons/react/MagicWand';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { MicrophoneSlash } from '@phosphor-icons/react/MicrophoneSlash';
+import { SpeakerSimpleHigh } from '@phosphor-icons/react/SpeakerSimpleHigh';
+import { SpeakerSimpleSlash } from '@phosphor-icons/react/SpeakerSimpleSlash';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { KnowledgeItem } from '@/types';
 import type { CompanionState, TalkSession, TalkTurn } from '@/types';
 import { generateId } from '@/lib/helpers';

@@ -21,31 +21,29 @@ import {
   TabsContent,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Gear,
-  Robot,
-  Brain,
-  Shield,
-  Sliders,
-  ChatCircle,
-  Database,
-  Export,
-  Heartbeat,
-  Microphone,
-  CheckCircle,
-  XCircle,
-  ArrowsClockwise,
-  User,
-  Lock,
-  Bell,
-  Palette,
-  SignOut,
-  Trash,
-  Warning,
-  WarningCircle,
-  FloppyDisk,
-  Spinner,
-} from '@phosphor-icons/react';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { Bell } from '@phosphor-icons/react/Bell';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { Database } from '@phosphor-icons/react/Database';
+import { Export } from '@phosphor-icons/react/Export';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { Gear } from '@phosphor-icons/react/Gear';
+import { Heartbeat } from '@phosphor-icons/react/Heartbeat';
+import { Lock } from '@phosphor-icons/react/Lock';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { Palette } from '@phosphor-icons/react/Palette';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { SignOut } from '@phosphor-icons/react/SignOut';
+import { Sliders } from '@phosphor-icons/react/Sliders';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { User } from '@phosphor-icons/react/User';
+import { Warning } from '@phosphor-icons/react/Warning';
+import { WarningCircle } from '@phosphor-icons/react/WarningCircle';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 import type { ConversationMode, SettingsAccountViewModel } from '@/types';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';

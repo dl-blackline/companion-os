@@ -35,17 +35,15 @@ import {
   EMOJI_ORB_STYLE_LABELS,
   EMOJI_ORB_STYLE_MODES,
 } from '@/types/emoji-orb';
-import {
-  UploadSimple,
-  ArrowsClockwise,
-  FloppyDisk,
-  ArrowCounterClockwise,
-  Spinner,
-  CheckCircle,
-  XCircle,
-  ImageSquare,
-  MagicWand,
-} from '@phosphor-icons/react';
+import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { ImageSquare } from '@phosphor-icons/react/ImageSquare';
+import { MagicWand } from '@phosphor-icons/react/MagicWand';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { validateMediaFile } from '@/types/media';

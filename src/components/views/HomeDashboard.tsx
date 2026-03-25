@@ -2,16 +2,14 @@ import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { CompanionState } from '@/types';
-import {
-  Microphone,
-  ChatCircle,
-  Images,
-  Lightning,
-  ArrowRight,
-  Brain,
-  ListChecks,
-  ShieldCheck,
-} from '@phosphor-icons/react';
+import { ArrowRight } from '@phosphor-icons/react/ArrowRight';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
+import { Images } from '@phosphor-icons/react/Images';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { ListChecks } from '@phosphor-icons/react/ListChecks';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
 
 interface HomeDashboardProps {
   companionState: CompanionState;

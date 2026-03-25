@@ -12,20 +12,18 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import {
-  Robot,
-  MagnifyingGlass,
-  Notepad,
-  ImageSquare,
-  ListChecks,
-  Brain,
-  Plus,
-  Spinner,
-  CheckCircle,
-  XCircle,
-  Clock,
-  ArrowClockwise,
-} from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react/ArrowClockwise';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { Clock } from '@phosphor-icons/react/Clock';
+import { ImageSquare } from '@phosphor-icons/react/ImageSquare';
+import { ListChecks } from '@phosphor-icons/react/ListChecks';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Notepad } from '@phosphor-icons/react/Notepad';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 

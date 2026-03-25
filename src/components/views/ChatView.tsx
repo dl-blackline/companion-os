@@ -5,22 +5,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { 
-  Plus, 
-  PaperPlaneRight, 
-  Robot, 
-  Sparkle,
-  MagnifyingGlass,
-  Star,
-  Lightning,
-  Paperclip,
-  Image as ImageIcon,
-  VideoCamera,
-  X,
-  SpinnerGap,
-  ArrowLeft,
-  Trash,
-} from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Paperclip } from '@phosphor-icons/react/Paperclip';
+import { PaperPlaneRight } from '@phosphor-icons/react/PaperPlaneRight';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
+import { SpinnerGap } from '@phosphor-icons/react/SpinnerGap';
+import { Star } from '@phosphor-icons/react/Star';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
 import { getModeConfig, getAllModes } from '@/lib/modes';

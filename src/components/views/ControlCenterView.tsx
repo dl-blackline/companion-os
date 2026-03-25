@@ -7,7 +7,12 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Sliders, Robot, Brain, Lightning, FloppyDisk, ArrowsClockwise } from '@phosphor-icons/react';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Sliders } from '@phosphor-icons/react/Sliders';
 import { useAIControl } from '@/context/ai-control-context';
 import { getCachedModels, preloadModels } from '@/utils/model-cache';
 

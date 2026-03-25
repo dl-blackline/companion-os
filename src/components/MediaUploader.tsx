@@ -1,7 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { X, UploadSimple, Image, VideoCamera } from '@phosphor-icons/react';
+import { Image } from '@phosphor-icons/react/Image';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import { cn } from '@/lib/utils';
 import type { MediaType } from '@/types';
 

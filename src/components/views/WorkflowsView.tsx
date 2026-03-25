@@ -15,19 +15,17 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  Lightning,
-  Plus,
-  MagnifyingGlass,
-  Gear,
-  Trash,
-  PencilSimple,
-  Shield,
-  ShieldCheck,
-  Power,
-  Wrench,
-  X,
-} from '@phosphor-icons/react';
+import { Gear } from '@phosphor-icons/react/Gear';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Power } from '@phosphor-icons/react/Power';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { Wrench } from '@phosphor-icons/react/Wrench';
+import { X } from '@phosphor-icons/react/X';
 import type { Tool, ToolCategory } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { cn } from '@/lib/utils';

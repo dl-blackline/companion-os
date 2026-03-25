@@ -1,21 +1,19 @@
 import type { Icon } from '@phosphor-icons/react';
-import {
-  House,
-  ChatCircle,
-  Brain,
-  Books,
-  Target,
-  Lightning,
-  Lightbulb,
-  Gear,
-  Microphone,
-  Images,
-  Robot,
-  ShieldCheck,
-  SignOut,
-  MoonStars,
-  Sliders,
-} from '@phosphor-icons/react';
+import { Books } from '@phosphor-icons/react/Books';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
+import { Gear } from '@phosphor-icons/react/Gear';
+import { House } from '@phosphor-icons/react/House';
+import { Images } from '@phosphor-icons/react/Images';
+import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { MoonStars } from '@phosphor-icons/react/MoonStars';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
+import { SignOut } from '@phosphor-icons/react/SignOut';
+import { Sliders } from '@phosphor-icons/react/Sliders';
+import { Target } from '@phosphor-icons/react/Target';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
