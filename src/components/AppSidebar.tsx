@@ -87,11 +87,11 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
           onSectionChange(item.id);
         }}
         className={cn(
-          'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all relative min-h-[42px] border overflow-hidden',
+          'focus-ring-lux interactive-press w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all relative min-h-[44px] border overflow-hidden',
           isActive
-            ? 'bg-primary text-primary-foreground border-primary/70 shadow-[0_14px_28px_rgba(161,121,42,0.35)]'
+            ? 'bg-primary text-primary-foreground border-primary/70 shadow-[0_14px_28px_rgba(180,190,204,0.3)]'
             : 'text-muted-foreground border-border/40 bg-black/10 hover:text-foreground hover:bg-muted/55 hover:border-border/80',
-          item.group === 'admin' && !isActive && 'text-amber-300 hover:text-amber-200',
+          item.group === 'admin' && !isActive && 'text-zinc-300 hover:text-zinc-100',
         )}
       >
         {isActive && (
@@ -141,7 +141,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
 
         {isAdmin && (
           <div className="space-y-1.5">
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-300/70">Governance</p>
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300/70">Governance</p>
             {adminItems.map(renderItem)}
           </div>
         )}
@@ -175,7 +175,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
                   }
                 }}
                 title="Sign out"
-                className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
+                className="focus-ring-lux touch-target shrink-0 rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
               >
                 <SignOut size={15} />
               </button>

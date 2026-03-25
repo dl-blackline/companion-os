@@ -103,7 +103,7 @@ export function ControlCenterView() {
 
       <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.05 }}>
       <Card className="settings-surface p-6 border-border/75">
-        <SectionHeader title="Model Selection" subtitle="Choose the primary model used by AI execution." />
+          <SectionHeader title="Model Selection" subtitle="Choose the primary model used by AI execution." />
         <Select value={config.model} onValueChange={(value) => setConfig({ model: value })}>
           <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -117,7 +117,7 @@ export function ControlCenterView() {
 
       <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.07 }}>
       <Card className="settings-surface p-6 border-border/75">
-        <SectionHeader title="Behavior / Tone" subtitle="Control how the companion responds." />
+          <SectionHeader title="Behavior / Tone" subtitle="Control how the companion responds." />
         <Select
           value={config.tone}
           onValueChange={(value) => setConfig({ tone: value as typeof config.tone })}
@@ -134,7 +134,7 @@ export function ControlCenterView() {
 
       <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.09 }}>
       <Card className="settings-surface p-6 border-border/75">
-        <SectionHeader title="Memory Settings" subtitle="Define whether AI should use memory context." />
+          <SectionHeader title="Memory Settings" subtitle="Define whether AI should use memory context." />
         <div className="flex items-center justify-between rounded-md border border-border p-4">
           <div className="flex items-center gap-2">
             <Brain size={18} className="text-muted-foreground" />
@@ -182,7 +182,7 @@ export function ControlCenterView() {
 
       <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.11 }}>
       <Card className="settings-surface p-6 border-border/75">
-        <SectionHeader title="Advanced Settings" subtitle="Control generation behavior and token limits." />
+          <SectionHeader title="Advanced Settings" subtitle="Control generation behavior and token limits." />
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between">

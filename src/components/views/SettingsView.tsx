@@ -410,35 +410,35 @@ export function SettingsView() {
         <Tabs defaultValue="account" className="space-y-6">
           <div className="overflow-x-auto">
             <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70 rounded-xl p-1">
-              <TabsTrigger value="account" className="gap-1.5">
+              <TabsTrigger value="account" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <User size={16} /> Account
               </TabsTrigger>
-              <TabsTrigger value="ai-controls" className="gap-1.5">
+              <TabsTrigger value="ai-controls" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Robot size={16} /> AI Controls
               </TabsTrigger>
-              <TabsTrigger value="model" className="gap-1.5">
+              <TabsTrigger value="model" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Sliders size={16} /> Models
               </TabsTrigger>
-              <TabsTrigger value="memory" className="gap-1.5">
+              <TabsTrigger value="memory" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Brain size={16} /> Memory
               </TabsTrigger>
-              <TabsTrigger value="privacy" className="gap-1.5">
+              <TabsTrigger value="privacy" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Shield size={16} /> Privacy
               </TabsTrigger>
-              <TabsTrigger value="voice" className="gap-1.5">
+              <TabsTrigger value="voice" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Microphone size={16} /> Voice
               </TabsTrigger>
-              <TabsTrigger value="diagnostics" className="gap-1.5">
+              <TabsTrigger value="diagnostics" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Heartbeat size={16} /> Diagnostics
               </TabsTrigger>
-              <TabsTrigger value="appearance" className="gap-1.5">
+              <TabsTrigger value="appearance" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Palette size={16} /> Appearance
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="gap-1.5">
+              <TabsTrigger value="notifications" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Bell size={16} /> Notifications
               </TabsTrigger>
               {authConfigured && (
-                <TabsTrigger value="security" className="gap-1.5">
+                <TabsTrigger value="security" className="focus-ring-lux touch-target gap-1.5 px-3">
                   <Lock size={16} /> Security
                 </TabsTrigger>
               )}

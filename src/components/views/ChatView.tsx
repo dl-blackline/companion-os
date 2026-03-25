@@ -353,7 +353,7 @@ export function ChatView() {
                 className={cn(
                   'chat-list-item group relative rounded-xl transition-colors',
                   activeConvId === conv.id 
-                    ? 'bg-primary/10 border border-primary/35 shadow-[0_8px_18px_rgba(162,123,44,0.2)]' 
+                    ? 'bg-primary/10 border border-primary/35 shadow-[0_8px_18px_rgba(176,188,205,0.24)]' 
                     : 'hover:bg-muted/50'
                 )}
               >
@@ -422,7 +422,7 @@ export function ChatView() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setActiveConvId(null)}
-                  className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
+                  className="focus-ring-lux touch-target md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted transition-colors"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft size={18} />
@@ -616,7 +616,7 @@ export function ChatView() {
                   size="icon"
                   onClick={() => setShowUploader(!showUploader)}
                   disabled={isStreaming}
-                  className="self-end shrink-0"
+                  className="focus-ring-lux touch-target self-end shrink-0"
                   title="Upload Photo/Video"
                 >
                   <Paperclip size={18} />
@@ -637,7 +637,7 @@ export function ChatView() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={(!input.trim() && !pendingMedia) || isStreaming}
-                  className="self-end min-h-[44px] min-w-[44px]"
+                  className="focus-ring-lux touch-target self-end min-h-[44px] min-w-[44px]"
                 >
                   <PaperPlaneRight size={18} weight="fill" />
                 </Button>

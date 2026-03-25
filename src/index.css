@@ -2,33 +2,33 @@
 @import 'tw-animate-css';
 
 :root {
-  --background: oklch(0.14 0.013 255);
-  --foreground: oklch(0.94 0.01 255);
+  --background: oklch(0.1 0.004 255);
+  --foreground: oklch(0.96 0.004 255);
 
-  --card: oklch(0.19 0.014 255);
-  --card-foreground: oklch(0.93 0.01 255);
+  --card: oklch(0.16 0.004 255);
+  --card-foreground: oklch(0.95 0.004 255);
 
-  --popover: oklch(0.18 0.014 255);
-  --popover-foreground: oklch(0.93 0.01 255);
+  --popover: oklch(0.15 0.004 255);
+  --popover-foreground: oklch(0.95 0.004 255);
 
-  --primary: oklch(0.72 0.11 82);
-  --primary-foreground: oklch(0.16 0.02 84);
+  --primary: oklch(0.9 0.006 255);
+  --primary-foreground: oklch(0.1 0.004 255);
 
-  --secondary: oklch(0.24 0.015 255);
-  --secondary-foreground: oklch(0.89 0.01 255);
+  --secondary: oklch(0.22 0.004 255);
+  --secondary-foreground: oklch(0.93 0.004 255);
 
-  --muted: oklch(0.22 0.014 255);
-  --muted-foreground: oklch(0.72 0.01 255);
+  --muted: oklch(0.2 0.004 255);
+  --muted-foreground: oklch(0.74 0.004 255);
 
-  --accent: oklch(0.67 0.12 220);
-  --accent-foreground: oklch(0.14 0.01 255);
+  --accent: oklch(0.83 0.006 255);
+  --accent-foreground: oklch(0.12 0.004 255);
 
   --destructive: oklch(0.58 0.2 26);
   --destructive-foreground: oklch(0.97 0 0);
 
-  --border: oklch(0.31 0.015 255);
-  --input: oklch(0.31 0.015 255);
-  --ring: oklch(0.72 0.11 82);
+  --border: oklch(0.32 0.004 255);
+  --input: oklch(0.32 0.004 255);
+  --ring: oklch(0.88 0.006 255);
 
   --radius: 0.75rem;
 
@@ -84,9 +84,9 @@
     line-height: 1.55;
     letter-spacing: 0.005em;
     background-image:
-      radial-gradient(circle at 16% -10%, oklch(0.3 0.05 218 / 0.18), transparent 42%),
-      radial-gradient(circle at 90% 110%, oklch(0.34 0.03 76 / 0.12), transparent 40%),
-      linear-gradient(145deg, oklch(0.145 0.012 255), oklch(0.13 0.012 255));
+      radial-gradient(circle at 16% -10%, oklch(0.68 0.006 255 / 0.12), transparent 44%),
+      radial-gradient(circle at 90% 110%, oklch(0.56 0.004 255 / 0.1), transparent 42%),
+      linear-gradient(145deg, oklch(0.1 0.004 255), oklch(0.07 0.003 255));
     background-attachment: fixed;
   }
 
@@ -132,8 +132,8 @@
   }
 
   ::selection {
-    background: rgba(89, 144, 189, 0.35);
-    color: #f3f6fb;
+    background: rgba(238, 241, 245, 0.34);
+    color: #0b0d11;
   }
 
   [data-slot='card'] {
@@ -223,7 +223,7 @@
 }
 
 .flag-rollout-segment-active {
-  background: oklch(0.66 0.11 215);
+  background: oklch(0.88 0.006 255);
 }
 
 .executive-shell {
@@ -355,8 +355,8 @@
 
 .glass-card {
   background:
-    radial-gradient(circle at 14% -12%, rgba(227, 178, 84, 0.16), transparent 40%),
-    linear-gradient(165deg, rgba(34, 40, 50, 0.9), rgba(24, 30, 40, 0.96));
+    radial-gradient(circle at 14% -12%, rgba(238, 242, 248, 0.1), transparent 42%),
+    linear-gradient(165deg, rgba(26, 30, 38, 0.92), rgba(14, 17, 23, 0.97));
   border: 1px solid rgba(102, 111, 124, 0.74);
   box-shadow: 0 18px 36px rgba(4, 6, 14, 0.42), inset 0 1px 0 rgba(250, 252, 255, 0.06);
   -webkit-backdrop-filter: blur(14px);
@@ -382,7 +382,7 @@
   height: min(42vw, 500px);
   top: -12vh;
   right: -10vw;
-  background: radial-gradient(circle, rgba(232, 177, 83, 0.22), rgba(232, 177, 83, 0));
+  background: radial-gradient(circle, rgba(239, 243, 250, 0.18), rgba(239, 243, 250, 0));
 }
 
 .visual-shell::after {
@@ -390,7 +390,7 @@
   height: min(44vw, 520px);
   left: -16vw;
   bottom: -18vh;
-  background: radial-gradient(circle, rgba(84, 146, 209, 0.22), rgba(84, 146, 209, 0));
+  background: radial-gradient(circle, rgba(178, 186, 199, 0.18), rgba(178, 186, 199, 0));
 }
 
 .sidebar-panel {
@@ -402,8 +402,8 @@
 
 .executive-kpi {
   background:
-    radial-gradient(circle at 86% -20%, rgba(224, 180, 97, 0.14), transparent 42%),
-    linear-gradient(160deg, rgba(36, 43, 56, 0.96), rgba(27, 33, 45, 0.96));
+    radial-gradient(circle at 86% -20%, rgba(234, 239, 247, 0.12), transparent 42%),
+    linear-gradient(160deg, rgba(28, 33, 42, 0.96), rgba(18, 22, 30, 0.96));
   border: 1px solid rgba(99, 111, 129, 0.76);
   border-radius: 14px;
   padding: 14px;
@@ -421,8 +421,8 @@
 
 .executive-action:hover {
   transform: translateY(-1px);
-  border-color: rgba(224, 183, 102, 0.72);
-  box-shadow: 0 10px 24px rgba(6, 8, 16, 0.42), 0 0 0 1px rgba(224, 183, 102, 0.1);
+  border-color: rgba(214, 222, 234, 0.66);
+  box-shadow: 0 10px 24px rgba(6, 8, 16, 0.42), 0 0 0 1px rgba(214, 222, 234, 0.14);
 }
 
 .settings-hero {
@@ -430,22 +430,22 @@
   border-radius: 16px;
   padding: 14px 16px;
   background:
-    radial-gradient(circle at 86% -45%, rgba(226, 177, 84, 0.16), transparent 52%),
-    linear-gradient(160deg, rgba(33, 39, 50, 0.78), rgba(24, 30, 40, 0.86));
+    radial-gradient(circle at 86% -45%, rgba(236, 241, 248, 0.14), transparent 52%),
+    linear-gradient(160deg, rgba(28, 33, 43, 0.82), rgba(18, 22, 30, 0.9));
 }
 
 .settings-surface {
   border: 1px solid rgba(99, 111, 127, 0.66);
   background:
-    radial-gradient(circle at 10% -35%, rgba(86, 144, 206, 0.12), transparent 48%),
-    linear-gradient(170deg, rgba(32, 38, 50, 0.9), rgba(24, 30, 41, 0.95));
+    radial-gradient(circle at 10% -35%, rgba(224, 231, 241, 0.1), transparent 48%),
+    linear-gradient(170deg, rgba(26, 30, 39, 0.92), rgba(16, 20, 28, 0.96));
   box-shadow: 0 14px 28px rgba(6, 9, 16, 0.35), inset 0 1px 0 rgba(244, 248, 255, 0.04);
 }
 
 .chat-shell {
   background:
-    radial-gradient(circle at 85% -25%, rgba(84, 146, 209, 0.1), transparent 42%),
-    radial-gradient(circle at 10% 110%, rgba(227, 182, 94, 0.08), transparent 44%);
+    radial-gradient(circle at 85% -25%, rgba(221, 229, 240, 0.1), transparent 42%),
+    radial-gradient(circle at 10% 110%, rgba(176, 186, 200, 0.08), transparent 44%);
 }
 
 .chat-panel {
@@ -536,6 +536,24 @@
 
 .settings-tabs-list::-webkit-scrollbar {
   display: none;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.focus-ring-lux:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(16, 18, 24, 0.95), 0 0 0 4px rgba(219, 228, 239, 0.5);
+}
+
+.interactive-press {
+  transition: transform 0.16s ease;
+}
+
+.interactive-press:active {
+  transform: translateY(1px) scale(0.99);
 }
 
 @keyframes orb-idle-pulse {
