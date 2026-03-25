@@ -315,16 +315,19 @@ export function ChatView() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent">
+    <div className="chat-shell flex flex-col md:flex-row h-full bg-transparent">
       {/* Conversation list — full width on mobile when no active conv, hidden when viewing chat */}
       <div className={cn(
-        'border-r border-border/70 flex flex-col bg-[oklch(0.18_0.014_255/0.84)] backdrop-blur-sm',
+        'chat-panel border-r border-border/70 flex flex-col backdrop-blur-sm',
         'w-full md:w-80',
         activeConversation ? 'hidden md:flex' : 'flex'
       )}>
         <div className="p-4 border-b border-border/75">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold tracking-tight">Conversations</h2>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Messaging</p>
+              <h2 className="font-semibold tracking-tight">Conversations</h2>
+            </div>
             <Button size="sm" onClick={() => handleCreateConversation()} className="min-h-[44px] min-w-[44px]">
               <Plus size={16} className="mr-1" /> New
             </Button>
@@ -347,10 +350,10 @@ export function ChatView() {
               <div
                 key={conv.id}
                 className={cn(
-                  'group relative rounded-lg transition-colors',
+                  'chat-list-item group relative rounded-xl transition-colors',
                   activeConvId === conv.id 
-                    ? 'bg-primary/10 border-l-2 border-l-primary' 
-                    : 'hover:bg-muted/55'
+                    ? 'bg-primary/10 border border-primary/35 shadow-[0_8px_18px_rgba(162,123,44,0.2)]' 
+                    : 'hover:bg-muted/50'
                 )}
               >
                 <button
@@ -413,7 +416,7 @@ export function ChatView() {
           'flex-1 flex flex-col',
           activeConversation ? 'flex' : 'hidden md:flex'
         )}>
-          <div className="p-4 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.85)] backdrop-blur-sm">
+          <div className="p-4 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.74)] backdrop-blur-md">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
@@ -505,7 +508,7 @@ export function ChatView() {
                         'max-w-[82%] p-4 rounded-xl border',
                         message.role === 'user'
                           ? 'bg-primary text-primary-foreground border-primary/80'
-                          : 'bg-card/85 border-border/75'
+                          : 'bg-card/85 border-border/75 shadow-[0_10px_24px_rgba(4,7,13,0.22)]'
                       )}
                     >
                       {message.media_url && message.media_type === 'image' && (
@@ -565,7 +568,7 @@ export function ChatView() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t border-border/75 bg-[oklch(0.18_0.014_255/0.88)] backdrop-blur-md sticky bottom-0 safe-area-bottom">
+          <div className="chat-composer p-4 sticky bottom-0 safe-area-bottom">
             <div className="max-w-3xl mx-auto">
               {/* Media uploader panel */}
               {showUploader && (
@@ -627,7 +630,7 @@ export function ChatView() {
                     }
                   }}
                   placeholder={pendingMedia ? "Add a message or press send…" : "Type your message..."}
-                  className="resize-none min-h-[60px] max-h-[200px] border-border/75 bg-background/80"
+                  className="resize-none min-h-[60px] max-h-[200px] border-border/75 bg-background/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                   disabled={isStreaming}
                 />
                 <Button

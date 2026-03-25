@@ -425,6 +425,52 @@
   box-shadow: 0 10px 24px rgba(6, 8, 16, 0.42), 0 0 0 1px rgba(224, 183, 102, 0.1);
 }
 
+.settings-hero {
+  border: 1px solid rgba(104, 114, 129, 0.58);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background:
+    radial-gradient(circle at 86% -45%, rgba(226, 177, 84, 0.16), transparent 52%),
+    linear-gradient(160deg, rgba(33, 39, 50, 0.78), rgba(24, 30, 40, 0.86));
+}
+
+.settings-surface {
+  border: 1px solid rgba(99, 111, 127, 0.66);
+  background:
+    radial-gradient(circle at 10% -35%, rgba(86, 144, 206, 0.12), transparent 48%),
+    linear-gradient(170deg, rgba(32, 38, 50, 0.9), rgba(24, 30, 41, 0.95));
+  box-shadow: 0 14px 28px rgba(6, 9, 16, 0.35), inset 0 1px 0 rgba(244, 248, 255, 0.04);
+}
+
+.chat-shell {
+  background:
+    radial-gradient(circle at 85% -25%, rgba(84, 146, 209, 0.1), transparent 42%),
+    radial-gradient(circle at 10% 110%, rgba(227, 182, 94, 0.08), transparent 44%);
+}
+
+.chat-panel {
+  border: 1px solid rgba(97, 108, 124, 0.66);
+  background: linear-gradient(170deg, rgba(31, 37, 49, 0.9), rgba(23, 29, 40, 0.94));
+}
+
+.chat-list-item {
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.chat-list-item:hover {
+  border-color: rgba(105, 116, 131, 0.68);
+  transform: translateX(1px);
+}
+
+.chat-composer {
+  border-top: 1px solid rgba(100, 110, 125, 0.64);
+  background:
+    linear-gradient(180deg, rgba(28, 34, 45, 0.86), rgba(23, 28, 39, 0.94));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
 .gpu-accelerated {
   will-change: transform, opacity;
   transform: translateZ(0);

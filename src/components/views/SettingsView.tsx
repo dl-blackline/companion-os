@@ -395,6 +395,7 @@ export function SettingsView() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
+          className="settings-hero"
         >
           <p className="executive-eyebrow">Identity, Controls, and Privacy</p>
           <div className="flex items-center gap-3 mb-2">
@@ -408,7 +409,7 @@ export function SettingsView() {
 
         <Tabs defaultValue="account" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70">
+            <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70 rounded-xl p-1">
               <TabsTrigger value="account" className="gap-1.5">
                 <User size={16} /> Account
               </TabsTrigger>
@@ -451,7 +452,7 @@ export function SettingsView() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Profile</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -513,7 +514,7 @@ export function SettingsView() {
                 )}
               </Card>
               {authConfigured && (
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Password</h3>
                 <p className="text-sm text-muted-foreground">
                   Password changes are handled via email. Use the &quot;Forgot password&quot; flow on the login screen to receive a reset link.
@@ -524,7 +525,7 @@ export function SettingsView() {
               <UserIdentityCard />
 
               {/* ── Auth / Account Status — always visible ── */}
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Authentication</h3>
                 <p className="text-sm text-muted-foreground mb-4">Your current sign-in status and account controls.</p>
                 <Separator />
@@ -594,7 +595,7 @@ export function SettingsView() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">General</h3>
                 <p className="text-sm text-muted-foreground mb-4">Set your companion's identity and default behavior.</p>
                 <Separator />
@@ -614,7 +615,7 @@ export function SettingsView() {
                 </SettingRow>
               </Card>
 
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Personality &amp; Style</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -668,7 +669,7 @@ export function SettingsView() {
                 </SettingRow>
               </Card>
 
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Behavioral Sliders</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -712,7 +713,7 @@ export function SettingsView() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Model Selection</h3>
                 <p className="text-sm text-muted-foreground mb-4">Choose which models power your companion.</p>
                 <Separator />
@@ -820,7 +821,7 @@ export function SettingsView() {
                 </SettingRow>
               </Card>
 
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Fine-Tuning</h3>
                 <p className="text-sm text-muted-foreground mb-4">Adjust how the model generates responses.</p>
                 <Separator />
@@ -872,7 +873,7 @@ export function SettingsView() {
 
           <TabsContent value="memory">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Memory Settings</h3>
                 <p className="text-sm text-muted-foreground mb-4">Control how your companion captures and manages memories.</p>
                 <Separator />
@@ -897,7 +898,7 @@ export function SettingsView() {
 
           <TabsContent value="privacy">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Privacy Settings</h3>
                 <p className="text-sm text-muted-foreground mb-4">Manage how your data is stored, exported, and audited.</p>
                 <Separator />
@@ -922,7 +923,7 @@ export function SettingsView() {
 
           <TabsContent value="voice">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Voice Mode</h3>
                 <p className="text-sm text-muted-foreground mb-4">Choose how the microphone behaves during Live Talk sessions.</p>
                 <Separator />
@@ -938,7 +939,7 @@ export function SettingsView() {
                   </p>
                 </div>
               </Card>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Realtime Voice</h3>
                 <p className="text-sm text-muted-foreground mb-4">Select the AI voice used for realtime conversations. Live Talk uses OpenAI Realtime API for low-latency speech-to-speech.</p>
                 <Separator />
@@ -964,7 +965,7 @@ export function SettingsView() {
 
           <TabsContent value="diagnostics">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">System Diagnostics</h3>
                 <p className="text-sm text-muted-foreground mb-4">Check the status of all connected services and APIs.</p>
                 <Separator />
@@ -991,7 +992,7 @@ export function SettingsView() {
 
           <TabsContent value="appearance">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Appearance</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -1030,7 +1031,7 @@ export function SettingsView() {
               </Card>
 
               {/* Emoji Orb Customizer */}
-              <Card className="p-6 mt-6">
+              <Card className="settings-surface p-6 mt-6">
                 <h3 className="font-semibold mb-1">Orb Appearance</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Upload an image to generate a personalized emoji-style orb. Your image is analyzed locally to create a custom orb skin.
@@ -1043,7 +1044,7 @@ export function SettingsView() {
 
           <TabsContent value="notifications">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Notifications</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -1068,7 +1069,7 @@ export function SettingsView() {
           {authConfigured && (
           <TabsContent value="security">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-6">
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Current Session</h3>
                 <p className="text-sm text-muted-foreground mb-4">Information about your active login.</p>
                 <Separator />
@@ -1094,7 +1095,7 @@ export function SettingsView() {
                   <p className="text-xs text-muted-foreground mt-2">You will be returned to the login screen.</p>
                 </div>
               </Card>
-              <Card className="p-6 border-destructive/40">
+              <Card className="settings-surface p-6 border-destructive/40">
                 <div className="flex items-center gap-2 mb-1">
                   <Warning size={18} className="text-destructive" />
                   <h3 className="font-semibold text-destructive">Danger Zone</h3>
@@ -1117,3 +1118,4 @@ export function SettingsView() {
     </div>
   );
 }
+
