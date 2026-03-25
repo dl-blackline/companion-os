@@ -195,12 +195,12 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
   }, [persistPreference, orbColor]);
 
   const setOrbColor = useCallback(async (theme: OrbColorTheme) => {
+    if (pref.orbColor === theme) return;
     try {
       await persistPreference({
         ...pref,
         orbColor: theme,
       });
-      toast.success(`Orb color set to ${theme}`);
     } catch {
       toast.error('Failed to save orb color');
       setPref(loadFromLocalStorage());
@@ -209,14 +209,17 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
 
   const resetToDefault = useCallback(async () => {
     try {
-      await persistPreference(DEFAULT_ORB_PREFERENCE);
+      await persistPreference({
+        ...DEFAULT_ORB_PREFERENCE,
+        orbColor: pref.orbColor ?? 'silver',
+      });
       toast.success('Orb reset to default');
     } catch {
       toast.error('Failed to reset orb appearance');
       const old = loadFromLocalStorage();
       setPref(old);
     }
-  }, [persistPreference]);
+  }, [persistPreference, pref.orbColor]);
 
   return (
     <OrbAppearanceContext.Provider

@@ -23,10 +23,10 @@ import { triggerHaptic } from '@/utils/haptics';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
-import { useAIControl } from '@/context/ai-control-context';
 import { getUserInitials } from '@/services/user-identity-service';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
+import type { RuntimeHealthState } from '@/hooks/use-runtime-health';
 
 export type NavSection =
   | 'home'
@@ -49,6 +49,8 @@ interface AppSidebarProps {
   onSectionChange: (section: NavSection) => void;
   aiName: string;
   companionState: CompanionState;
+  runtimeState: RuntimeHealthState;
+  unavailableServices: string[];
 }
 
 const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: string }> = [
@@ -68,11 +70,10 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
   { id: 'admin-console', label: 'Admin', icon: ShieldCheck, group: 'admin' },
 ];
 
-export function AppSidebar({ activeSection, onSectionChange, aiName, companionState }: AppSidebarProps) {
+export function AppSidebar({ activeSection, onSectionChange, aiName, companionState, runtimeState, unavailableServices }: AppSidebarProps) {
   const { isAdmin, user, logout } = useAuth();
   const { prefs } = useSettings();
   const { mode: orbMode, orbColor } = useOrbAppearance();
-  const { orchestratorConfig } = useAIControl();
   const userInitials = getUserInitials(prefs.display_name, user?.email);
   const mainItems = navItems.filter((i) => i.group === 'main');
   const toolItems = navItems.filter((i) => i.group === 'tools');
@@ -90,12 +91,19 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
           ? 'bg-violet-300'
           : 'bg-zinc-200';
 
-  const disabledCapabilities = Object.entries(orchestratorConfig.capabilities)
-    .filter(([, enabled]) => !enabled)
-    .map(([name]) => name);
-  const runtimeHealthy = disabledCapabilities.length === 0;
-  const runtimeLabel = runtimeHealthy ? 'Operational' : 'Partial';
-  const runtimeDotClass = runtimeHealthy ? 'text-zinc-100' : 'text-zinc-400';
+  const runtimeHealthy = runtimeState === 'healthy';
+  const runtimeLabel = runtimeState === 'checking'
+    ? 'Checking'
+    : runtimeState === 'down'
+      ? 'Down'
+      : runtimeHealthy
+        ? 'Operational'
+        : 'Partial';
+  const runtimeDotClass = runtimeState === 'checking'
+    ? 'text-zinc-500'
+    : runtimeHealthy
+      ? 'text-zinc-100'
+      : 'text-zinc-400';
 
   const renderItem = (item: (typeof navItems)[number]) => {
     const IconComp = item.icon;
@@ -160,9 +168,9 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
             <span>Orb</span>
             <span className="status-chip status-chip-muted capitalize">{orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}</span>
           </div>
-          {!runtimeHealthy && (
+          {!runtimeHealthy && unavailableServices.length > 0 && (
             <div className="text-[10px] text-muted-foreground uppercase tracking-[0.1em]">
-              Disabled: {disabledCapabilities.join(', ')}
+              Services: {unavailableServices.join(', ')}
             </div>
           )}
         </div>

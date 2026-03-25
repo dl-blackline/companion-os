@@ -9,6 +9,7 @@ import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useAIControl } from '@/context/ai-control-context';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
+import { useRuntimeHealth } from '@/hooks/use-runtime-health';
 import { List } from '@phosphor-icons/react/List';
 import { X } from '@phosphor-icons/react/X';
 import { toast } from 'sonner';
@@ -62,6 +63,7 @@ function App() {
   const { settings } = useSettings();
   const { orchestratorConfig } = useAIControl();
   const { orbColor, mode: orbMode } = useOrbAppearance();
+  const runtimeHealth = useRuntimeHealth();
   const reduceMotion = useReducedMotion();
 
   const stateLabel = companionState.replace('-', ' ');
@@ -78,9 +80,17 @@ function App() {
   const disabledCapabilities = Object.entries(orchestratorConfig.capabilities)
     .filter(([, enabled]) => !enabled)
     .map(([name]) => name);
-  const runtimeHealthy = disabledCapabilities.length === 0;
-  const runtimeLabel = runtimeHealthy ? 'Runtime' : 'Runtime Partial';
-  const runtimeDotClass = runtimeHealthy ? 'bg-zinc-100' : 'bg-zinc-400';
+  const runtimeHealthy = runtimeHealth.state === 'healthy' && disabledCapabilities.length === 0;
+  const runtimeLabel = runtimeHealth.state === 'checking'
+    ? 'Runtime Check'
+    : runtimeHealthy
+      ? 'Runtime'
+      : 'Runtime Partial';
+  const runtimeDotClass = runtimeHealth.state === 'checking'
+    ? 'bg-zinc-500'
+    : runtimeHealthy
+      ? 'bg-zinc-100'
+      : 'bg-zinc-400';
 
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
@@ -237,6 +247,8 @@ function App() {
             onSectionChange={handleSectionChange}
             aiName={settings.aiName}
             companionState={companionState}
+            runtimeState={runtimeHealth.state}
+            unavailableServices={runtimeHealth.unavailableServices}
           />
         </div>
       ) : (
@@ -245,6 +257,8 @@ function App() {
           onSectionChange={handleSectionChange}
           aiName={settings.aiName}
           companionState={companionState}
+          runtimeState={runtimeHealth.state}
+          unavailableServices={runtimeHealth.unavailableServices}
         />
       )}
 
