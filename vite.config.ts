@@ -41,6 +41,14 @@ export default defineConfig({
           }
 
           if (
+            packageName === 'sonner' ||
+            packageName === 'next-themes' ||
+            packageName === 'react-error-boundary'
+          ) {
+            return 'theme-vendor';
+          }
+
+          if (
             packageName.startsWith('@radix-ui/') ||
             packageName === 'embla-carousel-react' ||
             packageName === 'vaul' ||
@@ -57,6 +65,16 @@ export default defineConfig({
           }
 
           if (
+            packageName === 'react-hook-form' ||
+            packageName === '@hookform/resolvers' ||
+            packageName === 'zod' ||
+            packageName === 'react-day-picker' ||
+            packageName === 'input-otp'
+          ) {
+            return 'form-vendor';
+          }
+
+          if (
             packageName === '@supabase/supabase-js' ||
             packageName === 'openai' ||
             packageName === '@google/generative-ai' ||
@@ -68,6 +86,17 @@ export default defineConfig({
 
           if (packageName === 'three') {
             return 'three-vendor';
+          }
+
+          if (
+            packageName === 'clsx' ||
+            packageName === 'tailwind-merge' ||
+            packageName === 'class-variance-authority' ||
+            packageName === 'date-fns' ||
+            packageName === 'marked' ||
+            packageName === 'uuid'
+          ) {
+            return 'utils-vendor';
           }
 
           return 'vendor';
