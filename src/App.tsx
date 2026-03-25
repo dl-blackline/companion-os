@@ -1,23 +1,9 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
 import { HomeDashboard } from '@/components/views/HomeDashboard';
-import { ChatView } from '@/components/views/ChatView';
-import { LiveTalkView } from '@/components/views/LiveTalkView';
-import { MediaView } from '@/components/views/MediaView';
-import { MemoryView } from '@/components/views/MemoryView';
-import { KnowledgeView } from '@/components/views/KnowledgeView';
-import { GoalsView } from '@/components/views/GoalsView';
-import { InsightsView } from '@/components/views/InsightsView';
-import { WorkflowsView } from '@/components/views/WorkflowsView';
-import { SettingsView } from '@/components/views/SettingsView';
-import { ControlCenterView } from '@/components/views/ControlCenterView';
-import { AgentsView } from '@/components/views/AgentsView';
-import { AdminConsoleView } from '@/components/views/AdminConsoleView';
-import { TarotView } from '@/components/views/TarotView';
-import { FloatingLiveOrb } from '@/components/FloatingLiveOrb';
 import { useVoice } from '@/context/voice-context';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
@@ -25,6 +11,32 @@ import { useAIControl } from '@/context/ai-control-context';
 import { List, X } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
+
+const ChatView = lazy(() => import('@/components/views/ChatView').then((module) => ({ default: module.ChatView })));
+const LiveTalkView = lazy(() => import('@/components/views/LiveTalkView').then((module) => ({ default: module.LiveTalkView })));
+const MediaView = lazy(() => import('@/components/views/MediaView').then((module) => ({ default: module.MediaView })));
+const MemoryView = lazy(() => import('@/components/views/MemoryView').then((module) => ({ default: module.MemoryView })));
+const KnowledgeView = lazy(() => import('@/components/views/KnowledgeView').then((module) => ({ default: module.KnowledgeView })));
+const GoalsView = lazy(() => import('@/components/views/GoalsView').then((module) => ({ default: module.GoalsView })));
+const InsightsView = lazy(() => import('@/components/views/InsightsView').then((module) => ({ default: module.InsightsView })));
+const WorkflowsView = lazy(() => import('@/components/views/WorkflowsView').then((module) => ({ default: module.WorkflowsView })));
+const SettingsView = lazy(() => import('@/components/views/SettingsView').then((module) => ({ default: module.SettingsView })));
+const ControlCenterView = lazy(() => import('@/components/views/ControlCenterView').then((module) => ({ default: module.ControlCenterView })));
+const AgentsView = lazy(() => import('@/components/views/AgentsView').then((module) => ({ default: module.AgentsView })));
+const AdminConsoleView = lazy(() => import('@/components/views/AdminConsoleView').then((module) => ({ default: module.AdminConsoleView })));
+const TarotView = lazy(() => import('@/components/views/TarotView').then((module) => ({ default: module.TarotView })));
+const FloatingLiveOrb = lazy(() => import('@/components/FloatingLiveOrb').then((module) => ({ default: module.FloatingLiveOrb })));
+
+function SectionFallback() {
+  return (
+    <div className="flex h-full items-center justify-center px-6">
+      <div className="glass-card flex min-w-[240px] items-center gap-3 rounded-2xl px-5 py-4 text-sm text-muted-foreground">
+        <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary" aria-hidden="true" />
+        Loading workspace…
+      </div>
+    </div>
+  );
+}
 
 function sectionFromPathname(pathname: string): NavSection {
   if (pathname === '/control-center') return 'control-center';
@@ -208,7 +220,9 @@ function App() {
             transition={{ duration: 0.22, ease: 'easeInOut' }}
             className="h-full"
           >
-            {renderContent()}
+            <Suspense fallback={<SectionFallback />}>
+              {renderContent()}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -217,7 +231,11 @@ function App() {
           LiveTalkView manages its own voice session. Showing both simultaneously
           would create two independent RealtimeVoiceClient instances and cause
           duplicate audio. */}
-      {activeSection !== 'live-talk' && <FloatingLiveOrb />}
+      {activeSection !== 'live-talk' && (
+        <Suspense fallback={null}>
+          <FloatingLiveOrb />
+        </Suspense>
+      )}
 
       <Toaster />
     </div>
