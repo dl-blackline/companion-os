@@ -42,7 +42,24 @@ import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 
+function decodeJwtPayload(token) {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+
 async function getRecentConversation(supabase, conversation_id) {
+  if (!supabase || !conversation_id) {
+    return [];
+  }
+
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
   const { data } = await supabase
@@ -59,6 +76,10 @@ async function saveMessage(
   supabase,
   { conversation_id, user_id, role, content, embedding, media_url, media_type }
 ) {
+  if (!supabase) {
+    return;
+  }
+
   const table = process.env.CHAT_HISTORY_TABLE || "messages";
 
   const row = {
@@ -470,6 +491,13 @@ async function handleRealtimeToken(data) {
 /* -------------------------------------------------------------------------- */
 
 async function handleVoice(data) {
+  if (data?.backendType === "realtime_token" || data?.options?.backendType === "realtime_token") {
+    return handleRealtimeToken({
+      model: data?.model || data?.options?.data?.model,
+      voice: data?.voice || data?.options?.data?.voice,
+    });
+  }
+
   if (!data.text) {
     return fail("Missing required field: text", "ERR_VALIDATION", 400);
   }
@@ -845,7 +873,12 @@ function normalizePayload(p) {
 async function getUserFromEventAuth(event) {
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
   const token = authHeader?.replace("Bearer ", "");
-  if (!token || !supabase) return null;
+  if (!token) return null;
+
+  if (!supabase) {
+    const claims = decodeJwtPayload(token);
+    return claims?.sub ? { id: claims.sub } : null;
+  }
 
   const {
     data: { user },
@@ -891,11 +924,13 @@ export async function handler(event) {
 
     switch (type) {
       case "chat":
-        if (!authUser) {
-          return fail("Unauthorized", "ERR_AUTH", 401);
-        }
         if (payload && typeof payload === "object") {
-          payload.user_id = authUser.id;
+          if (authUser?.id) {
+            payload.user_id = authUser.id;
+          }
+          if (!payload.user_id) {
+            return fail("Unauthorized", "ERR_AUTH", 401);
+          }
         }
         return await handleChat(payload);
 
@@ -935,8 +970,13 @@ export async function handler(event) {
 
       // Streaming chat — delegates to handleChat with stream flag forced on
       case "stream":
-        if (authUser && payload && typeof payload === "object") {
-          payload.user_id = authUser.id;
+        if (payload && typeof payload === "object") {
+          if (authUser?.id) {
+            payload.user_id = authUser.id;
+          }
+          if (!payload.user_id) {
+            return fail("Unauthorized", "ERR_AUTH", 401);
+          }
         }
         return await handleChat({ ...payload, stream: true });
 

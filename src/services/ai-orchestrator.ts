@@ -136,17 +136,10 @@ export async function requestRealtimeToken(
   voice: string,
 ): Promise<RealtimeTokenResponse> {
   const result = await runAI<{ data?: { client_secret?: string; realtime_endpoint?: string } }>({
-    type: 'voice',
+    type: 'realtime_token',
     input: {
-      message: '',
-      userId: 'default-user',
-      options: {
-        backendType: 'realtime_token',
-        data: {
-          model,
-          voice,
-        },
-      },
+      model,
+      voice,
     },
     config: {
       model,
