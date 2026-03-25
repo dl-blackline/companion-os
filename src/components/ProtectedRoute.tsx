@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
 import { useAuth } from "@/context/auth-context"
 import { supabaseConfigured } from "@/lib/supabase-client"
-import Login from "@/pages/Login"
-import Signup from "@/pages/Signup"
-import ForgotPassword from "@/pages/ForgotPassword"
-import ResetPassword from "@/pages/ResetPassword"
+
+const Login = lazy(() => import("@/pages/Login"));
+const Signup = lazy(() => import("@/pages/Signup"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 type AuthPage = "login" | "signup" | "forgot-password" | "reset-password"
 
@@ -38,43 +39,61 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (loading || authState.status === 'initializing') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-        <div className="relative flex h-12 w-12 items-center justify-center">
-          <div className="absolute inset-0 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-        </div>
-        <p className="text-sm text-muted-foreground animate-pulse">Restoring session…</p>
-      </div>
-    )
+    return <AuthLoadingShell message="Restoring session…" />
   }
+
+  const authFallback = <AuthLoadingShell message="Loading authentication…" />;
 
   if (authPage === "reset-password") {
     return (
-      <ResetPassword
-        onNavigateToLogin={() => {
-          if (window.location.pathname === "/reset-password") {
-            window.history.replaceState({}, "", "/")
-          }
-          setAuthPage("login")
-        }}
-      />
+      <Suspense fallback={authFallback}>
+        <ResetPassword
+          onNavigateToLogin={() => {
+            if (window.location.pathname === "/reset-password") {
+              window.history.replaceState({}, "", "/")
+            }
+            setAuthPage("login")
+          }}
+        />
+      </Suspense>
     )
   }
 
   if (!user) {
     if (authPage === "signup") {
-      return <Signup onNavigateToLogin={() => setAuthPage("login")} />
+      return (
+        <Suspense fallback={authFallback}>
+          <Signup onNavigateToLogin={() => setAuthPage("login")} />
+        </Suspense>
+      )
     }
     if (authPage === "forgot-password") {
-      return <ForgotPassword onNavigateToLogin={() => setAuthPage("login")} />
+      return (
+        <Suspense fallback={authFallback}>
+          <ForgotPassword onNavigateToLogin={() => setAuthPage("login")} />
+        </Suspense>
+      )
     }
     return (
-      <Login
-        onNavigateToSignup={() => setAuthPage("signup")}
-        onNavigateToForgotPassword={() => setAuthPage("forgot-password")}
-      />
+      <Suspense fallback={authFallback}>
+        <Login
+          onNavigateToSignup={() => setAuthPage("signup")}
+          onNavigateToForgotPassword={() => setAuthPage("forgot-password")}
+        />
+      </Suspense>
     )
   }
 
   return <>{children}</>
+}
+
+function AuthLoadingShell({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="relative flex h-12 w-12 items-center justify-center">
+        <div className="absolute inset-0 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+      </div>
+      <p className="text-sm text-muted-foreground animate-pulse">{message}</p>
+    </div>
+  );
 }

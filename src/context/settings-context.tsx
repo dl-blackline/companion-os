@@ -87,6 +87,16 @@ const FIELD_TO_CACHE_TYPE: Record<string, string> = {
   voiceModel: 'voice',
 };
 
+function scheduleIdleTask(task: () => void): () => void {
+  if ('requestIdleCallback' in window) {
+    const id = window.requestIdleCallback(task, { timeout: 1200 });
+    return () => window.cancelIdleCallback(id);
+  }
+
+  const timeoutId = window.setTimeout(task, 180);
+  return () => window.clearTimeout(timeoutId);
+}
+
 // ── Context types ────────────────────────────────────────────────────────────
 interface SettingsContextType {
   // CompanionSettings (localStorage)
@@ -259,9 +269,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setPrefsLoading(false);
       }
     }
-    load();
+
+    const cancelScheduledLoad = scheduleIdleTask(() => {
+      if (!cancelled) {
+        load();
+      }
+    });
+
     return () => {
       cancelled = true;
+      cancelScheduledLoad();
     };
     // getToken is intentionally excluded — it is memoized via useCallback and
     // only depends on getAccessToken which is itself stable.  We re-fetch

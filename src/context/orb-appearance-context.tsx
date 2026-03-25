@@ -28,6 +28,16 @@ import { useAuth } from '@/context/auth-context';
 // ── Local storage key (fallback when not authenticated) ──────────────────────
 const ORB_PREF_STORAGE_KEY = 'companion-orb-preference';
 
+function scheduleIdleTask(task: () => void): () => void {
+  if ('requestIdleCallback' in window) {
+    const id = window.requestIdleCallback(task, { timeout: 1500 });
+    return () => window.cancelIdleCallback(id);
+  }
+
+  const timeoutId = window.setTimeout(task, 220);
+  return () => window.clearTimeout(timeoutId);
+}
+
 // ── Context type ─────────────────────────────────────────────────────────────
 
 interface OrbAppearanceContextType {
@@ -109,8 +119,17 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setLoading(false);
       }
     }
-    loadFromBackend();
-    return () => { cancelled = true; };
+
+    const cancelScheduledLoad = scheduleIdleTask(() => {
+      if (!cancelled) {
+        loadFromBackend();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      cancelScheduledLoad();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
