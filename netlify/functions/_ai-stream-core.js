@@ -69,7 +69,7 @@ export async function handler(event) {
   }
 
   try {
-    validateAIEnv();
+    validateAIEnv({ model: body.model });
   } catch (err) {
     return fail(err.message, err.code || "ERR_CONFIG", 503);
   }

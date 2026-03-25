@@ -28,6 +28,7 @@
  */
 
 import { chat, chatStream, chatJSON, embed } from "../../lib/ai-client.js";
+import { isNofilterModel } from "../../lib/nofilter-client.js";
 import { think } from "../../lib/companion-brain.js";
 import { MODEL_CONFIG } from "../../lib/model-config.js";
 import { log } from "../../lib/_log.js";
@@ -118,8 +119,9 @@ export async function recordInteraction({ user_id, session_id, role, content }) 
  * @param {object}  [opts]
  * @param {boolean} [opts.requireOpenAI=true]
  */
-export function validateAIEnv({ requireOpenAI = true } = {}) {
-  if (requireOpenAI && !process.env.OPENAI_API_KEY) {
+export function validateAIEnv({ requireOpenAI = true, model = "" } = {}) {
+  // NoFilter models use their own API key — skip the OpenAI requirement.
+  if (requireOpenAI && !isNofilterModel(model) && !process.env.OPENAI_API_KEY) {
     throw Object.assign(
       new Error("OPENAI_API_KEY is not configured"),
       { code: "ERR_CONFIG" },
@@ -162,7 +164,7 @@ export async function orchestrate({
   log.info("[orchestrator]", `task=${task}`, `model=${resolvedModel}`, `user=${user_id?.slice(0, 8) ?? "anon"}`);
 
   try {
-    validateAIEnv();
+    validateAIEnv({ model: resolvedModel });
 
     const result = await think({
       message,
@@ -218,7 +220,7 @@ export async function* orchestrateStream({ task = "chat", prompt, model, user_id
   log.info("[orchestrator]", `stream task=${task}`, `model=${resolvedModel}`);
 
   try {
-    validateAIEnv();
+    validateAIEnv({ model: resolvedModel });
 
     const enrichedPrompt = user_id
       ? await injectContext(prompt, { user_id, conversation_id, session_id })
@@ -258,7 +260,7 @@ export async function orchestrateSimple({ prompt, model, task = "chat", user_id,
   log.info("[orchestrator]", `simple task=${task}`, `model=${resolvedModel}`);
 
   try {
-    validateAIEnv();
+    validateAIEnv({ model: resolvedModel });
 
     const enrichedPrompt = user_id
       ? await injectContext(prompt, { user_id, conversation_id, session_id })
@@ -284,7 +286,7 @@ export async function orchestrateJSON({ prompt, model }) {
   log.info("[orchestrator]", `json-parse`, `model=${resolvedModel}`);
 
   try {
-    validateAIEnv();
+    validateAIEnv({ model: resolvedModel });
     return await chatJSON({ prompt, model: resolvedModel });
   } catch (err) {
     log.error("[orchestrator]", `json-parse failed:`, err.message);
@@ -300,7 +302,7 @@ export async function orchestrateJSON({ prompt, model }) {
  */
 export async function orchestrateEmbed(text) {
   try {
-    validateAIEnv();
+    validateAIEnv({ requireOpenAI: true });
     return await embed(text);
   } catch (err) {
     log.error("[orchestrator]", "embed failed:", err.message);
