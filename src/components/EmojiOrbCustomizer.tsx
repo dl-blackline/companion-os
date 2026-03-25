@@ -36,6 +36,14 @@ import {
   EMOJI_ORB_STYLE_MODES,
   ORB_COLOR_LABELS,
 } from '@/types/emoji-orb';
+
+const ORB_SWATCHS: Record<keyof typeof ORB_COLOR_LABELS, string> = {
+  silver: 'linear-gradient(135deg, #f1f5fb, #8d96a7 52%, #343a45)',
+  sapphire: 'linear-gradient(135deg, #95b7ff, #3f63c9 52%, #1f2e5e)',
+  emerald: 'linear-gradient(135deg, #7ef1c5, #2a9b72 52%, #165643)',
+  violet: 'linear-gradient(135deg, #c3a1ff, #7b55cc 52%, #3f2a69)',
+  crimson: 'linear-gradient(135deg, #ff9ba6, #bd4554 52%, #61212b)',
+};
 import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
 import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
 import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
@@ -193,13 +201,18 @@ export function EmojiOrbCustomizer() {
               key={theme}
               onClick={() => setOrbColor(theme)}
               className={cn(
-                'focus-ring-lux rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+                'focus-ring-lux swatch-button',
                 orbColor === theme
-                  ? 'border-primary bg-primary/12 text-foreground'
-                  : 'border-border bg-muted/20 text-muted-foreground hover:text-foreground hover:border-border/90'
+                  ? 'active'
+                  : ''
               )}
               type="button"
             >
+              <span
+                className="h-4 w-4 rounded-full border border-white/40"
+                style={{ background: ORB_SWATCHS[theme] }}
+                aria-hidden="true"
+              />
               {ORB_COLOR_LABELS[theme]}
             </button>
           ))}

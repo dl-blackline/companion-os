@@ -23,6 +23,7 @@ import { triggerHaptic } from '@/utils/haptics';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
+import { useAIControl } from '@/context/ai-control-context';
 import { getUserInitials } from '@/services/user-identity-service';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
@@ -71,6 +72,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
   const { isAdmin, user, logout } = useAuth();
   const { prefs } = useSettings();
   const { mode: orbMode, orbColor } = useOrbAppearance();
+  const { orchestratorConfig } = useAIControl();
   const userInitials = getUserInitials(prefs.display_name, user?.email);
   const mainItems = navItems.filter((i) => i.group === 'main');
   const toolItems = navItems.filter((i) => i.group === 'tools');
@@ -87,6 +89,13 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
         : companionState === 'thinking'
           ? 'bg-violet-300'
           : 'bg-zinc-200';
+
+  const disabledCapabilities = Object.entries(orchestratorConfig.capabilities)
+    .filter(([, enabled]) => !enabled)
+    .map(([name]) => name);
+  const runtimeHealthy = disabledCapabilities.length === 0;
+  const runtimeLabel = runtimeHealthy ? 'Operational' : 'Partial';
+  const runtimeDotClass = runtimeHealthy ? 'text-zinc-100' : 'text-zinc-400';
 
   const renderItem = (item: (typeof navItems)[number]) => {
     const IconComp = item.icon;
@@ -135,22 +144,27 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
         <div className="mt-4 rounded-xl border border-border/75 bg-black/25 px-3 py-2.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] tracking-wide uppercase text-muted-foreground">System</span>
-            <span className="inline-flex items-center gap-2 text-xs text-foreground">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
-              Operational
+            <span className="status-chip">
+              <span className={cn('status-dot', runtimeDotClass)} />
+              {runtimeLabel}
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>State</span>
-            <span className="inline-flex items-center gap-2 text-foreground capitalize">
-              <span className={cn('h-2 w-2 rounded-full', stateDotClass)} />
+            <span className="status-chip status-chip-muted capitalize">
+              <span className={cn('status-dot', stateDotClass)} />
               {stateLabel}
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Orb</span>
-            <span className="text-foreground capitalize">{orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}</span>
+            <span className="status-chip status-chip-muted capitalize">{orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}</span>
           </div>
+          {!runtimeHealthy && (
+            <div className="text-[10px] text-muted-foreground uppercase tracking-[0.1em]">
+              Disabled: {disabledCapabilities.join(', ')}
+            </div>
+          )}
         </div>
       </div>
 

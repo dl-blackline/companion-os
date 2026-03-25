@@ -75,6 +75,13 @@ function App() {
           ? 'bg-violet-300'
           : 'bg-zinc-200';
 
+  const disabledCapabilities = Object.entries(orchestratorConfig.capabilities)
+    .filter(([, enabled]) => !enabled)
+    .map(([name]) => name);
+  const runtimeHealthy = disabledCapabilities.length === 0;
+  const runtimeLabel = runtimeHealthy ? 'Runtime' : 'Runtime Partial';
+  const runtimeDotClass = runtimeHealthy ? 'bg-zinc-100' : 'bg-zinc-400';
+
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
   const navigateTo = (section: string) => {
@@ -199,15 +206,15 @@ function App() {
           </div>
 
           <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-0.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/65 bg-black/25 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-foreground whitespace-nowrap">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Runtime
+            <span className="status-chip whitespace-nowrap">
+              <span className={`status-dot ${runtimeDotClass}`} />
+              {runtimeLabel}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/65 bg-black/25 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-foreground whitespace-nowrap">
-              <span className={`h-1.5 w-1.5 rounded-full ${stateDotClass}`} />
+            <span className="status-chip status-chip-muted whitespace-nowrap">
+              <span className={`status-dot ${stateDotClass}`} />
               {stateLabel}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/65 bg-black/25 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-foreground whitespace-nowrap">
+            <span className="status-chip status-chip-muted whitespace-nowrap">
               Orb {orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}
             </span>
           </div>
