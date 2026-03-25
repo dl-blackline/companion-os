@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,11 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sliders, Robot, Brain, Lightning, FloppyDisk, ArrowsClockwise } from '@phosphor-icons/react';
 import { useAIControl } from '@/context/ai-control-context';
-
-const MODEL_OPTIONS = [
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-];
+import { getCachedModels, preloadModels } from '@/utils/model-cache';
 
 const TONE_OPTIONS = [
   { id: 'professional', name: 'Professional' },
@@ -42,6 +39,18 @@ export function ControlCenterView() {
     reloadConfig,
     orchestratorConfig,
   } = useAIControl();
+
+  const [modelOptions, setModelOptions] = useState<{ id: string; name: string }[]>(
+    () => (getCachedModels()?.chat ?? []).map((m: { id: string; name: string }) => ({ id: m.id, name: m.name }))
+  );
+
+  useEffect(() => {
+    preloadModels().then((data) => {
+      if (data?.chat && data.chat.length > 0) {
+        setModelOptions(data.chat.map((m: { id: string; name: string }) => ({ id: m.id, name: m.name })));
+      }
+    });
+  }, []);
 
   return (
     <div className="settings-panel p-4 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -82,7 +91,7 @@ export function ControlCenterView() {
         <Select value={config.model} onValueChange={(value) => setConfig({ model: value })}>
           <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {MODEL_OPTIONS.map((model) => (
+            {modelOptions.map((model) => (
               <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
             ))}
           </SelectContent>

@@ -58,6 +58,7 @@ const FALLBACK_MODEL_REGISTRY = {
     { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'openai' },
     { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
+    { id: 'nofilter-gpt', name: 'NoFilter GPT', provider: 'nofilter' },
   ],
   image: [{ id: 'openai-image', name: 'OpenAI Image', provider: 'openai' }],
   video: [{ id: 'sora', name: 'Sora', provider: 'openai' }],
