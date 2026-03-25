@@ -53,18 +53,19 @@ export function ControlCenterView() {
   }, []);
 
   return (
-    <div className="settings-panel p-4 md:p-8 max-w-4xl mx-auto space-y-6">
+    <div className="settings-panel p-4 md:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex flex-col gap-2">
+        <p className="executive-eyebrow">Orchestrator Runtime</p>
         <div className="flex items-center gap-3">
           <Sliders size={26} className="text-primary" />
           <h1 className="text-3xl font-bold tracking-tight">AI Control Center</h1>
         </div>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground max-w-3xl">
           Unified control for model, behavior, memory, capabilities, and advanced runtime parameters.
         </p>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-6 border-border/75">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="font-medium">Status</p>
@@ -86,7 +87,7 @@ export function ControlCenterView() {
         {error && <p className="text-sm text-destructive">{error}</p>}
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 border-border/75">
         <SectionHeader title="Model Selection" subtitle="Choose the primary model used by AI execution." />
         <Select value={config.model} onValueChange={(value) => setConfig({ model: value })}>
           <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
@@ -98,7 +99,7 @@ export function ControlCenterView() {
         </Select>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 border-border/75">
         <SectionHeader title="Behavior / Tone" subtitle="Control how the companion responds." />
         <Select
           value={config.tone}
@@ -113,7 +114,7 @@ export function ControlCenterView() {
         </Select>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 border-border/75">
         <SectionHeader title="Memory Settings" subtitle="Define whether AI should use memory context." />
         <div className="flex items-center justify-between rounded-md border border-border p-4">
           <div className="flex items-center gap-2">
@@ -128,7 +129,7 @@ export function ControlCenterView() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 border-border/75">
         <SectionHeader title="Capabilities" subtitle="Toggle available AI capabilities by channel." />
         <div className="space-y-3">
           {([
@@ -159,7 +160,7 @@ export function ControlCenterView() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 border-border/75">
         <SectionHeader title="Advanced Settings" subtitle="Control generation behavior and token limits." />
         <div className="space-y-6">
           <div className="space-y-2">

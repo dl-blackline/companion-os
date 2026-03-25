@@ -158,15 +158,16 @@ export function WorkflowsView() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-transparent">
       {/* Header */}
-      <div className="p-6 border-b border-border bg-card">
+      <div className="p-6 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.86)] backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Lightning size={24} weight="fill" className="text-primary" />
             </div>
             <div>
+              <p className="executive-eyebrow">Automation Operations</p>
               <h1 className="text-2xl font-bold tracking-tight">Workflows & Tools</h1>
               <p className="text-sm text-muted-foreground">
                 Manage tools, permissions, and automation workflows
@@ -199,7 +200,7 @@ export function WorkflowsView() {
       </div>
 
       {/* Search and filters */}
-      <div className="px-6 pt-4 pb-2 space-y-3">
+      <div className="px-6 pt-4 pb-2 space-y-3 bg-[oklch(0.18_0.014_255/0.55)]">
         <div className="relative">
           <MagnifyingGlass
             size={16}

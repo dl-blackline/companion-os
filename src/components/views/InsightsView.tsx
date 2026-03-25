@@ -81,14 +81,15 @@ export function InsightsView() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-border bg-card">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="p-6 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.86)] backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Lightbulb size={24} weight="fill" className="text-primary" />
             </div>
             <div>
+              <p className="executive-eyebrow">Intelligence Signals</p>
               <h1 className="text-2xl font-bold tracking-tight">Insights</h1>
               <p className="text-sm text-muted-foreground">
                 {activeCount} active insight{activeCount !== 1 ? 's' : ''}
@@ -113,7 +114,7 @@ export function InsightsView() {
 
         <div className="space-y-3">
           <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-            <TabsList className="flex-wrap h-auto gap-1">
+            <TabsList className="flex-wrap h-auto gap-1 bg-black/20 border border-border/70">
               <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
               <TabsTrigger value="reminder" className="text-xs">Reminders</TabsTrigger>
               <TabsTrigger value="follow-up" className="text-xs">Follow-ups</TabsTrigger>

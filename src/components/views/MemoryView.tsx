@@ -619,9 +619,9 @@ export function MemoryView() {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-transparent">
       {/* Top-level tabs: Memories | Media | Candidates */}
-      <div className="border-b border-border px-4 pt-3 pb-0 bg-card flex items-center gap-4">
+      <div className="border-b border-border/75 px-4 pt-3 pb-0 bg-[oklch(0.18_0.014_255/0.86)] backdrop-blur-sm flex items-center gap-4">
         <div className="flex items-center gap-1">
           {(['memories', 'media', 'candidates'] as const).map((tab) => (
             <button
@@ -655,8 +655,8 @@ export function MemoryView() {
       {mainTab === 'memories' && (
         <div className="flex flex-col md:flex-row flex-1 min-h-0">
           {/* Left panel — memory list */}
-          <div className="w-full md:w-80 border-r border-border flex flex-col bg-card">
-            <div className="p-4 border-b border-border">
+          <div className="w-full md:w-80 border-r border-border/75 flex flex-col bg-[oklch(0.18_0.014_255/0.82)] backdrop-blur-sm">
+            <div className="p-4 border-b border-border/75">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold">Memories</h2>
                 <Button size="sm" onClick={startCreating} className="min-h-[44px]">
@@ -673,7 +673,7 @@ export function MemoryView() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search memories..."
-                  className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full pl-9 pr-3 py-2 bg-background/80 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
@@ -712,7 +712,7 @@ export function MemoryView() {
                       'w-full p-3 rounded-lg text-left transition-colors relative',
                       selectedId === memory.id
                         ? 'bg-primary/10 border-l-2 border-l-primary'
-                        : 'hover:bg-muted'
+                        : 'hover:bg-muted/60'
                     )}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
