@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { CompanionState } from '@/types';
-import type { EmojiOrbFeatureSet } from '@/types/emoji-orb';
+import type { EmojiOrbFeatureSet, OrbColorTheme } from '@/types/emoji-orb';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
 
 interface CompanionOrbProps {
@@ -106,6 +106,56 @@ function getStateColors(state: CompanionState) {
   }
 }
 
+function getThemeForState(theme: OrbColorTheme, state: CompanionState) {
+  if (theme === 'silver') {
+    return {
+      coreFrom: 'oklch(0.82 0.006 255)',
+      coreMid: 'oklch(0.58 0.006 255)',
+      coreTo: 'oklch(0.30 0.006 255)',
+      ringColor: 'oklch(0.76 0.006 255 / 0.35)',
+      highlightColor: 'oklch(0.95 0.006 255 / 0.62)',
+    };
+  }
+
+  if (theme === 'sapphire') {
+    return {
+      coreFrom: 'oklch(0.75 0.12 245)',
+      coreMid: 'oklch(0.53 0.11 245)',
+      coreTo: 'oklch(0.30 0.08 245)',
+      ringColor: 'oklch(0.70 0.10 245 / 0.35)',
+      highlightColor: 'oklch(0.92 0.06 240 / 0.62)',
+    };
+  }
+
+  if (theme === 'emerald') {
+    return {
+      coreFrom: 'oklch(0.80 0.12 160)',
+      coreMid: 'oklch(0.56 0.11 162)',
+      coreTo: 'oklch(0.33 0.08 165)',
+      ringColor: 'oklch(0.72 0.09 162 / 0.35)',
+      highlightColor: 'oklch(0.93 0.06 162 / 0.62)',
+    };
+  }
+
+  if (theme === 'violet') {
+    return {
+      coreFrom: 'oklch(0.76 0.15 312)',
+      coreMid: 'oklch(0.54 0.13 308)',
+      coreTo: 'oklch(0.31 0.09 300)',
+      ringColor: 'oklch(0.72 0.12 310 / 0.35)',
+      highlightColor: 'oklch(0.92 0.08 305 / 0.62)',
+    };
+  }
+
+  return {
+    coreFrom: 'oklch(0.78 0.16 20)',
+    coreMid: 'oklch(0.54 0.14 22)',
+    coreTo: 'oklch(0.30 0.1 24)',
+    ringColor: 'oklch(0.72 0.12 22 / 0.35)',
+    highlightColor: 'oklch(0.94 0.07 18 / 0.62)',
+  };
+}
+
 function getRingAnimationClass(state: CompanionState, ring: 'inner' | 'mid' | 'outer') {
   if (state === 'thinking') {
     return ring === 'mid' ? 'ring-fast' : ring === 'inner' ? 'ring-medium' : 'ring-slow';
@@ -135,6 +185,7 @@ export function CompanionOrb({
   const orbAppearance = useOrbAppearance();
   const sizes = sizeConfig[size];
   const defaultColors = getStateColors(state);
+  const themedColors = getThemeForState(orbAppearance.orbColor, state);
   const isListening = state === 'listening';
   const isSpeaking = state === 'speaking';
   const isThinking = state === 'thinking';
@@ -155,7 +206,10 @@ export function CompanionOrb({
         highlightColor: activeFeatures.highlightColor,
         orbClass: defaultColors.orbClass, // Keep animation class for pulsing
       }
-    : defaultColors;
+    : {
+        ...themedColors,
+        orbClass: defaultColors.orbClass,
+      };
 
   const activeEmoji = activeFeatures?.emoji ?? null;
 

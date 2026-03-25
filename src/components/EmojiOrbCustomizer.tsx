@@ -34,6 +34,7 @@ import type {
 import {
   EMOJI_ORB_STYLE_LABELS,
   EMOJI_ORB_STYLE_MODES,
+  ORB_COLOR_LABELS,
 } from '@/types/emoji-orb';
 import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
 import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
@@ -49,7 +50,7 @@ import { toast } from 'sonner';
 import { validateMediaFile } from '@/types/media';
 
 export function EmojiOrbCustomizer() {
-  const { mode, emojiFeatures, applyEmojiOrb, resetToDefault } = useOrbAppearance();
+  const { mode, orbColor, emojiFeatures, applyEmojiOrb, setOrbColor, resetToDefault } = useOrbAppearance();
   const [flowState, setFlowState] = useState<EmojiOrbFlowState>({ status: 'idle' });
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -181,6 +182,30 @@ export function EmojiOrbCustomizer() {
 
   return (
     <div className="space-y-6">
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <Label className="text-sm font-semibold">Orb Color</Label>
+          <span className="text-xs text-muted-foreground">{ORB_COLOR_LABELS[orbColor]}</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(ORB_COLOR_LABELS) as Array<keyof typeof ORB_COLOR_LABELS>).map((theme) => (
+            <button
+              key={theme}
+              onClick={() => setOrbColor(theme)}
+              className={cn(
+                'focus-ring-lux rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+                orbColor === theme
+                  ? 'border-primary bg-primary/12 text-foreground'
+                  : 'border-border bg-muted/20 text-muted-foreground hover:text-foreground hover:border-border/90'
+              )}
+              type="button"
+            >
+              {ORB_COLOR_LABELS[theme]}
+            </button>
+          ))}
+        </div>
+      </Card>
+
       {/* Current Orb Status */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">

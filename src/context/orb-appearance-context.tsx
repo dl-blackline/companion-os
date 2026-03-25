@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import type {
   OrbAppearanceMode,
+  OrbColorTheme,
   OrbPreferencePayload,
   EmojiOrbFeatureSet,
   EmojiOrbStyleMode,
@@ -49,10 +50,14 @@ interface OrbAppearanceContextType {
   styleMode: EmojiOrbStyleMode | null;
   /** Active emoji character. */
   emoji: string | null;
+  /** Active orb color theme. */
+  orbColor: OrbColorTheme;
   /** Whether the preference is currently being loaded. */
   loading: boolean;
   /** Apply an emoji orb configuration and persist it. */
   applyEmojiOrb: (features: EmojiOrbFeatureSet, styleMode: EmojiOrbStyleMode, emoji: string) => Promise<void>;
+  /** Set orb color theme and persist it. */
+  setOrbColor: (theme: OrbColorTheme) => Promise<void>;
   /** Reset to the default orb appearance. */
   resetToDefault: () => Promise<void>;
 }
@@ -93,6 +98,7 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
   const emojiFeatures = pref.mode === 'emoji' ? (pref.emojiConfig ?? null) : null;
   const styleMode = pref.mode === 'emoji' ? (pref.styleMode ?? null) : null;
   const emoji = pref.mode === 'emoji' ? (pref.emoji ?? null) : null;
+  const orbColor: OrbColorTheme = pref.orbColor ?? 'silver';
 
   // Load from backend when authenticated user changes
   useEffect(() => {
@@ -172,6 +178,7 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
   ) => {
     const newPref: OrbPreferencePayload = {
       mode: 'emoji',
+      orbColor,
       emojiConfig: features,
       styleMode: styleModeVal,
       emoji: emojiVal,
@@ -185,7 +192,20 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
       const old = loadFromLocalStorage();
       setPref(old);
     }
-  }, [persistPreference]);
+  }, [persistPreference, orbColor]);
+
+  const setOrbColor = useCallback(async (theme: OrbColorTheme) => {
+    try {
+      await persistPreference({
+        ...pref,
+        orbColor: theme,
+      });
+      toast.success(`Orb color set to ${theme}`);
+    } catch {
+      toast.error('Failed to save orb color');
+      setPref(loadFromLocalStorage());
+    }
+  }, [persistPreference, pref]);
 
   const resetToDefault = useCallback(async () => {
     try {
@@ -205,8 +225,10 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
         emojiFeatures,
         styleMode,
         emoji,
+        orbColor,
         loading,
         applyEmojiOrb,
+        setOrbColor,
         resetToDefault,
       }}
     >

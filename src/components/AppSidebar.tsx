@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { triggerHaptic } from '@/utils/haptics';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
+import { useOrbAppearance } from '@/context/orb-appearance-context';
 import { getUserInitials } from '@/services/user-identity-service';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
@@ -69,11 +70,23 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
 export function AppSidebar({ activeSection, onSectionChange, aiName, companionState }: AppSidebarProps) {
   const { isAdmin, user, logout } = useAuth();
   const { prefs } = useSettings();
+  const { mode: orbMode, orbColor } = useOrbAppearance();
   const userInitials = getUserInitials(prefs.display_name, user?.email);
   const mainItems = navItems.filter((i) => i.group === 'main');
   const toolItems = navItems.filter((i) => i.group === 'tools');
   const sysItems = navItems.filter((i) => i.group === 'system');
   const adminItems = navItems.filter((i) => i.group === 'admin');
+
+  const stateLabel = companionState.replace('-', ' ');
+  const stateDotClass = companionState === 'idle'
+    ? 'bg-zinc-400'
+    : companionState === 'listening'
+      ? 'bg-sky-300'
+      : companionState === 'speaking'
+        ? 'bg-emerald-300'
+        : companionState === 'thinking'
+          ? 'bg-violet-300'
+          : 'bg-zinc-200';
 
   const renderItem = (item: (typeof navItems)[number]) => {
     const IconComp = item.icon;
@@ -119,12 +132,25 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
             <p className="text-[11px] text-muted-foreground mt-1 leading-none">Strategic AI Operating Layer</p>
           </div>
         </div>
-        <div className="mt-4 rounded-xl border border-border/75 bg-black/25 px-3 py-2.5 flex items-center justify-between">
-          <span className="text-[11px] tracking-wide uppercase text-muted-foreground">System</span>
-          <span className="inline-flex items-center gap-2 text-xs text-foreground">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.9)]" />
-            Operational
-          </span>
+        <div className="mt-4 rounded-xl border border-border/75 bg-black/25 px-3 py-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] tracking-wide uppercase text-muted-foreground">System</span>
+            <span className="inline-flex items-center gap-2 text-xs text-foreground">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+              Operational
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>State</span>
+            <span className="inline-flex items-center gap-2 text-foreground capitalize">
+              <span className={cn('h-2 w-2 rounded-full', stateDotClass)} />
+              {stateLabel}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Orb</span>
+            <span className="text-foreground capitalize">{orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}</span>
+          </div>
         </div>
       </div>
 
