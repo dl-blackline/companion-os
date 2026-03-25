@@ -95,7 +95,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
       <div className="executive-header">
         <div>
           <p className="executive-eyebrow">Executive Command Center</p>
-          <h1>{aiName}</h1>
+          <h1 className="leading-tight">{aiName}</h1>
           <p className="executive-subtitle">
             Private operating environment for high-agency planning, decision support, and execution.
           </p>
@@ -114,10 +114,10 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
               className="executive-kpi"
             >
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{card.label}</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{card.label}</p>
                 <Icon size={18} className="text-primary" />
               </div>
-              <p className="text-xl font-semibold tracking-tight">{card.value}</p>
+              <p className="text-2xl font-semibold tracking-tight leading-none">{card.value}</p>
               <p className="text-xs text-muted-foreground mt-1">{card.detail}</p>
             </motion.div>
           );
@@ -141,6 +141,9 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
             />
             <p className="mt-5 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
             <p className="text-sm text-muted-foreground mt-1">{STATE_SUBLABELS[companionState]}</p>
+            <div className="mt-5 rounded-full border border-border/70 bg-black/25 px-4 py-1.5 text-[11px] tracking-[0.16em] uppercase text-muted-foreground">
+              Tap Orb For Live Session
+            </div>
           </div>
         </motion.section>
 
@@ -161,11 +164,11 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.24, delay: 0.12 + i * 0.05 }}
                   onClick={() => onNavigate(action.id)}
-                  className="w-full text-left rounded-xl border border-border/70 bg-black/20 hover:bg-muted/60 hover:border-primary/60 transition-all p-3.5"
+                  className="executive-action p-3.5"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/40 inline-flex items-center justify-center">
+                      <span className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/45 inline-flex items-center justify-center">
                         <Icon size={18} className="text-primary" />
                       </span>
                       <div>

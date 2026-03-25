@@ -2,8 +2,8 @@
 @import 'tw-animate-css';
 
 :root {
-  --background: oklch(0.145 0.012 255);
-  --foreground: oklch(0.93 0.01 255);
+  --background: oklch(0.14 0.013 255);
+  --foreground: oklch(0.94 0.01 255);
 
   --card: oklch(0.19 0.014 255);
   --card-foreground: oklch(0.93 0.01 255);
@@ -11,8 +11,8 @@
   --popover: oklch(0.18 0.014 255);
   --popover-foreground: oklch(0.93 0.01 255);
 
-  --primary: oklch(0.66 0.11 215);
-  --primary-foreground: oklch(0.13 0.01 255);
+  --primary: oklch(0.72 0.11 82);
+  --primary-foreground: oklch(0.16 0.02 84);
 
   --secondary: oklch(0.24 0.015 255);
   --secondary-foreground: oklch(0.89 0.01 255);
@@ -20,7 +20,7 @@
   --muted: oklch(0.22 0.014 255);
   --muted-foreground: oklch(0.72 0.01 255);
 
-  --accent: oklch(0.73 0.08 84);
+  --accent: oklch(0.67 0.12 220);
   --accent-foreground: oklch(0.14 0.01 255);
 
   --destructive: oklch(0.58 0.2 26);
@@ -28,7 +28,7 @@
 
   --border: oklch(0.31 0.015 255);
   --input: oklch(0.31 0.015 255);
-  --ring: oklch(0.63 0.11 215);
+  --ring: oklch(0.72 0.11 82);
 
   --radius: 0.75rem;
 
@@ -354,11 +354,75 @@
 }
 
 .glass-card {
-  background: linear-gradient(165deg, rgba(36, 43, 54, 0.88), rgba(28, 33, 43, 0.94));
-  border: 1px solid rgba(83, 95, 110, 0.78);
-  box-shadow: 0 18px 36px rgba(6, 8, 16, 0.35);
+  background:
+    radial-gradient(circle at 14% -12%, rgba(227, 178, 84, 0.16), transparent 40%),
+    linear-gradient(165deg, rgba(34, 40, 50, 0.9), rgba(24, 30, 40, 0.96));
+  border: 1px solid rgba(102, 111, 124, 0.74);
+  box-shadow: 0 18px 36px rgba(4, 6, 14, 0.42), inset 0 1px 0 rgba(250, 252, 255, 0.06);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+}
+
+.visual-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.visual-shell::before,
+.visual-shell::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(48px);
+}
+
+.visual-shell::before {
+  width: min(42vw, 500px);
+  height: min(42vw, 500px);
+  top: -12vh;
+  right: -10vw;
+  background: radial-gradient(circle, rgba(232, 177, 83, 0.22), rgba(232, 177, 83, 0));
+}
+
+.visual-shell::after {
+  width: min(44vw, 520px);
+  height: min(44vw, 520px);
+  left: -16vw;
+  bottom: -18vh;
+  background: radial-gradient(circle, rgba(84, 146, 209, 0.22), rgba(84, 146, 209, 0));
+}
+
+.sidebar-panel {
+  background:
+    linear-gradient(180deg, rgba(25, 32, 44, 0.94), rgba(20, 26, 37, 0.94));
+  border-right: 1px solid rgba(97, 107, 120, 0.62);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03);
+}
+
+.executive-kpi {
+  background:
+    radial-gradient(circle at 86% -20%, rgba(224, 180, 97, 0.14), transparent 42%),
+    linear-gradient(160deg, rgba(36, 43, 56, 0.96), rgba(27, 33, 45, 0.96));
+  border: 1px solid rgba(99, 111, 129, 0.76);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 14px 28px rgba(5, 8, 16, 0.35), inset 0 1px 0 rgba(238, 244, 255, 0.04);
+}
+
+.executive-action {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 111, 128, 0.64);
+  background: linear-gradient(155deg, rgba(30, 36, 47, 0.92), rgba(24, 30, 40, 0.95));
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.executive-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(224, 183, 102, 0.72);
+  box-shadow: 0 10px 24px rgba(6, 8, 16, 0.42), 0 0 0 1px rgba(224, 183, 102, 0.1);
 }
 
 .gpu-accelerated {

@@ -164,23 +164,23 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-dvh w-screen overflow-hidden bg-background text-foreground">
+    <div className="visual-shell flex min-h-dvh w-screen overflow-hidden bg-background text-foreground">
       {/* Mobile header with hamburger */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[oklch(0.17_0.012_255/0.96)] border-b border-border/80 backdrop-blur-md safe-area-top">
+        <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[oklch(0.16_0.012_255/0.92)] border-b border-border/80 backdrop-blur-xl safe-area-top">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-xl bg-black/20 hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {isMobileMenuOpen ? <X size={22} /> : <List size={22} />}
           </button>
           <span
-            className="text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground"
+            className="text-[11px] font-semibold tracking-[0.2em] uppercase text-muted-foreground"
           >
             {settings.aiName}
           </span>
-          <div className="w-11" />
+          <div className="w-11 rounded-xl border border-border/60 bg-black/20 h-11" />
         </div>
       )}
 

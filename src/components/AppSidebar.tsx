@@ -87,17 +87,17 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
           onSectionChange(item.id);
         }}
         className={cn(
-          'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all relative min-h-[42px] border',
+          'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all relative min-h-[42px] border overflow-hidden',
           isActive
-            ? 'bg-primary text-primary-foreground border-primary/70 shadow-[0_10px_20px_rgba(18,80,120,0.32)]'
-            : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/65 hover:border-border/70',
+            ? 'bg-primary text-primary-foreground border-primary/70 shadow-[0_14px_28px_rgba(161,121,42,0.35)]'
+            : 'text-muted-foreground border-border/40 bg-black/10 hover:text-foreground hover:bg-muted/55 hover:border-border/80',
           item.group === 'admin' && !isActive && 'text-amber-300 hover:text-amber-200',
         )}
       >
         {isActive && (
           <motion.div
             layoutId="activeNav"
-            className="absolute inset-0 bg-primary rounded-lg"
+            className="absolute inset-0 bg-primary rounded-xl"
             initial={false}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
@@ -109,17 +109,17 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
   };
 
   return (
-    <aside className="w-72 border-r border-border/80 bg-[oklch(0.17_0.012_255/0.96)] backdrop-blur-md flex flex-col h-full">
+    <aside className="w-72 sidebar-panel backdrop-blur-md flex flex-col h-full">
       <div className="px-5 py-5 border-b border-border/85">
         <div className="flex items-center gap-3">
           <CompanionOrb state={companionState} size="sm" showRipples={false} />
           <div className="flex flex-col min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Companion OS</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">Companion OS</p>
             <h1 className="text-base font-bold text-foreground tracking-tight leading-none truncate">{aiName}</h1>
-            <p className="text-[11px] text-muted-foreground mt-1 leading-none">Private Executive Assistant</p>
+            <p className="text-[11px] text-muted-foreground mt-1 leading-none">Strategic AI Operating Layer</p>
           </div>
         </div>
-        <div className="mt-4 rounded-lg border border-border/80 bg-black/20 px-3 py-2.5 flex items-center justify-between">
+        <div className="mt-4 rounded-xl border border-border/75 bg-black/25 px-3 py-2.5 flex items-center justify-between">
           <span className="text-[11px] tracking-wide uppercase text-muted-foreground">System</span>
           <span className="inline-flex items-center gap-2 text-xs text-foreground">
             <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.9)]" />
@@ -147,18 +147,18 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
         )}
       </nav>
 
-      <div className="p-3 border-t border-border/80 space-y-1.5">
+      <div className="p-3 border-t border-border/80 space-y-1.5 bg-black/10">
         {sysItems.map(renderItem)}
 
-        <div className="px-3 py-2 text-xs text-muted-foreground rounded-lg border border-border/70 bg-black/20">
+        <div className="px-3 py-2 text-xs text-muted-foreground rounded-xl border border-border/70 bg-black/20">
           <div className="flex items-center justify-between">
             <span>Runtime</span>
-            <span>v1.0.0</span>
+            <span className="text-foreground/80">v1.0.0</span>
           </div>
         </div>
 
         {user && (
-          <div className="border border-border/70 bg-black/20 rounded-lg p-2 mt-1">
+          <div className="border border-border/70 bg-black/25 rounded-xl p-2 mt-1">
             <div className="flex items-center gap-2 px-1 py-1">
               <Avatar className="h-8 w-8 shrink-0 border border-border/80">
                 {prefs.avatar_url && <AvatarImage src={prefs.avatar_url} alt="User avatar" />}
