@@ -37,3 +37,7 @@ pids
 .spark-workbench-id
 .env
 .netlify
+
+# Local generated artifacts
+deno.lock
+supabase/.temp/
