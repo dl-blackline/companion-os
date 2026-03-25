@@ -24,6 +24,10 @@ const SERVICE_LABELS: Record<keyof HealthPayload, string> = {
   leonardo: 'leonardo',
 };
 
+const REQUEST_TIMEOUT_MS = 5000;
+const RETRY_DELAYS_MS = [350, 900];
+const MAX_CONSECUTIVE_FAILURES_BEFORE_DOWN = 3;
+
 function isOk(status: ServiceStatus | undefined) {
   return status === 'ok';
 }
@@ -36,28 +40,61 @@ function hasVoiceCapability() {
   return !!(w.SpeechRecognition ?? w.webkitSpeechRecognition);
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function fetchWithTimeout(url: string, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export function useRuntimeHealth(pollMs = 90000): RuntimeHealth {
   const [services, setServices] = useState<HealthPayload | null>(null);
   const [voiceOk, setVoiceOk] = useState<boolean>(hasVoiceCapability());
+  const [failureCount, setFailureCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
+    async function runCheckWithRetry() {
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+        try {
+          const res = await fetchWithTimeout('/.netlify/functions/system-health', REQUEST_TIMEOUT_MS);
+          if (!res.ok) {
+            throw new Error(`Health request failed with ${res.status}`);
+          }
+
+          const json = await res.json();
+          const data = (json.data ?? json) as HealthPayload;
+          return data;
+        } catch {
+          if (attempt === RETRY_DELAYS_MS.length) {
+            throw new Error('Health check failed after retries');
+          }
+          await wait(RETRY_DELAYS_MS[attempt]);
+        }
+      }
+      throw new Error('Unreachable');
+    }
+
     async function check() {
       try {
-        const res = await fetch('/.netlify/functions/system-health');
-        if (!res.ok) {
-          if (!cancelled) setServices({});
-          return;
-        }
-        const json = await res.json();
-        const data = (json.data ?? json) as HealthPayload;
+        const data = await runCheckWithRetry();
         if (!cancelled) {
           setServices(data);
           setVoiceOk(hasVoiceCapability());
+          setFailureCount(0);
         }
       } catch {
-        if (!cancelled) setServices({});
+        if (!cancelled) {
+          setFailureCount((prev) => prev + 1);
+        }
       }
     }
 
@@ -72,6 +109,9 @@ export function useRuntimeHealth(pollMs = 90000): RuntimeHealth {
 
   return useMemo(() => {
     if (services == null) {
+      if (failureCount >= MAX_CONSECUTIVE_FAILURES_BEFORE_DOWN) {
+        return { state: 'down', unavailableServices: ['health-check'] };
+      }
       return { state: 'checking', unavailableServices: [] };
     }
 
@@ -80,6 +120,20 @@ export function useRuntimeHealth(pollMs = 90000): RuntimeHealth {
       .map(([, label]) => label);
 
     if (!voiceOk) unavailable.push('voice');
+
+    if (failureCount >= MAX_CONSECUTIVE_FAILURES_BEFORE_DOWN) {
+      const withHealth = Array.from(new Set([...unavailable, 'health-check']));
+      return { state: 'down', unavailableServices: withHealth };
+    }
+
+    // Avoid flicker during short outages: keep the last good service view
+    // until we hit the down threshold.
+    if (failureCount > 0) {
+      if (unavailable.length === 0) {
+        return { state: 'healthy', unavailableServices: [] };
+      }
+      return { state: 'degraded', unavailableServices: unavailable };
+    }
 
     if (unavailable.length === 0) {
       return { state: 'healthy', unavailableServices: [] };
@@ -90,5 +144,5 @@ export function useRuntimeHealth(pollMs = 90000): RuntimeHealth {
     }
 
     return { state: 'degraded', unavailableServices: unavailable };
-  }, [services, voiceOk]);
+  }, [services, voiceOk, failureCount]);
 }
