@@ -13,6 +13,7 @@ import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
 import { Lightning } from '@phosphor-icons/react/Lightning';
 import { Robot } from '@phosphor-icons/react/Robot';
 import { Sliders } from '@phosphor-icons/react/Sliders';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useAIControl } from '@/context/ai-control-context';
 import { getCachedModels, preloadModels } from '@/utils/model-cache';
 
@@ -48,6 +49,7 @@ export function ControlCenterView() {
   const [modelOptions, setModelOptions] = useState<{ id: string; name: string }[]>(
     () => (getCachedModels()?.chat ?? []).map((m: { id: string; name: string }) => ({ id: m.id, name: m.name }))
   );
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     preloadModels().then((data) => {
@@ -59,7 +61,12 @@ export function ControlCenterView() {
 
   return (
     <div className="settings-panel p-4 md:p-8 max-w-5xl mx-auto space-y-6">
-      <div className="settings-hero flex flex-col gap-2">
+      <motion.div
+        initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0.1 : 0.24 }}
+        className="settings-hero flex flex-col gap-2"
+      >
         <p className="executive-eyebrow">Orchestrator Runtime</p>
         <div className="flex items-center gap-3">
           <Sliders size={26} className="text-primary" />
@@ -68,8 +75,9 @@ export function ControlCenterView() {
         <p className="text-muted-foreground max-w-3xl">
           Unified control for model, behavior, memory, capabilities, and advanced runtime parameters.
         </p>
-      </div>
+      </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.03 }}>
       <Card className="settings-surface p-6 border-border/75">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -91,7 +99,9 @@ export function ControlCenterView() {
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
       </Card>
+      </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.05 }}>
       <Card className="settings-surface p-6 border-border/75">
         <SectionHeader title="Model Selection" subtitle="Choose the primary model used by AI execution." />
         <Select value={config.model} onValueChange={(value) => setConfig({ model: value })}>
@@ -103,7 +113,9 @@ export function ControlCenterView() {
           </SelectContent>
         </Select>
       </Card>
+      </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.07 }}>
       <Card className="settings-surface p-6 border-border/75">
         <SectionHeader title="Behavior / Tone" subtitle="Control how the companion responds." />
         <Select
@@ -118,7 +130,9 @@ export function ControlCenterView() {
           </SelectContent>
         </Select>
       </Card>
+      </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.09 }}>
       <Card className="settings-surface p-6 border-border/75">
         <SectionHeader title="Memory Settings" subtitle="Define whether AI should use memory context." />
         <div className="flex items-center justify-between rounded-md border border-border p-4">
@@ -164,8 +178,10 @@ export function ControlCenterView() {
           ))}
         </div>
       </Card>
+      </motion.div>
 
-      <Card className="p-6 border-border/75">
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.11 }}>
+      <Card className="settings-surface p-6 border-border/75">
         <SectionHeader title="Advanced Settings" subtitle="Control generation behavior and token limits." />
         <div className="space-y-6">
           <div className="space-y-2">
@@ -202,7 +218,9 @@ export function ControlCenterView() {
           </div>
         </div>
       </Card>
+      </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.13 }}>
       <Card className="settings-surface p-6">
         <SectionHeader title="Unified Config Object" subtitle="Prepared payload for the orchestrator." />
         <div className="rounded-md bg-muted p-4 text-xs overflow-x-auto">
@@ -213,6 +231,7 @@ export function ControlCenterView() {
           This object is ready to feed into AI request execution.
         </div>
       </Card>
+      </motion.div>
     </div>
   );
 }

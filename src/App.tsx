@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Toaster } from '@/components/ui/sonner';
 import { AppSidebar, type NavSection } from '@/components/AppSidebar';
@@ -60,6 +60,7 @@ function App() {
   const { isAdmin } = useAuth();
   const { settings } = useSettings();
   const { orchestratorConfig } = useAIControl();
+  const reduceMotion = useReducedMotion();
 
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
@@ -215,10 +216,10 @@ function App() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSection}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            exit={{ opacity: 0, y: reduceMotion ? 0 : -8 }}
+            transition={{ duration: reduceMotion ? 0.08 : 0.22, ease: 'easeInOut' }}
             className="h-full"
           >
             <Suspense fallback={<SectionFallback />}>

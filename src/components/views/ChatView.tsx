@@ -22,7 +22,7 @@ import { X } from '@phosphor-icons/react/X';
 import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
 import { getModeConfig, getAllModes } from '@/lib/modes';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
@@ -62,6 +62,7 @@ export function ChatView() {
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);
   const userInitials = getUserInitials(prefs.display_name, authUser?.email);
@@ -490,9 +491,9 @@ export function ChatView() {
                 activeConversation.messages.map((message) => (
                   <motion.div
                     key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
                     className={cn(
                       'flex gap-4',
                       message.role === 'user' ? 'justify-end' : 'justify-start'

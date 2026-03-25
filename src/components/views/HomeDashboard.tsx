@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { CompanionState } from '@/types';
@@ -89,6 +89,7 @@ const statCards = [
 
 export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashboardProps) {
   const isSmallScreen = useIsMobile();
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="executive-shell container-scroll">
@@ -110,7 +111,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
               key={card.label}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, delay: i * 0.05 }}
+              transition={{ duration: reduceMotion ? 0.1 : 0.28, delay: reduceMotion ? 0 : i * 0.05 }}
               className="executive-kpi"
             >
               <div className="flex items-center justify-between mb-3">
@@ -126,9 +127,9 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-4">
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.34 }}
+          transition={{ duration: reduceMotion ? 0.12 : 0.34 }}
           className="glass-card rounded-2xl p-5 md:p-6"
         >
           <p className="executive-eyebrow">Core Companion</p>
@@ -148,9 +149,9 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
         </motion.section>
 
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.34, delay: 0.06 }}
+          transition={{ duration: reduceMotion ? 0.12 : 0.34, delay: reduceMotion ? 0 : 0.06 }}
           className="glass-card rounded-2xl p-5 md:p-6"
         >
           <p className="executive-eyebrow">Quick Actions</p>
@@ -160,9 +161,9 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
               return (
                 <motion.button
                   key={action.id}
-                  initial={{ opacity: 0, x: -8 }}
+                  initial={{ opacity: 0, x: reduceMotion ? 0 : -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.24, delay: 0.12 + i * 0.05 }}
+                  transition={{ duration: reduceMotion ? 0.1 : 0.24, delay: reduceMotion ? 0 : 0.12 + i * 0.05 }}
                   onClick={() => onNavigate(action.id)}
                   className="executive-action p-3.5"
                 >
