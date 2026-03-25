@@ -154,17 +154,16 @@ function App() {
     <div className="flex min-h-[100dvh] w-screen overflow-hidden bg-background text-foreground">
       {/* Mobile header with hamburger */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-card border-b border-border safe-area-top">
+        <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-[oklch(0.17_0.012_255/0.96)] border-b border-border/80 backdrop-blur-md safe-area-top">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {isMobileMenuOpen ? <X size={22} /> : <List size={22} />}
           </button>
           <span
-            className="text-sm font-semibold tracking-widest uppercase text-muted-foreground"
-            style={{ fontFamily: 'var(--font-space)' }}
+            className="text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground"
           >
             {settings.aiName}
           </span>
@@ -206,7 +205,7 @@ function App() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
             className="h-full"
           >
             {renderContent()}

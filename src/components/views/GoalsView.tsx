@@ -716,10 +716,11 @@ export function GoalsView() {
   // List view
   return (
     <ScrollArea className="h-full">
-      <div className="p-8 space-y-6">
+      <div className="p-5 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
+            <p className="executive-eyebrow">Execution Planning</p>
             <h1 className="text-3xl font-bold tracking-tight mb-1">Goals & Planning</h1>
             <p className="text-muted-foreground text-sm">
               Track progress across every timeframe.

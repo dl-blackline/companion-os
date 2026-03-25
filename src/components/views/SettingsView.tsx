@@ -391,25 +391,26 @@ export function SettingsView() {
   })();
 
   return (
-    <div className="settings-panel p-4 md:p-8 max-w-3xl mx-auto">
+    <div className="settings-panel p-4 md:p-8 max-w-4xl mx-auto">
       <div className="space-y-6 md:space-y-8">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
+          <p className="executive-eyebrow">Identity, Controls, and Privacy</p>
           <div className="flex items-center gap-3 mb-2">
             <Gear size={28} weight="fill" className="text-primary" />
             <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground max-w-3xl">
             Configure your companion's behavior, model controls, and privacy preferences.
           </p>
         </motion.div>
 
         <Tabs defaultValue="account" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="settings-tabs-list min-w-max">
+            <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70">
               <TabsTrigger value="account" className="gap-1.5">
                 <User size={16} /> Account
               </TabsTrigger>

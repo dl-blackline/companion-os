@@ -317,16 +317,16 @@ export function ChatView() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
+    <div className="flex flex-col md:flex-row h-full bg-transparent">
       {/* Conversation list — full width on mobile when no active conv, hidden when viewing chat */}
       <div className={cn(
-        'border-r border-border flex flex-col bg-card',
+        'border-r border-border/70 flex flex-col bg-[oklch(0.18_0.014_255/0.84)] backdrop-blur-sm',
         'w-full md:w-80',
         activeConversation ? 'hidden md:flex' : 'flex'
       )}>
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-border/75">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">Conversations</h2>
+            <h2 className="font-semibold tracking-tight">Conversations</h2>
             <Button size="sm" onClick={() => handleCreateConversation()} className="min-h-[44px] min-w-[44px]">
               <Plus size={16} className="mr-1" /> New
             </Button>
@@ -338,7 +338,7 @@ export function ChatView() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search conversations..."
-              className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full pl-9 pr-3 py-2 bg-background/80 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
@@ -352,7 +352,7 @@ export function ChatView() {
                   'group relative rounded-lg transition-colors',
                   activeConvId === conv.id 
                     ? 'bg-primary/10 border-l-2 border-l-primary' 
-                    : 'hover:bg-muted'
+                    : 'hover:bg-muted/55'
                 )}
               >
                 <button
@@ -366,6 +366,8 @@ export function ChatView() {
                         e.stopPropagation();
                         handleTogglePin(conv.id);
                       }}
+                      title={conv.isPinned ? 'Unpin conversation' : 'Pin conversation'}
+                      aria-label={conv.isPinned ? 'Unpin conversation' : 'Pin conversation'}
                       className="shrink-0 hover:scale-110 transition-transform"
                     >
                       <Star size={14} weight={conv.isPinned ? 'fill' : 'regular'} className={conv.isPinned ? 'text-accent' : 'text-muted-foreground'} />
@@ -413,7 +415,7 @@ export function ChatView() {
           'flex-1 flex flex-col',
           activeConversation ? 'flex' : 'hidden md:flex'
         )}>
-          <div className="p-4 border-b border-border bg-card">
+          <div className="p-4 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.85)] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
@@ -424,7 +426,7 @@ export function ChatView() {
                   <ArrowLeft size={18} />
                 </button>
                 <div>
-                  <h2 className="font-semibold mb-1">{activeConversation.title}</h2>
+                  <h2 className="font-semibold tracking-tight mb-1">{activeConversation.title}</h2>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
                       {getModeConfig(activeConversation.mode).name}
@@ -448,7 +450,9 @@ export function ChatView() {
                       );
                     });
                   }}
-                  className="px-3 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  title="Conversation mode"
+                  aria-label="Conversation mode"
+                  className="px-3 py-2 bg-background/80 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {modes.map(mode => (
                     <option key={mode.id} value={mode.id}>{mode.name}</option>
@@ -469,11 +473,11 @@ export function ChatView() {
             </div>
           </div>
 
-          <ScrollArea className="flex-1 p-6">
+          <ScrollArea className="flex-1 p-5 md:p-6">
             <div className="max-w-3xl mx-auto space-y-6">
               {activeConversation.messages.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/12 border border-primary/30 mb-4">
                     <Sparkle size={32} weight="fill" className="text-primary" />
                   </div>
                   <h3 className="font-semibold mb-2">Start a conversation</h3>
@@ -500,10 +504,10 @@ export function ChatView() {
                     )}
                     <div
                       className={cn(
-                        'max-w-[80%] p-4 rounded-lg',
+                        'max-w-[82%] p-4 rounded-xl border',
                         message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-card border border-border'
+                          ? 'bg-primary text-primary-foreground border-primary/80'
+                          : 'bg-card/85 border-border/75'
                       )}
                     >
                       {message.media_url && message.media_type === 'image' && (
@@ -541,7 +545,7 @@ export function ChatView() {
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Robot size={18} weight="fill" className="text-primary animate-pulse" />
                   </div>
-                  <div className="bg-card border border-border p-4 rounded-lg max-w-[80%]">
+                  <div className="bg-card/85 border border-border/75 p-4 rounded-xl max-w-[82%]">
                     {isAnalyzing ? (
                       <div className="flex items-center gap-2">
                         <SpinnerGap size={16} className="text-primary animate-spin" />
@@ -563,7 +567,7 @@ export function ChatView() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t border-border bg-card sticky bottom-0 safe-area-bottom">
+          <div className="p-4 border-t border-border/75 bg-[oklch(0.18_0.014_255/0.88)] backdrop-blur-md sticky bottom-0 safe-area-bottom">
             <div className="max-w-3xl mx-auto">
               {/* Media uploader panel */}
               {showUploader && (
@@ -580,7 +584,7 @@ export function ChatView() {
               {/* Pending media preview badge */}
               {pendingMedia && !showUploader && (
                 <div className="mb-2 flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-primary/10 rounded-lg px-3 py-1.5">
+                  <div className="flex items-center gap-1.5 bg-primary/12 border border-primary/30 rounded-lg px-3 py-1.5">
                     {pendingMedia.mediaType === 'image' ? (
                       <ImageIcon size={14} className="text-primary" />
                     ) : (
@@ -594,6 +598,8 @@ export function ChatView() {
                         URL.revokeObjectURL(pendingMedia.previewUrl);
                         setPendingMedia(null);
                       }}
+                      title="Remove pending media"
+                      aria-label="Remove pending media"
                       className="text-primary/60 hover:text-primary transition-colors ml-1"
                     >
                       <X size={12} />
@@ -602,7 +608,7 @@ export function ChatView() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-end">
                 <Button
                   variant="outline"
                   size="icon"
@@ -623,7 +629,7 @@ export function ChatView() {
                     }
                   }}
                   placeholder={pendingMedia ? "Add a message or press send…" : "Type your message..."}
-                  className="resize-none min-h-[60px] max-h-[200px]"
+                  className="resize-none min-h-[60px] max-h-[200px] border-border/75 bg-background/80"
                   disabled={isStreaming}
                 />
                 <Button
@@ -638,7 +644,7 @@ export function ChatView() {
                 <p className="text-xs text-muted-foreground">
                   Press Enter to send, Shift+Enter for new line
                 </p>
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/70 border border-border/70 px-2 py-0.5 rounded-md">
                   <Lightning size={12} weight="fill" className="text-primary" />
                   {getModelDisplayName('chat', orchestratorConfig.model)}
                 </span>

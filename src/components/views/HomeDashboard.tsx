@@ -8,6 +8,9 @@ import {
   Images,
   Lightning,
   ArrowRight,
+  Brain,
+  ListChecks,
+  ShieldCheck,
 } from '@phosphor-icons/react';
 
 interface HomeDashboardProps {
@@ -17,67 +20,72 @@ interface HomeDashboardProps {
 }
 
 const STATE_LABELS: Record<CompanionState, string> = {
-  idle: 'Ready',
-  listening: 'Listening…',
-  thinking: 'Thinking…',
-  speaking: 'Speaking…',
-  'generating-image': 'Generating image…',
-  'generating-video': 'Generating video…',
-  writing: 'Writing…',
-  analyzing: 'Analyzing…',
+  idle: 'Ready for execution',
+  listening: 'Listening',
+  thinking: 'Reasoning',
+  speaking: 'Responding',
+  'generating-image': 'Generating image',
+  'generating-video': 'Generating video',
+  writing: 'Drafting output',
+  analyzing: 'Analyzing context',
 };
 
 const STATE_SUBLABELS: Record<CompanionState, string> = {
-  idle: 'Your AI companion is here',
-  listening: 'I can hear you',
-  thinking: 'Working on your request',
-  speaking: 'Playing response',
-  'generating-image': 'Creating your vision',
-  'generating-video': 'Rendering your scene',
-  writing: 'Composing for you',
-  analyzing: 'Processing your content',
+  idle: 'All systems available',
+  listening: 'Input channel active',
+  thinking: 'Processing active thread',
+  speaking: 'Voice response in progress',
+  'generating-image': 'Visual pipeline engaged',
+  'generating-video': 'Video pipeline engaged',
+  writing: 'Composing structured output',
+  analyzing: 'Reading and indexing inputs',
 };
 
 const quickActions = [
   {
-    id: 'live-talk',
-    label: 'Live Talk',
-    icon: Microphone,
-    description: 'Real-time voice conversation',
-    accent: 'oklch(0.65 0.20 230)',
-    borderAccent: 'border-[oklch(0.65_0.20_230/0.35)]',
-    bgAccent: 'oklch(0.65 0.20 230 / 0.08)',
-    iconColor: 'text-[oklch(0.70_0.20_230)]',
+    id: 'chat',
+    label: 'Strategic Chat',
+    description: 'High-context text collaboration',
+    icon: ChatCircle,
   },
   {
-    id: 'chat',
-    label: 'Chat',
-    icon: ChatCircle,
-    description: 'Text conversation',
-    accent: 'oklch(0.55 0.22 290)',
-    borderAccent: 'border-[oklch(0.55_0.22_290/0.35)]',
-    bgAccent: 'oklch(0.55 0.22 290 / 0.08)',
-    iconColor: 'text-[oklch(0.60_0.22_290)]',
+    id: 'live-talk',
+    label: 'Live Voice',
+    description: 'Real-time conversational mode',
+    icon: Microphone,
   },
   {
     id: 'media',
-    label: 'Create',
+    label: 'Media Studio',
+    description: 'Generate visual and video assets',
     icon: Images,
-    description: 'Generate photos & videos',
-    accent: 'oklch(0.72 0.26 310)',
-    borderAccent: 'border-[oklch(0.72_0.26_310/0.35)]',
-    bgAccent: 'oklch(0.72 0.26 310 / 0.08)',
-    iconColor: 'text-[oklch(0.72_0.26_310)]',
   },
   {
     id: 'workflows',
-    label: 'Automate',
+    label: 'Workflow Ops',
+    description: 'Run repeatable operational logic',
     icon: Lightning,
-    description: 'Intelligent workflows',
-    accent: 'oklch(0.75 0.14 65)',
-    borderAccent: 'border-[oklch(0.75_0.14_65/0.35)]',
-    bgAccent: 'oklch(0.75 0.14 65 / 0.08)',
-    iconColor: 'text-[oklch(0.75_0.14_65)]',
+  },
+];
+
+const statCards = [
+  {
+    label: 'Companion Status',
+    value: 'Operational',
+    detail: 'Realtime, memory, and reasoning online',
+    icon: ShieldCheck,
+  },
+  {
+    label: 'Context Depth',
+    value: 'High',
+    detail: 'Memory and knowledge channels active',
+    icon: Brain,
+  },
+  {
+    label: 'Execution Focus',
+    value: '4 queues',
+    detail: 'Chat, media, goals, and workflows available',
+    icon: ListChecks,
   },
 ];
 
@@ -85,119 +93,96 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
   const isSmallScreen = useIsMobile();
 
   return (
-    <div className="relative flex flex-col items-center justify-center h-full w-full overflow-hidden bg-background px-4">
-      {/* Ambient background gradient */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 50% 45%, oklch(0.28 0.08 285 / 0.40) 0%, transparent 72%)',
-        }}
-      />
-      {/* Subtle grid texture */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage:
-            'linear-gradient(oklch(0.80 0.05 280) 1px, transparent 1px), linear-gradient(90deg, oklch(0.80 0.05 280) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-        }}
-      />
+    <div className="executive-shell container-scroll">
+      <div className="executive-header">
+        <div>
+          <p className="executive-eyebrow">Executive Command Center</p>
+          <h1>{aiName}</h1>
+          <p className="executive-subtitle">
+            Private operating environment for high-agency planning, decision support, and execution.
+          </p>
+        </div>
+      </div>
 
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-0">
-        {/* App name */}
-        <motion.p
-          initial={{ opacity: 0, y: -12 }}
+      <div className="executive-grid md:grid-cols-3 mb-4">
+        {statCards.map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: i * 0.05 }}
+              className="executive-kpi"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{card.label}</p>
+                <Icon size={18} className="text-primary" />
+              </div>
+              <p className="text-xl font-semibold tracking-tight">{card.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{card.detail}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-4">
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-xs font-semibold tracking-[0.22em] uppercase text-muted-foreground mb-10"
-          style={{ fontFamily: 'var(--font-space)' }}
+          transition={{ duration: 0.34 }}
+          className="glass-card rounded-2xl p-5 md:p-6"
         >
-          {aiName}
-        </motion.p>
+          <p className="executive-eyebrow">Core Companion</p>
+          <div className="flex flex-col items-center text-center">
+            <CompanionOrb
+              state={companionState}
+              size={isSmallScreen ? 'lg' : 'xl'}
+              onClick={() => onNavigate('live-talk')}
+              showRipples
+            />
+            <p className="mt-5 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
+            <p className="text-sm text-muted-foreground mt-1">{STATE_SUBLABELS[companionState]}</p>
+          </div>
+        </motion.section>
 
-        {/* Orb */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-8"
-        >
-          <CompanionOrb
-            state={companionState}
-            size={isSmallScreen ? 'lg' : 'xl'}
-            onClick={() => onNavigate('live-talk')}
-            showRipples={true}
-          />
-        </motion.div>
-
-        {/* State label */}
-        <motion.div
-          className="flex flex-col items-center gap-1 mb-12"
-          key={companionState}
-          initial={{ opacity: 0, y: 8 }}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
+          transition={{ duration: 0.34, delay: 0.06 }}
+          className="glass-card rounded-2xl p-5 md:p-6"
         >
-          <span
-            className="text-2xl font-semibold tracking-tight"
-            style={{ fontFamily: 'var(--font-space)' }}
-          >
-            {STATE_LABELS[companionState]}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {STATE_SUBLABELS[companionState]}
-          </span>
-        </motion.div>
-
-        {/* Quick actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-xl px-4"
-        >
-          {quickActions.map((action, i) => {
-            const Icon = action.icon;
-            return (
-              <motion.button
-                key={action.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.30 + i * 0.07 }}
-                onClick={() => onNavigate(action.id)}
-                className={`group relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 min-h-[44px]
-                  ${action.borderAccent} bg-card/60 hover:bg-card/90 backdrop-blur-sm
-                  hover:shadow-[0_0_24px_oklch(0.50_0.18_285/0.25)] active:scale-[0.97]`}
-              >
-                <div
-                  className="flex items-center justify-center w-10 h-10 rounded-xl"
-                  style={{ background: action.bgAccent }}
+          <p className="executive-eyebrow">Quick Actions</p>
+          <div className="space-y-2.5">
+            {quickActions.map((action, i) => {
+              const Icon = action.icon;
+              return (
+                <motion.button
+                  key={action.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.24, delay: 0.12 + i * 0.05 }}
+                  onClick={() => onNavigate(action.id)}
+                  className="w-full text-left rounded-xl border border-border/70 bg-black/20 hover:bg-muted/60 hover:border-primary/60 transition-all p-3.5"
                 >
-                  <Icon size={20} weight="fill" className={action.iconColor} />
-                </div>
-                <div className="flex flex-col items-center gap-0.5">
-                  <span
-                    className="text-sm font-semibold leading-none"
-                    style={{ fontFamily: 'var(--font-space)' }}
-                  >
-                    {action.label}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground text-center leading-tight">
-                    {action.description}
-                  </span>
-                </div>
-                <ArrowRight
-                  size={12}
-                  className="absolute top-3 right-3 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity"
-                />
-              </motion.button>
-            );
-          })}
-        </motion.div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/40 inline-flex items-center justify-center">
+                        <Icon size={18} className="text-primary" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold tracking-tight">{action.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-muted-foreground" />
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.section>
       </div>
     </div>
   );
 }
-

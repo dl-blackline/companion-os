@@ -441,10 +441,10 @@ export function KnowledgeView() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-full">
+    <div className="flex flex-col md:flex-row h-full bg-transparent">
       {/* Left panel — knowledge list */}
-      <div className="w-full md:w-80 border-r border-border flex flex-col bg-card">
-        <div className="p-4 border-b border-border">
+      <div className="w-full md:w-80 border-r border-border/75 flex flex-col bg-[oklch(0.18_0.014_255/0.82)] backdrop-blur-sm">
+        <div className="p-4 border-b border-border/75">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Knowledge Vault</h2>
             <Button size="sm" onClick={startCreating} className="min-h-[44px]">
@@ -461,7 +461,7 @@ export function KnowledgeView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search knowledge..."
-              className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full pl-9 pr-3 py-2 bg-background/80 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
@@ -500,7 +500,7 @@ export function KnowledgeView() {
                   'w-full p-3 rounded-lg text-left transition-colors relative',
                   selectedId === item.id
                     ? 'bg-primary/10 border-l-2 border-l-primary'
-                    : 'hover:bg-muted'
+                    : 'hover:bg-muted/60'
                 )}
               >
                 <div className="flex items-start gap-2 mb-1">
