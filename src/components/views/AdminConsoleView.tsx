@@ -1302,8 +1302,8 @@ export function AdminConsoleView() {
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-        <ShieldCheck className="w-12 h-12 opacity-30" />
-        <p className="text-sm">You do not have permission to access this page.</p>
+        <ShieldCheck className="w-12 h-12 opacity-40" />
+        <p className="text-sm tracking-tight">You do not have permission to access this page.</p>
       </div>
     );
   }
@@ -1320,14 +1320,15 @@ export function AdminConsoleView() {
   return (
     <div className="min-h-full bg-background text-foreground">
       {/* Header */}
-      <div className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-border/75 bg-[oklch(0.18_0.014_255/0.86)] backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 border border-primary/20">
+          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/12 border border-primary/30">
             <Shield className="w-5 h-5 text-primary" weight="fill" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-foreground leading-none">Admin Console</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Companion OS command center</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1">Governance Surface</p>
+            <h1 className="text-base font-semibold tracking-tight text-foreground leading-none">Admin Console</h1>
+            <p className="text-xs text-muted-foreground mt-1">Companion OS command center</p>
           </div>
         </div>
       </div>
@@ -1336,12 +1337,12 @@ export function AdminConsoleView() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <ScrollArea className="w-full">
-            <TabsList className="bg-card border border-border h-auto p-1 gap-0.5 flex w-max min-w-full">
+            <TabsList className="bg-black/20 border border-border/70 h-auto p-1 gap-0.5 flex w-max min-w-full">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className="gap-1.5 text-xs font-medium data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 rounded-md px-3 py-1.5 whitespace-nowrap"
+                  className="gap-1.5 text-xs font-medium data-[state=active]:bg-primary/12 data-[state=active]:text-primary data-[state=active]:border-primary/30 rounded-md px-3 py-1.5 whitespace-nowrap"
                 >
                   <tab.icon className="w-3.5 h-3.5" />
                   {tab.label}

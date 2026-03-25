@@ -57,21 +57,22 @@ export default function Login({ onNavigateToSignup, onNavigateToForgotPassword }
   const isAuthenticating = loading || authState.status === 'authenticating'
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="auth-shell">
+      <div className="auth-panel">
         {/* Branding */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+        <div className="auth-brand">
+          <p className="executive-eyebrow mb-0">Secure Access</p>
+          <div className="auth-mark">
             <span className="text-2xl font-bold text-primary">C</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Companion OS</h1>
-          <p className="text-sm text-muted-foreground">Your AI-powered personal operating system</p>
+          <p className="text-sm text-muted-foreground">Private operating environment for executive users</p>
         </div>
 
-        <Card className="border-border/50 shadow-lg">
+        <Card className="auth-card">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Welcome back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
+            <CardTitle className="text-xl tracking-tight">Welcome back</CardTitle>
+            <CardDescription>Authenticate to continue to your private workspace</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -159,7 +160,7 @@ export default function Login({ onNavigateToSignup, onNavigateToForgotPassword }
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground/60">
+        <p className="text-center text-xs text-muted-foreground/70">
           Secured by Supabase Auth · End-to-end encrypted
         </p>
       </div>

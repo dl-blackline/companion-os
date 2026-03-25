@@ -196,6 +196,48 @@
   padding: 14px;
 }
 
+.auth-shell {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.auth-panel {
+  width: 100%;
+  max-width: 470px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-brand {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.auth-mark {
+  margin: 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, oklch(0.66 0.11 215 / 0.22), oklch(0.73 0.08 84 / 0.18));
+  border: 1px solid oklch(0.63 0.1 215 / 0.45);
+  box-shadow: 0 10px 24px rgba(5, 10, 20, 0.42);
+}
+
+.auth-card {
+  border: 1px solid oklch(0.34 0.014 255 / 0.85);
+  background: linear-gradient(165deg, oklch(0.2 0.014 255 / 0.96), oklch(0.17 0.014 255 / 0.96));
+  box-shadow: 0 20px 40px rgba(4, 8, 14, 0.46);
+}
+
 .streaming-text {
   animation: fade-in-up 140ms ease-out;
 }
