@@ -7,22 +7,39 @@
  * 2) Supabase CLI auth available in current environment
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
-function runCommand(command) {
-  return execSync(command, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+function quoteForShell(value) {
+  if (value === "") return '""';
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) return value;
+  return `"${String(value).replace(/(["\\$`])/g, "\\$1")}"`;
 }
 
-function getQueryMode() {
+function runNpx(args) {
+  if (process.platform === "win32") {
+    const command = `npx ${args.map(quoteForShell).join(" ")} 2>&1`;
+    return execSync(command, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+  }
+
+  try {
+    return execFileSync("npx", args, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const stdout = error?.stdout ? String(error.stdout) : "";
+    const stderr = error?.stderr ? String(error.stderr) : "";
+    const message = (stdout + stderr).trim() || error?.message || "Unknown command failure";
+    throw new Error(message);
+  }
+}
+
+function getQueryModeArgs() {
   const rawDbUrl = process.env.SUPABASE_DB_URL?.trim();
-  if (!rawDbUrl) return { mode: "linked", dbUrlArg: "" };
+  if (!rawDbUrl) return ["--linked"];
 
-  const looksEncoded =
-    rawDbUrl.startsWith("postgres%3A") ||
-    rawDbUrl.startsWith("postgresql%3A");
-
-  const encoded = looksEncoded ? rawDbUrl : encodeURIComponent(rawDbUrl);
-  return { mode: "db-url", dbUrlArg: `--db-url ${encoded}` };
+  // Supabase CLI expects a raw connection string for --db-url.
+  return ["--db-url", rawDbUrl];
 }
 
 function parseJsonFromCliOutput(output) {
@@ -47,11 +64,18 @@ function parseJsonFromCliOutput(output) {
 }
 
 function query(sql) {
-  const escapedSql = sql.replace(/"/g, '\\"').replace(/\n/g, " ");
-  const { mode, dbUrlArg } = getQueryMode();
-  const modeArg = mode === "db-url" ? dbUrlArg : "--linked";
-  const cmd = `npx -y supabase db query ${modeArg} --output json "${escapedSql}" 2>&1`;
-  const raw = runCommand(cmd);
+  const normalizedSql = sql.replace(/\n/g, " ");
+  const modeArgs = getQueryModeArgs();
+  const raw = runNpx([
+    "-y",
+    "supabase",
+    "db",
+    "query",
+    ...modeArgs,
+    "--output",
+    "json",
+    normalizedSql,
+  ]);
   return parseJsonFromCliOutput(raw);
 }
 
