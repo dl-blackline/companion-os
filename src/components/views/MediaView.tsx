@@ -29,6 +29,8 @@ import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { IMAGE_REFINEMENT_ACTIONS, VIDEO_REFINEMENT_ACTIONS, buildRefinementPrompt } from '@/services/media-refinement-service';
 import { useAuth } from '@/context/auth-context';
 import { useAIControl } from '@/context/ai-control-context';
+import { useSubscription } from '@/hooks/use-subscription';
+import { isPaidPlan } from '@/lib/subscription-plans';
 import { runAI } from '@/services/ai-orchestrator';
 
 /** Aspect ratio options for image generation */
@@ -142,7 +144,7 @@ function GenerationCard({
         {/* Visual placeholder / result area */}
         <div
           className={cn(
-            'aspect-[4/3] flex items-center justify-center relative overflow-hidden',
+            'aspect-4/3 flex items-center justify-center relative overflow-hidden',
             item.status === 'complete' ? 'media-stage-complete' : 'media-stage-idle'
           )}
         >
@@ -325,8 +327,9 @@ function GenerationCard({
 }
 
 export function MediaView({ companionState, setCompanionState, aiName }: MediaViewProps) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, plan } = useAuth();
   const { orchestratorConfig } = useAIControl();
+  const { usage } = useSubscription();
   const [activeTab, setActiveTab] = useState<MediaTab>('photo');
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<MediaStyle>('photorealistic');
@@ -350,6 +353,7 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
   const imageEnabled = orchestratorConfig.capabilities.image;
   const videoEnabled = orchestratorConfig.capabilities.video;
   const canGenerateCurrentType = activeTab === 'photo' ? imageEnabled : videoEnabled;
+  const mediaUsage = usage.media_generation;
 
   /** Run a single generation job for given prompt/style/ratio/type */
   const runGeneration = useCallback(
@@ -463,6 +467,11 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
   );
 
   const handleGenerate = async () => {
+    if (!authUser) {
+      toast.error('Sign in to generate media.');
+      return;
+    }
+
     if (!canGenerateCurrentType) {
       toast.error(`${activeTab === 'photo' ? 'Image' : 'Video'} capability is disabled in Control Center`);
       return;
@@ -697,6 +706,21 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <ClockCounterClockwise size={14} />
               {completedCount} created
             </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="relative z-10 px-4 md:px-6 pt-4">
+        <div className="rounded-xl border border-border/60 bg-black/20 px-4 py-3 text-sm">
+          <span className="font-medium text-foreground">
+            {isPaidPlan(plan)
+              ? 'Paid plan active: media generation runs with expanded capacity.'
+              : `Free plan: ${mediaUsage?.remaining ?? 0} of ${mediaUsage?.limit ?? 0} media generations remaining this month.`}
+          </span>
+          {!isPaidPlan(plan) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Upgrade in Settings to keep creating after the monthly starter allowance is used.
+            </p>
           )}
         </div>
       </div>

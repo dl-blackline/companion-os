@@ -26,6 +26,7 @@ import { Bell } from '@phosphor-icons/react/Bell';
 import { Brain } from '@phosphor-icons/react/Brain';
 import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
 import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { CreditCard } from '@phosphor-icons/react/CreditCard';
 import { Database } from '@phosphor-icons/react/Database';
 import { Export } from '@phosphor-icons/react/Export';
 import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
@@ -54,8 +55,10 @@ import {
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
 import { useVoice } from '@/context/voice-context';
+import { useSubscription } from '@/hooks/use-subscription';
 import { EmojiOrbCustomizer } from '@/components/EmojiOrbCustomizer';
 import { UserIdentityCard } from '@/components/settings/UserIdentityCard';
+import { PLAN_DESCRIPTORS, isPaidPlan } from '@/lib/subscription-plans';
 import { toast } from 'sonner';
 
 const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
@@ -259,8 +262,23 @@ export function SettingsView() {
     updatePreferences: savePrefs,
     updatePreferencesDebounced: savePrefsDebounced,
   } = useSettings();
-  const { user, logout, configured: authConfigured, authState, loading: authLoading } = useAuth();
+  const { user, logout, configured: authConfigured, authState, loading: authLoading, plan } = useAuth();
   const { voice: realtimeVoice, setVoice: setRealtimeVoice } = useVoice();
+  const {
+    loading: subscriptionLoading,
+    error: subscriptionError,
+    currentPlan,
+    status: subscriptionStatus,
+    trialEndsAt,
+    expiresAt,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    canManageBilling,
+    usage,
+    startCheckout,
+    openBillingPortal,
+    refresh: refreshSubscription,
+  } = useSubscription();
 
   const update = (patch: Partial<typeof settings>) => {
     updateSettings(patch);
@@ -361,6 +379,8 @@ export function SettingsView() {
 
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<'pro' | 'enterprise' | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     setDisplayName(prefs.display_name ?? '');
@@ -373,6 +393,33 @@ export function SettingsView() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  const effectivePlan = currentPlan || plan;
+  const currentPlanDescriptor = PLAN_DESCRIPTORS[effectivePlan];
+
+  const handleUpgrade = async (targetPlan: 'pro' | 'enterprise') => {
+    setCheckoutLoadingPlan(targetPlan);
+    try {
+      const checkoutUrl = await startCheckout(targetPlan);
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to start checkout.');
+    } finally {
+      setCheckoutLoadingPlan(null);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const portalUrl = await openBillingPortal();
+      window.location.href = portalUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to open billing portal.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   // Compute the auth display view-model for the Account tab
   const accountVM: SettingsAccountViewModel = (() => {
@@ -520,6 +567,116 @@ export function SettingsView() {
                   Password changes are handled via email. Use the &quot;Forgot password&quot; flow on the login screen to receive a reset link.
                 </p>
               </Card>
+              )}
+
+              {authConfigured && user && (
+                <Card className="settings-surface p-6">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold">Subscription</h3>
+                    {(subscriptionLoading || portalLoading) && <SavingIndicator saving />}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Manage your plan, unlock premium workflows, and monitor billing state.
+                  </p>
+                  <Separator />
+
+                  <SettingRow
+                    icon={CreditCard}
+                    label="Current Plan"
+                    description={currentPlanDescriptor.tagline}
+                  >
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-foreground">{currentPlanDescriptor.name}</div>
+                      <div className="text-xs text-muted-foreground">{currentPlanDescriptor.monthlyPrice}/month</div>
+                    </div>
+                  </SettingRow>
+
+                  <Separator />
+
+                  <div className="py-4 space-y-2">
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Included</p>
+                    <ul className="space-y-1.5 text-sm text-muted-foreground">
+                      {currentPlanDescriptor.highlights.map((line) => (
+                        <li key={line} className="flex items-start gap-2">
+                          <CheckCircle size={14} className="mt-0.5 text-primary" />
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <Separator />
+
+                  <div className="py-4 space-y-3">
+                    {!isPaidPlan(effectivePlan) && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => handleUpgrade('pro')}
+                          disabled={checkoutLoadingPlan !== null}
+                          className="gap-2"
+                        >
+                          {checkoutLoadingPlan === 'pro' && <Spinner size={14} className="animate-spin" />}
+                          Upgrade to Pro
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleUpgrade('enterprise')}
+                          disabled={checkoutLoadingPlan !== null}
+                          className="gap-2"
+                        >
+                          {checkoutLoadingPlan === 'enterprise' && <Spinner size={14} className="animate-spin" />}
+                          Upgrade to Enterprise
+                        </Button>
+                      </div>
+                    )}
+
+                    {isPaidPlan(effectivePlan) && canManageBilling && (
+                      <Button
+                        variant="outline"
+                        onClick={handleOpenBillingPortal}
+                        disabled={portalLoading}
+                        className="gap-2"
+                      >
+                        {portalLoading && <Spinner size={14} className="animate-spin" />}
+                        Manage Billing
+                      </Button>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
+                      Status: {subscriptionStatus}
+                      {trialEndsAt ? ` · Trial ends ${new Date(trialEndsAt).toLocaleDateString()}` : ''}
+                      {expiresAt ? ` · Access expires ${new Date(expiresAt).toLocaleDateString()}` : ''}
+                      {currentPeriodEnd ? ` · Renews ${new Date(currentPeriodEnd).toLocaleDateString()}` : ''}
+                      {cancelAtPeriodEnd ? ' · Cancels at period end' : ''}
+                    </p>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-border/70 bg-black/20 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground mb-1">Media This Month</p>
+                        <p className="text-sm text-foreground font-medium">
+                          {usage.media_generation?.used ?? 0}
+                          {usage.media_generation?.limit === null ? ' / unlimited' : ` / ${usage.media_generation?.limit ?? 0}`}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border/70 bg-black/20 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground mb-1">Agent Tasks This Month</p>
+                        <p className="text-sm text-foreground font-medium">
+                          {usage.agent_task?.used ?? 0}
+                          {usage.agent_task?.limit === null ? ' / unlimited' : ` / ${usage.agent_task?.limit ?? 0}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {subscriptionError && (
+                      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive flex items-center justify-between gap-3">
+                        <span>{subscriptionError}</span>
+                        <Button size="sm" variant="outline" onClick={() => void refreshSubscription()}>
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
               )}
 
               <UserIdentityCard />

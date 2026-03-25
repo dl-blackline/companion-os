@@ -19,6 +19,7 @@ import {
   appError,
   DEFAULT_MEDIA_CONSTRAINTS,
 } from '@/types';
+import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,16 @@ const API_BASE = '/.netlify/functions';
 
 const ALLOWED_IMAGE_TYPES: readonly ImageMimeType[] = DEFAULT_MEDIA_CONSTRAINTS.allowedImageTypes;
 const MAX_IMAGE_SIZE = DEFAULT_MEDIA_CONSTRAINTS.maxImageSizeBytes;
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabaseConfigured) return {};
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  } catch {
+    return {};
+  }
+}
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -266,10 +277,11 @@ export async function generateImage(
 ): Promise<AsyncResult<MediaGenerationResult>> {
   try {
     console.log('[image-service] generateImage request:', { prompt: request.prompt, model: request.model, style: request.style });
+    const authHeaders = await getAuthHeaders();
 
     const res = await fetch(`${API_BASE}/generate-media`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         type: 'image',
         prompt: request.prompt,

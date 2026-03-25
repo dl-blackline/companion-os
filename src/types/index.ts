@@ -521,9 +521,19 @@ export interface AdminUser {
   display_name?: string;
   role: UserRole;
   plan: EntitlementPlan;
+  plan_status?: EntitlementStatus;
+  trial_ends_at?: string | null;
+  expires_at?: string | null;
   status: 'active' | 'suspended' | 'deactivated';
   created_at: string;
   last_sign_in?: string;
+  current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
+  billing_status?: string | null;
+  usage?: {
+    media_generation: number;
+    agent_task: number;
+  };
 }
 
 // ─── User Preferences ─────────────────────────────────────────────────────────

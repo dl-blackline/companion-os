@@ -59,7 +59,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isActive: isGlobalVoiceActive, stopLiveTalk } = useVoice();
-  const { isAdmin } = useAuth();
+  const { isAdmin, plan } = useAuth();
   const { settings } = useSettings();
   const { orchestratorConfig } = useAIControl();
   const { orbColor, mode: orbMode } = useOrbAppearance();
@@ -95,6 +95,16 @@ function App() {
   // Stop any active global voice session when entering Live Talk to prevent
   // duplicate voices from the FloatingLiveOrb and LiveTalkView running simultaneously.
   const navigateTo = (section: string) => {
+    if (section === 'agents' && plan === 'free') {
+      toast.info('Agents is a paid feature. Upgrade in Settings > Account.');
+      setActiveSection('settings');
+      if (window.location.pathname !== '/') {
+        window.history.pushState({}, '', '/');
+      }
+      setIsMobileMenuOpen(false);
+      return;
+    }
+
     if (section === 'live-talk' && !orchestratorConfig.capabilities.voice) {
       toast.error('Voice capability is disabled in Control Center');
       return;

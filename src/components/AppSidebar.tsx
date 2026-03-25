@@ -71,7 +71,7 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
 ];
 
 export function AppSidebar({ activeSection, onSectionChange, aiName, companionState, runtimeState, unavailableServices }: AppSidebarProps) {
-  const { isAdmin, user, logout } = useAuth();
+  const { isAdmin, user, logout, plan } = useAuth();
   const { prefs } = useSettings();
   const { mode: orbMode, orbColor } = useOrbAppearance();
   const userInitials = getUserInitials(prefs.display_name, user?.email);
@@ -169,7 +169,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
             <span className="status-chip status-chip-muted capitalize">{orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}</span>
           </div>
           {!runtimeHealthy && unavailableServices.length > 0 && (
-            <div className="text-[10px] text-muted-foreground uppercase tracking-[0.1em]">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest">
               Services: {unavailableServices.join(', ')}
             </div>
           )}
@@ -227,6 +227,9 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
               >
                 <SignOut size={15} />
               </button>
+            </div>
+            <div className="mt-1 px-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              Plan: {plan.replace('_', ' ')}
             </div>
           </div>
         )}

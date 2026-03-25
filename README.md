@@ -31,6 +31,10 @@ Backend/server-only:
 - SUPABASE_SERVICE_ROLE_KEY
 - OPENAI_API_KEY (when using OpenAI-backed models/features)
 - NOFILTER_GPT_API_KEY (if enabling NoFilter provider)
+- STRIPE_SECRET_KEY (required for checkout + billing portal)
+- STRIPE_WEBHOOK_SECRET (required for billing webhook signature validation)
+- STRIPE_PRICE_PRO or STRIPE_PRICE_PRO_MONTHLY
+- STRIPE_PRICE_ENTERPRISE or STRIPE_PRICE_ENTERPRISE_MONTHLY
 
 Important:
 - Never put service-role or sb_secret_* keys into VITE_* variables.
@@ -45,6 +49,8 @@ Required Supabase tables and policies include:
 
 Critical migration:
 - Apply supabase/migrations/016_user_identity_profiles.sql before enabling identity generation in production.
+- Apply supabase/migrations/023_subscription_billing.sql before enabling paid subscriptions.
+- Apply supabase/migrations/024_feature_usage_quotas.sql before enabling free-tier monthly quotas.
 
 ## Auth and Session Behavior
 - App uses Supabase auth session restore on boot.
@@ -79,6 +85,7 @@ Backend behavior:
 - Functions dir: netlify/functions
 - Keep SECRETS_SCAN_OMIT_KEYS aligned with public VITE_* keys and SUPABASE_ANON_KEY if that key is intentionally embedded as public anon value.
 - Ensure Supabase redirect URL allow-list includes your production /reset-password URL.
+- Stripe webhook target should point to /.netlify/functions/billing-webhook.
 
 ## Supabase Contract Verification
 - Run verification locally:
@@ -95,12 +102,16 @@ Backend behavior:
 2. Run npm run test and npm run build.
 3. Run npm run verify:supabase.
 4. Confirm migration 016 is applied in target Supabase project.
-5. Smoke test:
+5. Confirm migration 023 is applied and Stripe env vars are configured.
+6. Confirm migration 024 is applied so quota enforcement can track usage.
+7. Smoke test:
    - signup/login/logout
    - forgot password + reset-password flow
    - chat send/receive with persisted history
    - settings + user preferences persist/reload
    - user identity generation/select/save/reload
+   - upgrade flow (checkout) and billing portal return
+   - free-tier media and agent limits increment correctly
 
 ## Security and Logging
 - Function handlers return explicit validation/auth errors.
