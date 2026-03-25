@@ -49,15 +49,20 @@ export default defineConfig({
           }
 
           if (
-            packageName.startsWith('@radix-ui/') ||
-            packageName === 'embla-carousel-react' ||
-            packageName === 'vaul' ||
-            packageName === 'cmdk' ||
             packageName === '@phosphor-icons/react' ||
             packageName === 'lucide-react' ||
             packageName === '@heroicons/react'
           ) {
-            return 'ui-vendor';
+            return 'icons-vendor';
+          }
+
+          if (
+            packageName.startsWith('@radix-ui/') ||
+            packageName === 'embla-carousel-react' ||
+            packageName === 'vaul' ||
+            packageName === 'cmdk'
+          ) {
+            return 'radix-vendor';
           }
 
           if (packageName === 'recharts' || packageName === 'd3') {
