@@ -45,16 +45,17 @@ export default function Signup({ onNavigateToLogin }: SignupProps) {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-6">
-          <div className="text-center space-y-2">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+      <div className="auth-shell">
+        <div className="auth-panel">
+          <div className="auth-brand">
+            <p className="executive-eyebrow mb-0">Account Provisioning</p>
+            <div className="auth-mark">
               <span className="text-2xl">✓</span>
             </div>
           </div>
-          <Card className="border-border/50 shadow-lg">
+          <Card className="auth-card">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-xl">Check your email</CardTitle>
+              <CardTitle className="text-xl tracking-tight">Check your email</CardTitle>
               <CardDescription>
                 We sent a confirmation link to <strong className="text-foreground">{email}</strong>. Please check your inbox to verify your account.
               </CardDescription>
@@ -71,20 +72,21 @@ export default function Signup({ onNavigateToLogin }: SignupProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="auth-shell">
+      <div className="auth-panel">
         {/* Branding */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+        <div className="auth-brand">
+          <p className="executive-eyebrow mb-0">Identity Enrollment</p>
+          <div className="auth-mark">
             <span className="text-2xl font-bold text-primary">C</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Companion OS</h1>
-          <p className="text-sm text-muted-foreground">Create your account to get started</p>
+          <p className="text-sm text-muted-foreground">Create your secured executive workspace</p>
         </div>
 
-        <Card className="border-border/50 shadow-lg">
+        <Card className="auth-card">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Create account</CardTitle>
+            <CardTitle className="text-xl tracking-tight">Create account</CardTitle>
             <CardDescription>Sign up to start using Companion OS</CardDescription>
           </CardHeader>
           <CardContent>
@@ -156,7 +158,7 @@ export default function Signup({ onNavigateToLogin }: SignupProps) {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground/60">
+        <p className="text-center text-xs text-muted-foreground/70">
           Secured by Supabase Auth · End-to-end encrypted
         </p>
       </div>

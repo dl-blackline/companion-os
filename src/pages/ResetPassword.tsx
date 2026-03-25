@@ -55,11 +55,17 @@ export default function ResetPassword({ onNavigateToLogin }: ResetPasswordProps)
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-6">
-          <Card className="border-border/50 shadow-lg">
+      <div className="auth-shell">
+        <div className="auth-panel">
+          <div className="auth-brand">
+            <p className="executive-eyebrow mb-0">Credential Rotation</p>
+            <div className="auth-mark">
+              <span className="text-2xl">✓</span>
+            </div>
+          </div>
+          <Card className="auth-card">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-xl">Password Updated</CardTitle>
+              <CardTitle className="text-xl tracking-tight">Password Updated</CardTitle>
               <CardDescription>
                 Your password has been reset successfully. Sign in with your new password.
               </CardDescription>
@@ -76,16 +82,20 @@ export default function ResetPassword({ onNavigateToLogin }: ResetPasswordProps)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
+    <div className="auth-shell">
+      <div className="auth-panel">
+        <div className="auth-brand">
+          <p className="executive-eyebrow mb-0">Credential Rotation</p>
+          <div className="auth-mark">
+            <span className="text-2xl font-bold text-primary">C</span>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight">Set New Password</h1>
           <p className="text-sm text-muted-foreground">Finish account recovery</p>
         </div>
 
-        <Card className="border-border/50 shadow-lg">
+        <Card className="auth-card">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Reset password</CardTitle>
+            <CardTitle className="text-xl tracking-tight">Reset password</CardTitle>
             <CardDescription>Choose a new password for your account</CardDescription>
           </CardHeader>
           <CardContent>
