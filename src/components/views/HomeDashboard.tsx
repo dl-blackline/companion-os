@@ -8,6 +8,7 @@ import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
 import { Images } from '@phosphor-icons/react/Images';
 import { Lightning } from '@phosphor-icons/react/Lightning';
 import { ListChecks } from '@phosphor-icons/react/ListChecks';
+import { Money } from '@phosphor-icons/react/Money';
 import { Microphone } from '@phosphor-icons/react/Microphone';
 import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
 
@@ -57,6 +58,12 @@ const quickActions = [
     label: 'Media Studio',
     description: 'Generate visual and video assets',
     icon: Images,
+  },
+  {
+    id: 'finance',
+    label: 'Finance Pulse',
+    description: 'Live cashflow and resilience tracking',
+    icon: Money,
   },
   {
     id: 'workflows',

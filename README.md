@@ -35,6 +35,9 @@ Backend/server-only:
 - STRIPE_WEBHOOK_SECRET (required for billing webhook signature validation)
 - STRIPE_PRICE_PRO or STRIPE_PRICE_PRO_MONTHLY
 - STRIPE_PRICE_ENTERPRISE or STRIPE_PRICE_ENTERPRISE_MONTHLY
+- PLAID_CLIENT_ID (required for live bank-link in finance tool)
+- PLAID_SECRET (required for live bank-link in finance tool)
+- PLAID_ENV (optional, defaults to sandbox; sandbox|development|production)
 
 Important:
 - Never put service-role or sb_secret_* keys into VITE_* variables.
@@ -51,6 +54,7 @@ Critical migration:
 - Apply supabase/migrations/016_user_identity_profiles.sql before enabling identity generation in production.
 - Apply supabase/migrations/023_subscription_billing.sql before enabling paid subscriptions.
 - Apply supabase/migrations/024_feature_usage_quotas.sql before enabling free-tier monthly quotas.
+- Apply supabase/migrations/025_financial_management.sql before enabling financial account linking.
 
 ## Auth and Session Behavior
 - App uses Supabase auth session restore on boot.
@@ -104,7 +108,8 @@ Backend behavior:
 4. Confirm migration 016 is applied in target Supabase project.
 5. Confirm migration 023 is applied and Stripe env vars are configured.
 6. Confirm migration 024 is applied so quota enforcement can track usage.
-7. Smoke test:
+7. Confirm migration 025 is applied and Plaid server env vars are configured.
+8. Smoke test:
    - signup/login/logout
    - forgot password + reset-password flow
    - chat send/receive with persisted history
@@ -112,6 +117,7 @@ Backend behavior:
    - user identity generation/select/save/reload
    - upgrade flow (checkout) and billing portal return
    - free-tier media and agent limits increment correctly
+   - finance link flow, account sync, and financial pulse rendering
 
 ## Security and Logging
 - Function handlers return explicit validation/auth errors.

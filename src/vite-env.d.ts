@@ -26,6 +26,24 @@ interface SpeechRecognitionEvent extends Event {
   readonly results: SpeechRecognitionResultList;
 }
 
+interface PlaidLinkHandler {
+  open(): void;
+  exit(options?: { force?: boolean }, callback?: () => void): void;
+  destroy(): void;
+}
+
+interface PlaidStatic {
+  create(config: {
+    token: string;
+    onSuccess: (publicToken: string, metadata: unknown) => void;
+    onExit?: (error: unknown, metadata: unknown) => void;
+  }): PlaidLinkHandler;
+}
+
+interface Window {
+  Plaid?: PlaidStatic;
+}
+
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string | undefined
   readonly VITE_SUPABASE_PUBLISHABLE_KEY: string | undefined
