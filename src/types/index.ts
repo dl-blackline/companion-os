@@ -7,6 +7,7 @@ export * from './emoji-orb';
 export * from './companion';
 export * from './financial';
 export * from './careers';
+export * from './financial-intelligence';
 
 import type { OrbPreferencePayload } from './emoji-orb';
 
