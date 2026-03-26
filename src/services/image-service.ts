@@ -3,7 +3,6 @@
 
 import type {
   AsyncResult,
-  AppError,
   ImageGenerationRequest,
   MediaGenerationResult,
   MediaAnalysisResult,

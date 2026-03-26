@@ -16,7 +16,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
 import {
@@ -46,19 +45,16 @@ const ORB_SWATCHS: Record<keyof typeof ORB_COLOR_LABELS, string> = {
 };
 import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
 import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
-import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
 import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
-import { ImageSquare } from '@phosphor-icons/react/ImageSquare';
 import { MagicWand } from '@phosphor-icons/react/MagicWand';
 import { Spinner } from '@phosphor-icons/react/Spinner';
 import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
 import { XCircle } from '@phosphor-icons/react/XCircle';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import { validateMediaFile } from '@/types/media';
 
 export function EmojiOrbCustomizer() {
-  const { mode, orbColor, emojiFeatures, applyEmojiOrb, setOrbColor, resetToDefault } = useOrbAppearance();
+  const { mode, orbColor, applyEmojiOrb, setOrbColor, resetToDefault } = useOrbAppearance();
   const [flowState, setFlowState] = useState<EmojiOrbFlowState>({ status: 'idle' });
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,7 +133,7 @@ export function EmojiOrbCustomizer() {
     });
   }, []);
 
-  const changeStyleMode = useCallback((styleMode: EmojiOrbStyleMode, traits: ImageAnalysisTraits, currentEmoji: string) => {
+  const _changeStyleMode = useCallback((styleMode: EmojiOrbStyleMode, traits: ImageAnalysisTraits, currentEmoji: string) => {
     setFlowState(prev => {
       if (prev.status !== 'preview-ready') return prev;
       const updated = regenerateOrbConfig(traits, styleMode, currentEmoji);

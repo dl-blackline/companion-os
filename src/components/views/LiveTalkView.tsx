@@ -630,9 +630,10 @@ Prefer using tools over just talking about doing something. If the user asks for
             data.action.type === 'roleplay_started' ||
             data.action.type === 'roleplay_continued'
           ) {
+            const action = data.action as { type?: string; character?: string; scenario?: string };
             const ctx: RoleplayContext = {
-              character: data.action.character || 'a character',
-              scenario: data.action.scenario || '',
+              character: action.character || 'a character',
+              scenario: action.scenario || '',
             };
             roleplayRef.current = ctx;
             setRoleplayMode(ctx);

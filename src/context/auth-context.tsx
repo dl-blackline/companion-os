@@ -26,13 +26,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 function scheduleIdleTask(task: () => void): () => void {
-  if ('requestIdleCallback' in window) {
-    const id = window.requestIdleCallback(task, { timeout: 1200 })
-    return () => window.cancelIdleCallback(id)
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(task, { timeout: 1200 })
+    return () => cancelIdleCallback(id)
   }
 
-  const timeoutId = window.setTimeout(task, 180)
-  return () => window.clearTimeout(timeoutId)
+  const timeoutId = setTimeout(task, 180)
+  return () => clearTimeout(timeoutId)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

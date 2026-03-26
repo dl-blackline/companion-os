@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DrawnCard } from '@/lib/tarot/tarot-types';
-import { TarotCardDisplay } from './tarot-card-display';
 
 interface InterpretationPanelProps {
   card: DrawnCard;

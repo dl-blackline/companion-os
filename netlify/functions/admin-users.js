@@ -92,12 +92,12 @@ export async function handler(event) {
       const planMap = Object.fromEntries((entitlements || []).map((e) => [e.user_id, e]));
       const subscriptionMap = Object.fromEntries((subscriptions || []).map((s) => [s.user_id, s]));
       const usageMap = {};
-      for (const event of usageEvents || []) {
-        if (!usageMap[event.user_id]) {
-          usageMap[event.user_id] = { media_generation: 0, agent_task: 0 };
+      for (const usageEvent of usageEvents || []) {
+        if (!usageMap[usageEvent.user_id]) {
+          usageMap[usageEvent.user_id] = { media_generation: 0, agent_task: 0 };
         }
-        if (event.feature_key === "media_generation" || event.feature_key === "agent_task") {
-          usageMap[event.user_id][event.feature_key] += 1;
+        if (usageEvent.feature_key === "media_generation" || usageEvent.feature_key === "agent_task") {
+          usageMap[usageEvent.user_id][usageEvent.feature_key] += 1;
         }
       }
 

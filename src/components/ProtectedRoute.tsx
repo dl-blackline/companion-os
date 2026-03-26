@@ -1,10 +1,11 @@
 import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
 import { useAuth } from "@/context/auth-context"
 import { supabaseConfigured } from "@/lib/supabase-client"
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import ForgotPassword from "@/pages/ForgotPassword";
 
-const Login = lazy(() => import("@/pages/Login"));
-const Signup = lazy(() => import("@/pages/Signup"));
-const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+// ResetPassword is rare (only visited from email link), keep lazy
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 type AuthPage = "login" | "signup" | "forgot-password" | "reset-password"
@@ -61,26 +62,16 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!user) {
     if (authPage === "signup") {
-      return (
-        <Suspense fallback={authFallback}>
-          <Signup onNavigateToLogin={() => setAuthPage("login")} />
-        </Suspense>
-      )
+      return <Signup onNavigateToLogin={() => setAuthPage("login")} />
     }
     if (authPage === "forgot-password") {
-      return (
-        <Suspense fallback={authFallback}>
-          <ForgotPassword onNavigateToLogin={() => setAuthPage("login")} />
-        </Suspense>
-      )
+      return <ForgotPassword onNavigateToLogin={() => setAuthPage("login")} />
     }
     return (
-      <Suspense fallback={authFallback}>
-        <Login
-          onNavigateToSignup={() => setAuthPage("signup")}
-          onNavigateToForgotPassword={() => setAuthPage("forgot-password")}
-        />
-      </Suspense>
+      <Login
+        onNavigateToSignup={() => setAuthPage("signup")}
+        onNavigateToForgotPassword={() => setAuthPage("forgot-password")}
+      />
     )
   }
 

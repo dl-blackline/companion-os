@@ -106,7 +106,7 @@ function getStateColors(state: CompanionState) {
   }
 }
 
-function getThemeForState(theme: OrbColorTheme, state: CompanionState) {
+function getThemeForState(theme: OrbColorTheme, _state: CompanionState) {
   if (theme === 'silver') {
     return {
       coreFrom: 'oklch(0.82 0.006 255)',

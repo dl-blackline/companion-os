@@ -3,7 +3,6 @@ import { useReadingStore } from '@/store/reading-store';
 import { ReadingIntakeForm } from '@/components/tarot/reading-intake-form';
 import { ZodiacBadge } from '@/components/tarot/zodiac-badge';
 import { ShuffleAnimation } from '@/components/tarot/shuffle-animation';
-import { SpreadLayout } from '@/components/tarot/spread-layout';
 import { TarotCardDisplay } from '@/components/tarot/tarot-card-display';
 import { InterpretationPanel } from '@/components/tarot/interpretation-panel';
 import { ReadingSummary } from '@/components/tarot/reading-summary';
@@ -139,7 +138,7 @@ export function TarotView() {
 
               <ReadingIntakeForm
                 onSubmit={store.submitIntake}
-                isLoading={store.phase === 'shuffling'}
+                isLoading={(store.phase as string) === 'shuffling'}
                 error={store.error}
               />
 

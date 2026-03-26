@@ -6,6 +6,8 @@ export * from './memory';
 export * from './emoji-orb';
 export * from './companion';
 
+import type { OrbPreferencePayload } from './emoji-orb';
+
 export type ConversationMode = 
   | 'strategist' 
   | 'operator' 

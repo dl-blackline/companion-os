@@ -54,6 +54,9 @@ function parseStripeSignature(signatureHeader) {
   };
 }
 
+// Maximum age of a Stripe webhook event before it is rejected (Stripe recommends 300s)
+const STRIPE_TIMESTAMP_TOLERANCE_S = 300;
+
 function verifyWebhookSignature(rawBody, signatureHeader) {
   if (!STRIPE_WEBHOOK_SECRET) {
     throw new Error('STRIPE_WEBHOOK_SECRET is not configured.');
@@ -62,6 +65,12 @@ function verifyWebhookSignature(rawBody, signatureHeader) {
   const { timestamp, signature } = parseStripeSignature(signatureHeader);
   if (!timestamp || !signature) {
     throw new Error('Missing Stripe signature metadata.');
+  }
+
+  // Replay-attack protection: reject events older than the tolerance window
+  const webhookAgeSeconds = Math.floor(Date.now() / 1000) - Number(timestamp);
+  if (webhookAgeSeconds > STRIPE_TIMESTAMP_TOLERANCE_S) {
+    throw new Error(`Stripe webhook timestamp too old (${webhookAgeSeconds}s). Possible replay attack.`);
   }
 
   const signedPayload = `${timestamp}.${rawBody}`;

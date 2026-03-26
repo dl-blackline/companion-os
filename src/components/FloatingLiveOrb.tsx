@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Microphone } from '@phosphor-icons/react/Microphone';
 import { MicrophoneSlash } from '@phosphor-icons/react/MicrophoneSlash';
 import { SpeakerSimpleHigh } from '@phosphor-icons/react/SpeakerSimpleHigh';
-import { SpeakerSimpleSlash } from '@phosphor-icons/react/SpeakerSimpleSlash';
 import { Stop } from '@phosphor-icons/react/Stop';
 import { useVoice } from '@/context/voice-context';
 import { useIsMobile } from '@/hooks/use-mobile';

@@ -22,7 +22,7 @@ import {
   type ReactNode,
 } from 'react';
 import { toast } from 'sonner';
-import type { CompanionSettings, ConversationMode, UserPreferences } from '@/types';
+import type { CompanionSettings, UserPreferences } from '@/types';
 import { DEFAULT_USER_PREFERENCES } from '@/types';
 import { setModelSetting, getModelSetting } from '@/utils/model-cache';
 import { useAuth } from '@/context/auth-context';
@@ -88,13 +88,13 @@ const FIELD_TO_CACHE_TYPE: Record<string, string> = {
 };
 
 function scheduleIdleTask(task: () => void): () => void {
-  if ('requestIdleCallback' in window) {
-    const id = window.requestIdleCallback(task, { timeout: 1200 });
-    return () => window.cancelIdleCallback(id);
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(task, { timeout: 1200 });
+    return () => cancelIdleCallback(id);
   }
 
-  const timeoutId = window.setTimeout(task, 180);
-  return () => window.clearTimeout(timeoutId);
+  const timeoutId = setTimeout(task, 180);
+  return () => clearTimeout(timeoutId);
 }
 
 // ── Context types ────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Only write to the cache when no value is already cached, to avoid
       // overwriting an explicit preference the user set outside this provider.
       if (getModelSetting(cacheType) == null) {
-        const value = (settings.modelSettings as Record<string, string>)[field];
+        const value = (settings.modelSettings as Record<string, unknown>)[field] as string;
         if (value) setModelSetting(cacheType, value);
       }
     }
@@ -375,7 +375,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   // ── Debounced preference save (for sliders / rapid-fire controls) ──────────
   const pendingPatch = useRef<Partial<UserPreferences>>({});
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const updatePreferencesDebounced = useCallback(
     (patch: Partial<UserPreferences>) => {

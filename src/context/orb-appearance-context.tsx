@@ -30,13 +30,13 @@ import { useAuth } from '@/context/auth-context';
 const ORB_PREF_STORAGE_KEY = 'companion-orb-preference';
 
 function scheduleIdleTask(task: () => void): () => void {
-  if ('requestIdleCallback' in window) {
-    const id = window.requestIdleCallback(task, { timeout: 1500 });
-    return () => window.cancelIdleCallback(id);
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(task, { timeout: 1500 });
+    return () => cancelIdleCallback(id);
   }
 
-  const timeoutId = window.setTimeout(task, 220);
-  return () => window.clearTimeout(timeoutId);
+  const timeoutId = setTimeout(task, 220);
+  return () => clearTimeout(timeoutId);
 }
 
 // ── Context type ─────────────────────────────────────────────────────────────

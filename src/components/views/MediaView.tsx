@@ -577,7 +577,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
       if (result.success && result.data) {
         const data = result.data.data ?? result.data;
         if (data.url || data.refined_url) {
-          setRefinedUrl(data.url || data.refined_url);
+          setRefinedUrl(data.url || data.refined_url || null);
           toast.success('Media refined successfully');
         } else {
           toast.info('Refinement submitted — result will appear shortly');

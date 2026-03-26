@@ -25,7 +25,6 @@ import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const COMPANION_STREAM_URL = '/.netlify/functions/companion-stream';
-const COMPANION_BRAIN_URL = '/.netlify/functions/companion-brain';
 const START_SESSION_URL = '/.netlify/functions/start-session';
 const END_SESSION_URL = '/.netlify/functions/end-session';
 const GENERATE_MEDIA_URL = '/.netlify/functions/generate-media';

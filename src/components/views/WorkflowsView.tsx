@@ -14,7 +14,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Gear } from '@phosphor-icons/react/Gear';
 import { Lightning } from '@phosphor-icons/react/Lightning';
 import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';

@@ -157,7 +157,7 @@ export async function analyzeKnowledge(
 
     const userPrompt = buildUserPrompt(preprocessed, input);
 
-    const result = await runAI<{ reply?: string; message?: string }>({
+    const aiResult = await runAI<{ reply?: string; message?: string }>({
       type: 'knowledge',
       input: {
         userId: 'default-user',
@@ -179,17 +179,17 @@ export async function analyzeKnowledge(
     stages.push({
       stage: 'classification',
       durationMs: Date.now() - analysisStart,
-      success: result.success,
-      error: result.success ? undefined : result.error,
+      success: aiResult.success,
+      error: aiResult.success ? undefined : aiResult.error,
     });
 
-    if (!result.success || !result.data) {
-      return error(appError('server', result.error || 'Analysis failed'));
+    if (!aiResult.success || !aiResult.data) {
+      return error(appError('server', aiResult.error || 'Analysis failed'));
     }
 
     // Stage 3: Parse and extract
     const extractionStart = Date.now();
-    const data = (result.data as { data?: { reply?: string; message?: string } }).data ?? result.data;
+    const data = (aiResult.data as { data?: { reply?: string; message?: string } }).data ?? aiResult.data;
     const rawText = data.reply || data.message || '';
     const parsed = parseAnalysisResponse(rawText);
     stages.push({

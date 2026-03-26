@@ -74,7 +74,8 @@ describe('ProtectedRoute', () => {
   it('navigates to signup page', () => {
     render(<ProtectedRoute><div>Protected Content</div></ProtectedRoute>);
     fireEvent.click(screen.getByText(/create account/i));
-    expect(screen.getByText(/create your account/i)).toBeInTheDocument();
+    // Signup page renders 'Already have an account?' for its back-link
+    expect(screen.getByText(/already have an account/i)).toBeInTheDocument();
   });
 
   it('navigates to forgot password page', () => {
@@ -87,7 +88,7 @@ describe('ProtectedRoute', () => {
     render(<ProtectedRoute><div>Protected Content</div></ProtectedRoute>);
     // Go to signup
     fireEvent.click(screen.getByText(/create account/i));
-    expect(screen.getByText(/create your account/i)).toBeInTheDocument();
+    expect(screen.getByText(/already have an account/i)).toBeInTheDocument();
 
     // Go back to login
     fireEvent.click(screen.getByText(/sign in$/i));

@@ -18,25 +18,14 @@ import type {
   MemoryConflict,
   MemoryPreferenceEntry,
   MemoryApplicationReason,
-  MemoryIgnoreReason,
-  InjectionLayer,
   Memory,
   MemoryCategory,
-  PrivacyLevel,
 } from '@/types';
 import { success, error, appError } from '@/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const API_BASE = '/.netlify/functions';
-
-/** Priority numeric values for comparison. */
-const PRIORITY_RANK: Record<MemoryPriority, number> = {
-  low: 1,
-  normal: 2,
-  high: 3,
-  critical: 4,
-};
 
 /** Memory types that represent user instructions/preferences (high-priority for obedience). */
 const INSTRUCTION_TYPES: ReadonlySet<MemoryType> = new Set([

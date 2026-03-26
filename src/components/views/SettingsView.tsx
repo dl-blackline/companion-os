@@ -47,7 +47,6 @@ import { WarningCircle } from '@phosphor-icons/react/WarningCircle';
 import { XCircle } from '@phosphor-icons/react/XCircle';
 import type { ConversationMode, SettingsAccountViewModel } from '@/types';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import {
   getCachedModels,
   preloadModels,
@@ -1157,7 +1156,7 @@ export function SettingsView() {
                 <p className="text-sm text-muted-foreground mb-4">Customize the look and feel of the app.</p>
                 <Separator />
                 <SettingRow icon={Palette} label="Theme" description="Choose between dark, light, or follow system preference.">
-                  <Select value={prefs.theme} onValueChange={(value) => { savePrefs({ theme: value as typeof prefs.theme }); try { localStorage.setItem('theme', value); } catch {} }}>
+                  <Select value={prefs.theme} onValueChange={(value) => { savePrefs({ theme: value as typeof prefs.theme }); try { localStorage.setItem('theme', value); } catch { /* localStorage unavailable in private browsing */ } }}>
                     <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="dark">Dark</SelectItem>

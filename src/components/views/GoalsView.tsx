@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CaretRight } from '@phosphor-icons/react/CaretRight';
-import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
 import { Circle } from '@phosphor-icons/react/Circle';
 import { Clock } from '@phosphor-icons/react/Clock';
 import { Flag } from '@phosphor-icons/react/Flag';
@@ -27,7 +26,7 @@ import { Plus } from '@phosphor-icons/react/Plus';
 import { Target } from '@phosphor-icons/react/Target';
 import { Trash } from '@phosphor-icons/react/Trash';
 import { X } from '@phosphor-icons/react/X';
-import type { Goal, Milestone, Task } from '@/types';
+import type { Goal, Task } from '@/types';
 import { generateId, formatDate } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';

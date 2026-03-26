@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useImageMemory } from '@/hooks/use-image-memory';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -74,8 +73,6 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 /** Fallback user ID used when auth is not available. */
-const MEMORY_LOCAL_USER_ID = 'local-user';
-
 interface MemoryFormState {
   title: string;
   content: string;
@@ -95,8 +92,6 @@ const EMPTY_FORM: MemoryFormState = {
 };
 
 export function MemoryView() {
-  const { user: authUser } = useAuth();
-  const memoryUserId = authUser?.id ?? MEMORY_LOCAL_USER_ID;
   const [memories, setMemories] = useLocalStorage<Memory[]>('memories', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
