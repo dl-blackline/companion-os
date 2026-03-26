@@ -5,6 +5,7 @@ import type { CompanionState } from '@/types';
 import { ArrowRight } from '@phosphor-icons/react/ArrowRight';
 import { Brain } from '@phosphor-icons/react/Brain';
 import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
+import { Briefcase } from '@phosphor-icons/react/Briefcase';
 import { Images } from '@phosphor-icons/react/Images';
 import { Lightning } from '@phosphor-icons/react/Lightning';
 import { ListChecks } from '@phosphor-icons/react/ListChecks';
@@ -58,6 +59,12 @@ const quickActions = [
     label: 'Media Studio',
     description: 'Generate visual and video assets',
     icon: Images,
+  },
+  {
+    id: 'careers',
+    label: 'Career OS',
+    description: 'Resume review and job hunt AI mode',
+    icon: Briefcase,
   },
   {
     id: 'finance',
