@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CompanionOrb } from '@/components/CompanionOrb';
+import { CompanionStatusIcon } from '@/components/CompanionStatusIcon';
 import { BackgroundGlow } from '@/components/ui/background-glow';
 import { AudioVisualizer } from '@/components/voice/audio-visualizer';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -910,13 +910,9 @@ Prefer using tools over just talking about doing something. If the user asks for
         </div>
       </div>
 
-      {/* Orb + waveform */}
+      {/* State icon + waveform */}
       <div className="relative z-10 flex flex-col items-center pt-4 pb-6 gap-5">
-        <CompanionOrb
-          state={companionState}
-          size={isSmallScreen ? 'md' : 'lg'}
-          showRipples={true}
-        />
+        <CompanionStatusIcon state={companionState} size={isSmallScreen ? 'md' : 'lg'} />
 
         {/* Waveform + state indicator labels */}
         <div className="h-12 flex items-center">

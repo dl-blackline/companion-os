@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { CompanionOrb } from '@/components/CompanionOrb';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { CompanionStatusIcon } from '@/components/CompanionStatusIcon';
 import type { CompanionState } from '@/types';
 import { ArrowRight } from '@phosphor-icons/react/ArrowRight';
 import { Brain } from '@phosphor-icons/react/Brain';
@@ -102,7 +101,6 @@ const statCards = [
 ];
 
 export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashboardProps) {
-  const isSmallScreen = useIsMobile();
   const reduceMotion = useReducedMotion();
 
   return (
@@ -148,17 +146,16 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
         >
           <p className="executive-eyebrow">Core Companion</p>
           <div className="flex flex-col items-center text-center">
-            <CompanionOrb
-              state={companionState}
-              size={isSmallScreen ? 'lg' : 'xl'}
-              onClick={() => onNavigate('live-talk')}
-              showRipples
-            />
-            <p className="mt-5 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
+            <CompanionStatusIcon state={companionState} size="lg" onClick={() => onNavigate('live-talk')} />
+            <p className="mt-4 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
             <p className="text-sm text-muted-foreground mt-1">{STATE_SUBLABELS[companionState]}</p>
-            <div className="mt-5 rounded-full border border-border/70 bg-black/25 px-4 py-1.5 text-[11px] tracking-[0.16em] uppercase text-muted-foreground">
-              Tap Orb For Live Session
-            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('live-talk')}
+              className="mt-5 rounded-full border border-border/70 bg-black/25 px-4 py-1.5 text-[11px] tracking-[0.16em] uppercase text-muted-foreground hover:text-foreground hover:border-border"
+            >
+              Open Live Session
+            </button>
           </div>
         </motion.section>
 

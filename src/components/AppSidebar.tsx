@@ -18,13 +18,12 @@ import { Sliders } from '@phosphor-icons/react/Sliders';
 import { Target } from '@phosphor-icons/react/Target';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { CompanionOrb } from '@/components/CompanionOrb';
+import { CompanionStatusIcon } from '@/components/CompanionStatusIcon';
 import { DynamicIcon } from '@/components/ui/dynamic-icon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { triggerHaptic } from '@/utils/haptics';
 import { useAuth } from '@/context/auth-context';
 import { useSettings } from '@/context/settings-context';
-import { useOrbAppearance } from '@/context/orb-appearance-context';
 import { getUserInitials } from '@/services/user-identity-service';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
@@ -79,7 +78,6 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
 export function AppSidebar({ activeSection, onSectionChange, aiName, companionState, runtimeState, unavailableServices }: AppSidebarProps) {
   const { isAdmin, user, logout, plan } = useAuth();
   const { prefs } = useSettings();
-  const { mode: orbMode, orbColor } = useOrbAppearance();
   const userInitials = getUserInitials(prefs.display_name, user?.email);
   const mainItems = navItems.filter((i) => i.group === 'main');
   const toolItems = navItems.filter((i) => i.group === 'tools');
@@ -148,7 +146,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
     <aside className="w-72 sidebar-panel backdrop-blur-md flex flex-col h-full">
       <div className="px-5 py-5 border-b border-border/85">
         <div className="flex items-center gap-3">
-          <CompanionOrb state={companionState} size="sm" showRipples={false} />
+          <CompanionStatusIcon state={companionState} size="sm" />
           <div className="flex flex-col min-w-0">
             <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">Companion OS</p>
             <h1 className="text-base font-bold text-foreground tracking-tight leading-none truncate">{aiName}</h1>
@@ -169,10 +167,6 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
               <span className={cn('status-dot', stateDotClass)} />
               {stateLabel}
             </span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Orb</span>
-            <span className="status-chip status-chip-muted capitalize">{orbColor} {orbMode === 'emoji' ? 'emoji' : 'default'}</span>
           </div>
           {!runtimeHealthy && unavailableServices.length > 0 && (
             <div className="text-[10px] text-muted-foreground uppercase tracking-widest">
