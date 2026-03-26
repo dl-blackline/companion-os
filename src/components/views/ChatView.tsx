@@ -5,26 +5,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { 
-  Plus, 
-  PaperPlaneRight, 
-  Robot, 
-  Sparkle,
-  MagnifyingGlass,
-  Star,
-  Lightning,
-  Paperclip,
-  Image as ImageIcon,
-  VideoCamera,
-  X,
-  SpinnerGap,
-  ArrowLeft,
-  Trash,
-} from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Paperclip } from '@phosphor-icons/react/Paperclip';
+import { PaperPlaneRight } from '@phosphor-icons/react/PaperPlaneRight';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
+import { SpinnerGap } from '@phosphor-icons/react/SpinnerGap';
+import { Star } from '@phosphor-icons/react/Star';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { Conversation, Message, ConversationMode, MediaType } from '@/types';
 import { generateId, formatDateTime } from '@/lib/helpers';
 import { getModeConfig, getAllModes } from '@/lib/modes';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getModelDisplayName } from '@/utils/model-cache';
 import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
@@ -64,6 +62,7 @@ export function ChatView() {
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
 
   const activeConversation = conversations?.find(c => c.id === activeConvId);
   const userInitials = getUserInitials(prefs.display_name, authUser?.email);
@@ -317,16 +316,19 @@ export function ChatView() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent">
+    <div className="chat-shell flex flex-col md:flex-row h-full bg-transparent">
       {/* Conversation list — full width on mobile when no active conv, hidden when viewing chat */}
       <div className={cn(
-        'border-r border-border/70 flex flex-col bg-[oklch(0.18_0.014_255/0.84)] backdrop-blur-sm',
+        'chat-panel border-r border-border/70 flex flex-col backdrop-blur-sm',
         'w-full md:w-80',
         activeConversation ? 'hidden md:flex' : 'flex'
       )}>
         <div className="p-4 border-b border-border/75">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold tracking-tight">Conversations</h2>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Messaging</p>
+              <h2 className="font-semibold tracking-tight">Conversations</h2>
+            </div>
             <Button size="sm" onClick={() => handleCreateConversation()} className="min-h-[44px] min-w-[44px]">
               <Plus size={16} className="mr-1" /> New
             </Button>
@@ -349,10 +351,10 @@ export function ChatView() {
               <div
                 key={conv.id}
                 className={cn(
-                  'group relative rounded-lg transition-colors',
+                  'chat-list-item group relative rounded-xl transition-colors',
                   activeConvId === conv.id 
-                    ? 'bg-primary/10 border-l-2 border-l-primary' 
-                    : 'hover:bg-muted/55'
+                    ? 'bg-primary/10 border border-primary/35 shadow-[0_8px_18px_rgba(176,188,205,0.24)]' 
+                    : 'hover:bg-muted/50'
                 )}
               >
                 <button
@@ -384,7 +386,7 @@ export function ChatView() {
                     e.stopPropagation();
                     handleDeleteConversation(conv.id);
                   }}
-                  className="absolute top-2 right-8 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 hover:text-destructive"
+                  className="absolute top-2 right-8 opacity-0 group-hover:opacity-60 hover:opacity-100! transition-opacity p-1 rounded hover:bg-destructive/10 hover:text-destructive"
                   title="Delete conversation"
                 >
                   <Trash size={13} />
@@ -415,12 +417,12 @@ export function ChatView() {
           'flex-1 flex flex-col',
           activeConversation ? 'flex' : 'hidden md:flex'
         )}>
-          <div className="p-4 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.85)] backdrop-blur-sm">
+          <div className="p-4 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.74)] backdrop-blur-md">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setActiveConvId(null)}
-                  className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
+                  className="focus-ring-lux touch-target md:hidden flex items-center justify-center w-11 h-11 rounded-lg hover:bg-muted transition-colors"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft size={18} />
@@ -489,9 +491,9 @@ export function ChatView() {
                 activeConversation.messages.map((message) => (
                   <motion.div
                     key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
                     className={cn(
                       'flex gap-4',
                       message.role === 'user' ? 'justify-end' : 'justify-start'
@@ -507,7 +509,7 @@ export function ChatView() {
                         'max-w-[82%] p-4 rounded-xl border',
                         message.role === 'user'
                           ? 'bg-primary text-primary-foreground border-primary/80'
-                          : 'bg-card/85 border-border/75'
+                          : 'bg-card/85 border-border/75 shadow-[0_10px_24px_rgba(4,7,13,0.22)]'
                       )}
                     >
                       {message.media_url && message.media_type === 'image' && (
@@ -555,9 +557,9 @@ export function ChatView() {
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}<span className="inline-block w-0.5 h-4 bg-primary/80 ml-0.5 animate-pulse align-text-bottom" aria-hidden="true" /><span className="sr-only"> Generating response…</span></p>
                     ) : (
                       <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce anim-delay-150" />
+                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce anim-delay-300" />
                       </div>
                     )}
                   </div>
@@ -567,7 +569,7 @@ export function ChatView() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t border-border/75 bg-[oklch(0.18_0.014_255/0.88)] backdrop-blur-md sticky bottom-0 safe-area-bottom">
+          <div className="chat-composer p-4 sticky bottom-0 safe-area-bottom">
             <div className="max-w-3xl mx-auto">
               {/* Media uploader panel */}
               {showUploader && (
@@ -614,7 +616,7 @@ export function ChatView() {
                   size="icon"
                   onClick={() => setShowUploader(!showUploader)}
                   disabled={isStreaming}
-                  className="self-end shrink-0"
+                  className="focus-ring-lux touch-target self-end shrink-0"
                   title="Upload Photo/Video"
                 >
                   <Paperclip size={18} />
@@ -629,13 +631,13 @@ export function ChatView() {
                     }
                   }}
                   placeholder={pendingMedia ? "Add a message or press send…" : "Type your message..."}
-                  className="resize-none min-h-[60px] max-h-[200px] border-border/75 bg-background/80"
+                  className="resize-none min-h-[60px] max-h-[200px] border-border/75 bg-background/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                   disabled={isStreaming}
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={(!input.trim() && !pendingMedia) || isStreaming}
-                  className="self-end min-h-[44px] min-w-[44px]"
+                  className="focus-ring-lux touch-target self-end min-h-[44px] min-w-[44px]"
                 >
                   <PaperPlaneRight size={18} weight="fill" />
                 </Button>

@@ -1,10 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react"
 import { useAuth } from "@/context/auth-context"
 import { supabaseConfigured } from "@/lib/supabase-client"
-import Login from "@/pages/Login"
-import Signup from "@/pages/Signup"
-import ForgotPassword from "@/pages/ForgotPassword"
-import ResetPassword from "@/pages/ResetPassword"
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import ForgotPassword from "@/pages/ForgotPassword";
+
+// ResetPassword is rare (only visited from email link), keep lazy
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 type AuthPage = "login" | "signup" | "forgot-password" | "reset-password"
 
@@ -38,26 +40,23 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (loading || authState.status === 'initializing') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-        <div className="relative flex h-12 w-12 items-center justify-center">
-          <div className="absolute inset-0 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-        </div>
-        <p className="text-sm text-muted-foreground animate-pulse">Restoring session…</p>
-      </div>
-    )
+    return <AuthLoadingShell message="Restoring session…" />
   }
+
+  const authFallback = <AuthLoadingShell message="Loading authentication…" />;
 
   if (authPage === "reset-password") {
     return (
-      <ResetPassword
-        onNavigateToLogin={() => {
-          if (window.location.pathname === "/reset-password") {
-            window.history.replaceState({}, "", "/")
-          }
-          setAuthPage("login")
-        }}
-      />
+      <Suspense fallback={authFallback}>
+        <ResetPassword
+          onNavigateToLogin={() => {
+            if (window.location.pathname === "/reset-password") {
+              window.history.replaceState({}, "", "/")
+            }
+            setAuthPage("login")
+          }}
+        />
+      </Suspense>
     )
   }
 
@@ -77,4 +76,15 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   return <>{children}</>
+}
+
+function AuthLoadingShell({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="relative flex h-12 w-12 items-center justify-center">
+        <div className="absolute inset-0 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+      </div>
+      <p className="text-sm text-muted-foreground animate-pulse">{message}</p>
+    </div>
+  );
 }

@@ -16,7 +16,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
 import {
@@ -34,24 +33,28 @@ import type {
 import {
   EMOJI_ORB_STYLE_LABELS,
   EMOJI_ORB_STYLE_MODES,
+  ORB_COLOR_LABELS,
 } from '@/types/emoji-orb';
-import {
-  UploadSimple,
-  ArrowsClockwise,
-  FloppyDisk,
-  ArrowCounterClockwise,
-  Spinner,
-  CheckCircle,
-  XCircle,
-  ImageSquare,
-  MagicWand,
-} from '@phosphor-icons/react';
+
+const ORB_SWATCHS: Record<keyof typeof ORB_COLOR_LABELS, string> = {
+  silver: 'linear-gradient(135deg, #f1f5fb, #8d96a7 52%, #343a45)',
+  sapphire: 'linear-gradient(135deg, #95b7ff, #3f63c9 52%, #1f2e5e)',
+  emerald: 'linear-gradient(135deg, #7ef1c5, #2a9b72 52%, #165643)',
+  violet: 'linear-gradient(135deg, #c3a1ff, #7b55cc 52%, #3f2a69)',
+  crimson: 'linear-gradient(135deg, #ff9ba6, #bd4554 52%, #61212b)',
+};
+import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { MagicWand } from '@phosphor-icons/react/MagicWand';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import { validateMediaFile } from '@/types/media';
 
 export function EmojiOrbCustomizer() {
-  const { mode, emojiFeatures, applyEmojiOrb, resetToDefault } = useOrbAppearance();
+  const { mode, orbColor, applyEmojiOrb, setOrbColor, resetToDefault } = useOrbAppearance();
   const [flowState, setFlowState] = useState<EmojiOrbFlowState>({ status: 'idle' });
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +133,7 @@ export function EmojiOrbCustomizer() {
     });
   }, []);
 
-  const changeStyleMode = useCallback((styleMode: EmojiOrbStyleMode, traits: ImageAnalysisTraits, currentEmoji: string) => {
+  const _changeStyleMode = useCallback((styleMode: EmojiOrbStyleMode, traits: ImageAnalysisTraits, currentEmoji: string) => {
     setFlowState(prev => {
       if (prev.status !== 'preview-ready') return prev;
       const updated = regenerateOrbConfig(traits, styleMode, currentEmoji);
@@ -183,6 +186,35 @@ export function EmojiOrbCustomizer() {
 
   return (
     <div className="space-y-6">
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <Label className="text-sm font-semibold">Orb Color</Label>
+          <span className="text-xs text-muted-foreground">{ORB_COLOR_LABELS[orbColor]}</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(ORB_COLOR_LABELS) as Array<keyof typeof ORB_COLOR_LABELS>).map((theme) => (
+            <button
+              key={theme}
+              onClick={() => setOrbColor(theme)}
+              className={cn(
+                'focus-ring-lux swatch-button',
+                orbColor === theme
+                  ? 'active'
+                  : ''
+              )}
+              type="button"
+            >
+              <span
+                className="h-4 w-4 rounded-full border border-white/40"
+                style={{ background: ORB_SWATCHS[theme] }}
+                aria-hidden="true"
+              />
+              {ORB_COLOR_LABELS[theme]}
+            </button>
+          ))}
+        </div>
+      </Card>
+
       {/* Current Orb Status */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">

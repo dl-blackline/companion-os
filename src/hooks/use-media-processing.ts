@@ -15,7 +15,7 @@ import type {
   FileValidationResult,
   MediaPipelineState,
 } from '@/types';
-import { idle, loading, success, error, appError } from '@/types';
+import { idle, loading, error, appError } from '@/types';
 import { validateVideoFile, generateVideo, analyzeVideo, extractVideoMetadata, extractVideoThumbnail } from '@/services/video-service';
 import { validateImageFile, generateImage, analyzeImage, extractImageMetadata } from '@/services/image-service';
 import { refineMedia } from '@/services/media-refinement-service';

@@ -8,7 +8,8 @@ export type OrchestratorRequestType =
   | 'video'
   | 'voice'
   | 'knowledge'
-  | 'refine_media';
+  | 'refine_media'
+  | 'realtime_token';
 
 const ORCHESTRATOR_URL = '/.netlify/functions/ai-orchestrator';
 

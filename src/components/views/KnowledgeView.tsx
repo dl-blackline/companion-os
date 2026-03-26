@@ -14,22 +14,20 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import {
-  Books,
-  Plus,
-  MagnifyingGlass,
-  File,
-  Note,
-  Link,
-  CodeBlock,
-  Trash,
-  PencilSimple,
-  Tag,
-  ArrowSquareOut,
-  X,
-  Image as ImageIcon,
-  VideoCamera,
-} from '@phosphor-icons/react';
+import { ArrowSquareOut } from '@phosphor-icons/react/ArrowSquareOut';
+import { Books } from '@phosphor-icons/react/Books';
+import { CodeBlock } from '@phosphor-icons/react/CodeBlock';
+import { File } from '@phosphor-icons/react/File';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { Link } from '@phosphor-icons/react/Link';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Note } from '@phosphor-icons/react/Note';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Tag } from '@phosphor-icons/react/Tag';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { KnowledgeItem } from '@/types';
 import { generateId, getRelativeTime, formatDateTime } from '@/lib/helpers';
 import { motion } from 'framer-motion';

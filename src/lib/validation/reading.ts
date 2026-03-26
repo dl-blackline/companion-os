@@ -20,7 +20,7 @@ export const intakeFormSchema = z.object({
     .string()
     .min(1, 'Please enter your first name.')
     .max(50, 'First name must be 50 characters or fewer.')
-    .regex(/^[a-zA-Z\s'\-]+$/, 'Please enter a valid first name.'),
+    .regex(/^[a-zA-Z\s'-]+$/, 'Please enter a valid first name.'),
 
   dateOfBirth: z
     .string()

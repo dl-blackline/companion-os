@@ -175,7 +175,7 @@ export async function listGoals(
     user_id: userId,
     ...filters,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(result.data.goals.map(mapGoalRow));
 }
 
@@ -189,7 +189,7 @@ export async function createUserGoal(payload: CreateGoalPayload): Promise<AsyncR
     priority: payload.priority,
     target_date: payload.targetDate,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(mapGoalRow(result.data.goal));
 }
 
@@ -203,7 +203,7 @@ export async function updateUserGoal(
     ...updates,
     target_date: updates.targetDate,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(mapGoalRow(result.data.goal));
 }
 
@@ -212,7 +212,7 @@ export async function deleteUserGoal(goalId: string): Promise<AsyncResult<boolea
     action: 'goals.delete',
     goal_id: goalId,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(true);
 }
 
@@ -227,7 +227,7 @@ export async function listConstraints(
     user_id: userId,
     active_only: filters?.activeOnly,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(result.data.constraints.map(mapConstraintRow));
 }
 
@@ -241,7 +241,7 @@ export async function createUserConstraint(
     label: payload.label,
     value: payload.value,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(mapConstraintRow(result.data.constraint));
 }
 
@@ -250,7 +250,7 @@ export async function deleteUserConstraint(constraintId: string): Promise<AsyncR
     action: 'constraints.delete',
     constraint_id: constraintId,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(true);
 }
 
@@ -265,7 +265,7 @@ export async function listInitiatives(
     user_id: userId,
     ...filters,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(result.data.initiatives.map(mapInitiativeRow));
 }
 
@@ -278,7 +278,7 @@ export async function updateInitiative(
     initiative_id: initiativeId,
     status: payload.status,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(mapInitiativeRow(result.data.initiative));
 }
 
@@ -289,7 +289,7 @@ export async function generateProactiveInitiatives(
     action: 'initiatives.generate',
     user_id: userId,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(result.data.initiatives.map(mapInitiativeRow));
 }
 
@@ -312,7 +312,7 @@ export async function logUserInteraction(params: {
     outcome: params.outcome,
     metadata: params.metadata,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(mapInteractionRow(result.data.entry));
 }
 
@@ -325,7 +325,7 @@ export async function listRecentInteractions(
     user_id: userId,
     ...filters,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
   return success(result.data.interactions.map(mapInteractionRow));
 }
 
@@ -346,7 +346,7 @@ export async function getCompanionContext(
     action: 'context.get',
     user_id: userId,
   });
-  if (!result.ok) return result;
+  if (result.status !== 'success') return result;
 
   const raw = result.data.context;
   return success({
