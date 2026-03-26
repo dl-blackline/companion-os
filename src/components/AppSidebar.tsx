@@ -86,9 +86,9 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
     : companionState === 'listening'
       ? 'bg-sky-300'
       : companionState === 'speaking'
-        ? 'bg-emerald-300'
+        ? 'bg-rose-300'
         : companionState === 'thinking'
-          ? 'bg-violet-300'
+          ? 'bg-amber-200'
           : 'bg-zinc-200';
 
   const runtimeHealthy = runtimeState === 'healthy';

@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { triggerHaptic } from '@/utils/haptics';
 import { REALTIME_VOICES, type RealtimeVoice } from '@/lib/realtime-voice-client';
+import { HeartbeatTrace } from '@/components/ui/heartbeat-trace';
 
 /**
  * FloatingLiveOrb — A persistent floating button that allows the user to
@@ -184,8 +185,13 @@ export function FloatingLiveOrb() {
           <span className="floating-orb-pulse" />
         )}
 
-        {/* Icon */}
-        {isActive ? (
+        {isSpeaking ? (
+          <HeartbeatTrace
+            color="rgba(255, 243, 243, 0.96)"
+            duration={0.9}
+            className="pointer-events-none h-5 w-8 overflow-hidden drop-shadow-[0_0_8px_rgba(255,240,240,0.45)]"
+          />
+        ) : isActive ? (
           isMuted ? (
             <MicrophoneSlash size={isMobile ? 28 : 24} weight="fill" />
           ) : (

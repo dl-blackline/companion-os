@@ -610,10 +610,10 @@
 @keyframes orb-idle-pulse {
   0%,
   100% {
-    box-shadow: 0 0 34px oklch(0.56 0.16 228 / 0.56), 0 0 90px oklch(0.55 0.07 86 / 0.16), inset 0 0 26px oklch(0.83 0.08 212 / 0.2);
+    box-shadow: 0 0 34px oklch(0.72 0.02 245 / 0.5), 0 0 92px oklch(0.8 0.01 255 / 0.14), inset 0 0 26px oklch(0.96 0.01 255 / 0.18);
   }
   50% {
-    box-shadow: 0 0 46px oklch(0.6 0.17 222 / 0.68), 0 0 120px oklch(0.55 0.08 86 / 0.2), inset 0 0 32px oklch(0.85 0.08 212 / 0.28);
+    box-shadow: 0 0 46px oklch(0.76 0.025 245 / 0.6), 0 0 122px oklch(0.84 0.01 255 / 0.18), inset 0 0 32px oklch(0.98 0.01 255 / 0.24);
   }
 }
 
@@ -630,20 +630,20 @@
 @keyframes orb-thinking-pulse {
   0%,
   100% {
-    box-shadow: 0 0 48px oklch(0.63 0.14 216 / 0.7), 0 0 118px oklch(0.55 0.08 84 / 0.3);
+    box-shadow: 0 0 48px oklch(0.76 0.03 245 / 0.58), 0 0 118px oklch(0.84 0.03 90 / 0.22);
   }
   50% {
-    box-shadow: 0 0 64px oklch(0.67 0.14 216 / 0.82), 0 0 148px oklch(0.58 0.09 84 / 0.38);
+    box-shadow: 0 0 64px oklch(0.8 0.03 245 / 0.7), 0 0 148px oklch(0.88 0.04 90 / 0.3);
   }
 }
 
 @keyframes orb-speaking-pulse {
   0%,
   100% {
-    box-shadow: 0 0 50px oklch(0.74 0.1 84 / 0.74), 0 0 125px oklch(0.68 0.08 82 / 0.36);
+    box-shadow: 0 0 50px oklch(0.72 0.18 24 / 0.74), 0 0 125px oklch(0.78 0.08 18 / 0.28);
   }
   50% {
-    box-shadow: 0 0 70px oklch(0.78 0.1 84 / 0.88), 0 0 160px oklch(0.71 0.08 82 / 0.45);
+    box-shadow: 0 0 70px oklch(0.78 0.2 24 / 0.88), 0 0 160px oklch(0.84 0.09 18 / 0.34);
   }
 }
 
@@ -747,7 +747,31 @@
 .floating-orb--speaking,
 .floating-orb--error,
 .floating-orb--muted {
-  background: radial-gradient(circle at 35% 30%, #9bbfdd, #426f93);
+  box-shadow: 0 10px 30px rgba(5, 8, 14, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.floating-orb--idle {
+  background: radial-gradient(circle at 35% 30%, #f3f6fb, #8792a4 52%, #333a47);
+}
+
+.floating-orb--connecting {
+  background: radial-gradient(circle at 35% 30%, #ebf3ff, #7a95b6 52%, #30465f);
+}
+
+.floating-orb--listening {
+  background: radial-gradient(circle at 35% 30%, #dff4ff, #4f9dc4 52%, #214963);
+}
+
+.floating-orb--speaking {
+  background: radial-gradient(circle at 35% 30%, #fff2f2, #c05a63 50%, #5d242a);
+}
+
+.floating-orb--muted {
+  background: radial-gradient(circle at 35% 30%, #d2d9e4, #687284 52%, #2f3540);
+}
+
+.floating-orb--error {
+  background: radial-gradient(circle at 35% 30%, #ffd9d9, #bf5252 52%, #5a2323);
 }
 
 .floating-orb--connecting,
@@ -759,7 +783,7 @@
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  border: 2px solid rgba(104, 168, 222, 0.5);
+  border: 2px solid rgba(111, 183, 224, 0.5);
   animation: floating-orb-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
   pointer-events: none;
 }

@@ -51,6 +51,19 @@ function pathnameFromSection(section: NavSection): string {
   return '/';
 }
 
+function mapVoiceStatusToCompanionState(status: ReturnType<typeof useVoice>['status']): CompanionState | null {
+  switch (status) {
+    case 'listening':
+      return 'listening';
+    case 'thinking':
+      return 'thinking';
+    case 'speaking':
+      return 'speaking';
+    default:
+      return null;
+  }
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState<NavSection>(() =>
     sectionFromPathname(window.location.pathname)
@@ -58,7 +71,7 @@ function App() {
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
-  const { isActive: isGlobalVoiceActive, stopLiveTalk } = useVoice();
+  const { isActive: isGlobalVoiceActive, stopLiveTalk, status: voiceStatus } = useVoice();
   const { isAdmin, plan } = useAuth();
   const { settings } = useSettings();
   const { orchestratorConfig } = useAIControl();
@@ -66,15 +79,18 @@ function App() {
   const runtimeHealth = useRuntimeHealth();
   const reduceMotion = useReducedMotion();
 
-  const stateLabel = companionState.replace('-', ' ');
-  const stateDotClass = companionState === 'idle'
+  const liveVoiceState = mapVoiceStatusToCompanionState(voiceStatus);
+  const displayCompanionState = liveVoiceState ?? companionState;
+
+  const stateLabel = displayCompanionState.replace('-', ' ');
+  const stateDotClass = displayCompanionState === 'idle'
     ? 'bg-zinc-400'
-    : companionState === 'listening'
+    : displayCompanionState === 'listening'
       ? 'bg-sky-300'
-      : companionState === 'speaking'
-        ? 'bg-emerald-300'
-        : companionState === 'thinking'
-          ? 'bg-violet-300'
+      : displayCompanionState === 'speaking'
+        ? 'bg-rose-300'
+        : displayCompanionState === 'thinking'
+          ? 'bg-amber-200'
           : 'bg-zinc-200';
 
   const disabledCapabilities = Object.entries(orchestratorConfig.capabilities)
@@ -143,7 +159,7 @@ function App() {
       case 'home':
         return (
           <HomeDashboard
-            companionState={companionState}
+            companionState={displayCompanionState}
             aiName={settings.aiName}
             onNavigate={handleNavigate}
           />
@@ -188,7 +204,7 @@ function App() {
       case 'admin-console':
         return isAdmin ? <AdminConsoleView /> : (
           <HomeDashboard
-            companionState={companionState}
+            companionState={displayCompanionState}
             aiName={settings.aiName}
             onNavigate={handleNavigate}
           />
@@ -196,7 +212,7 @@ function App() {
       default:
         return (
           <HomeDashboard
-            companionState={companionState}
+            companionState={displayCompanionState}
             aiName={settings.aiName}
             onNavigate={handleNavigate}
           />
@@ -256,7 +272,7 @@ function App() {
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
             aiName={settings.aiName}
-            companionState={companionState}
+            companionState={displayCompanionState}
             runtimeState={runtimeHealth.state}
             unavailableServices={runtimeHealth.unavailableServices}
           />
@@ -266,7 +282,7 @@ function App() {
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
           aiName={settings.aiName}
-          companionState={companionState}
+          companionState={displayCompanionState}
           runtimeState={runtimeHealth.state}
           unavailableServices={runtimeHealth.unavailableServices}
         />
