@@ -21,5 +21,11 @@ CREATE POLICY "feature_usage_events_self_select" ON feature_usage_events
 CREATE POLICY "feature_usage_events_admin_read" ON feature_usage_events
   FOR SELECT USING (is_admin(auth.uid()));
 
-CREATE POLICY "feature_usage_events_service_insert" ON feature_usage_events
-  FOR INSERT WITH CHECK (true);
+-- Authenticated users may only record usage events for themselves.
+-- Backend (service-role) callers bypass RLS entirely, so no separate policy is needed.
+CREATE POLICY "feature_usage_events_self_insert" ON feature_usage_events
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+-- Admins may insert usage events for any user (e.g. bulk imports, corrections).
+CREATE POLICY "feature_usage_events_admin_insert" ON feature_usage_events
+  FOR INSERT WITH CHECK (is_admin(auth.uid()));
