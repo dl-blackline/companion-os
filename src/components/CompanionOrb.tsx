@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { CompanionState } from '@/types';
-import type { EmojiOrbFeatureSet } from '@/types/emoji-orb';
+import type { EmojiOrbFeatureSet, OrbColorTheme } from '@/types/emoji-orb';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
+import { HeartbeatTrace } from '@/components/ui/heartbeat-trace';
 
 interface CompanionOrbProps {
   state: CompanionState;
@@ -58,52 +59,102 @@ function getStateColors(state: CompanionState) {
       };
     case 'thinking':
       return {
-        coreFrom: 'oklch(0.72 0.26 310)',
-        coreMid: 'oklch(0.55 0.22 300)',
-        coreTo: 'oklch(0.32 0.16 295)',
-        ringColor: 'oklch(0.60 0.22 310 / 0.35)',
-        highlightColor: 'oklch(0.88 0.14 300 / 0.60)',
+        coreFrom: 'oklch(0.84 0.01 255)',
+        coreMid: 'oklch(0.60 0.015 248)',
+        coreTo: 'oklch(0.31 0.01 244)',
+        ringColor: 'oklch(0.80 0.015 248 / 0.34)',
+        highlightColor: 'oklch(0.97 0.01 250 / 0.62)',
         orbClass: 'orb-think',
       };
     case 'speaking':
       return {
-        coreFrom: 'oklch(0.85 0.18 65)',
-        coreMid: 'oklch(0.68 0.20 70)',
-        coreTo: 'oklch(0.40 0.14 75)',
-        ringColor: 'oklch(0.70 0.18 65 / 0.35)',
-        highlightColor: 'oklch(0.95 0.10 60 / 0.60)',
+        coreFrom: 'oklch(0.90 0.06 25)',
+        coreMid: 'oklch(0.63 0.18 24)',
+        coreTo: 'oklch(0.36 0.12 20)',
+        ringColor: 'oklch(0.76 0.18 24 / 0.38)',
+        highlightColor: 'oklch(0.98 0.03 20 / 0.78)',
         orbClass: 'orb-speak',
       };
     case 'generating-image':
     case 'generating-video':
       return {
-        coreFrom: 'oklch(0.75 0.24 310)',
-        coreMid: 'oklch(0.55 0.22 290)',
-        coreTo: 'oklch(0.35 0.16 275)',
-        ringColor: 'oklch(0.60 0.20 295 / 0.35)',
-        highlightColor: 'oklch(0.88 0.14 300 / 0.55)',
+        coreFrom: 'oklch(0.86 0.03 85)',
+        coreMid: 'oklch(0.62 0.05 82)',
+        coreTo: 'oklch(0.34 0.03 72)',
+        ringColor: 'oklch(0.78 0.05 80 / 0.34)',
+        highlightColor: 'oklch(0.98 0.02 84 / 0.60)',
         orbClass: 'orb-generate',
       };
     case 'writing':
     case 'analyzing':
       return {
-        coreFrom: 'oklch(0.68 0.22 280)',
-        coreMid: 'oklch(0.52 0.18 285)',
-        coreTo: 'oklch(0.32 0.14 285)',
-        ringColor: 'oklch(0.55 0.18 280 / 0.35)',
-        highlightColor: 'oklch(0.85 0.12 275 / 0.55)',
+        coreFrom: 'oklch(0.82 0.012 255)',
+        coreMid: 'oklch(0.57 0.012 248)',
+        coreTo: 'oklch(0.30 0.01 245)',
+        ringColor: 'oklch(0.74 0.012 248 / 0.32)',
+        highlightColor: 'oklch(0.96 0.01 250 / 0.58)',
         orbClass: 'orb-generate',
       };
     default: // idle
       return {
-        coreFrom: 'oklch(0.68 0.22 285)',
-        coreMid: 'oklch(0.50 0.18 285)',
-        coreTo: 'oklch(0.30 0.12 285)',
-        ringColor: 'oklch(0.50 0.18 285 / 0.28)',
-        highlightColor: 'oklch(0.85 0.12 280 / 0.50)',
+        coreFrom: 'oklch(0.84 0.008 255)',
+        coreMid: 'oklch(0.58 0.008 252)',
+        coreTo: 'oklch(0.29 0.008 248)',
+        ringColor: 'oklch(0.74 0.01 250 / 0.28)',
+        highlightColor: 'oklch(0.97 0.008 255 / 0.56)',
         orbClass: 'orb-idle',
       };
   }
+}
+
+function getThemeAccent(theme: OrbColorTheme) {
+  if (theme === 'silver') {
+    return {
+      ringColor: 'oklch(0.76 0.006 255 / 0.34)',
+      highlightColor: 'oklch(0.95 0.006 255 / 0.62)',
+    };
+  }
+
+  if (theme === 'sapphire') {
+    return {
+      ringColor: 'oklch(0.70 0.10 245 / 0.35)',
+      highlightColor: 'oklch(0.92 0.06 240 / 0.62)',
+    };
+  }
+
+  if (theme === 'emerald') {
+    return {
+      ringColor: 'oklch(0.72 0.09 162 / 0.35)',
+      highlightColor: 'oklch(0.93 0.06 162 / 0.62)',
+    };
+  }
+
+  if (theme === 'violet') {
+    return {
+      ringColor: 'oklch(0.72 0.05 312 / 0.32)',
+      highlightColor: 'oklch(0.94 0.03 305 / 0.58)',
+    };
+  }
+
+  return {
+    ringColor: 'oklch(0.72 0.12 22 / 0.35)',
+    highlightColor: 'oklch(0.94 0.07 18 / 0.62)',
+  };
+}
+
+function resolveOrbColors(theme: OrbColorTheme, state: CompanionState) {
+  const stateColors = getStateColors(state);
+
+  if (state === 'listening' || state === 'speaking') {
+    return stateColors;
+  }
+
+  const accent = getThemeAccent(theme);
+  return {
+    ...stateColors,
+    ringColor: accent.ringColor,
+    highlightColor: accent.highlightColor,
+  };
 }
 
 function getRingAnimationClass(state: CompanionState, ring: 'inner' | 'mid' | 'outer') {
@@ -155,7 +206,9 @@ export function CompanionOrb({
         highlightColor: activeFeatures.highlightColor,
         orbClass: defaultColors.orbClass, // Keep animation class for pulsing
       }
-    : defaultColors;
+    : {
+        ...resolveOrbColors(orbAppearance.orbColor, state),
+      };
 
   const activeEmoji = activeFeatures?.emoji ?? null;
 
@@ -291,15 +344,10 @@ export function CompanionOrb({
           </div>
         )}
 
-        {/* Speaking: small inner pulse dot */}
+        {/* Speaking: monitor trace */}
         {isSpeaking && !activeEmoji && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <motion.div
-              className="w-2 h-2 rounded-full"
-              style={{ background: colors.highlightColor }}
-              animate={{ scale: [1, 1.6, 1], opacity: [0.8, 1, 0.8] }}
-              transition={{ duration: 0.6, repeat: Infinity, ease: 'easeInOut' }}
-            />
+          <div className="absolute inset-[24%] flex items-center justify-center pointer-events-none overflow-hidden">
+            <HeartbeatTrace color={colors.highlightColor} className="h-5 w-full opacity-90 drop-shadow-[0_0_10px_rgba(255,245,245,0.5)]" />
           </div>
         )}
       </motion.div>

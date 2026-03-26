@@ -72,7 +72,7 @@ export function usePreferences(): UsePreferencesReturn {
         // Rollback to previous state on failure
         setPrefs(prevPrefs);
       }
-    } catch (e) {
+    } catch {
       setError('Network error');
       // Rollback to previous state on network error
       setPrefs(prevPrefs);

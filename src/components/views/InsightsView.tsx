@@ -6,20 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Lightbulb,
-  Bell,
-  ArrowClockwise,
-  CircleDashed,
-  Handshake,
-  Warning,
-  Sparkle,
-  TrendUp,
-  Eye,
-  EyeSlash,
-  X,
-  Check,
-} from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react/ArrowClockwise';
+import { Bell } from '@phosphor-icons/react/Bell';
+import { Check } from '@phosphor-icons/react/Check';
+import { CircleDashed } from '@phosphor-icons/react/CircleDashed';
+import { Eye } from '@phosphor-icons/react/Eye';
+import { EyeSlash } from '@phosphor-icons/react/EyeSlash';
+import { Handshake } from '@phosphor-icons/react/Handshake';
+import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
+import { TrendUp } from '@phosphor-icons/react/TrendUp';
+import { Warning } from '@phosphor-icons/react/Warning';
+import { X } from '@phosphor-icons/react/X';
 import type { Insight } from '@/types';
 import { getRelativeTime } from '@/lib/helpers';
 import { cn } from '@/lib/utils';

@@ -25,6 +25,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function scheduleIdleTask(task: () => void): () => void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(task, { timeout: 1200 })
+    return () => cancelIdleCallback(id)
+  }
+
+  const timeoutId = setTimeout(task, 180)
+  return () => clearTimeout(timeoutId)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -36,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const isAdmin = role === 'admin'
+  const pendingRoleLoadCleanupRef = useRef<(() => void) | null>(null)
 
   // Keep a ref so getAccessToken() is always synchronous & current
   const sessionRef = useRef<Session | null>(null)
@@ -59,6 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const scheduleRoleAndPlanLoad = useCallback((userId: string) => {
+    pendingRoleLoadCleanupRef.current?.()
+    pendingRoleLoadCleanupRef.current = scheduleIdleTask(() => {
+      fetchRoleAndPlan(userId)
+    })
+  }, [])
+
   const refreshRole = async () => {
     if (user) await fetchRoleAndPlan(user.id)
   }
@@ -72,8 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(restored?.user ?? null)
       if (restored?.user) {
         setAuthState({ status: 'authenticated', userId: restored.user.id, email: restored.user.email ?? '' })
-        fetchRoleAndPlan(restored.user.id)
+        scheduleRoleAndPlanLoad(restored.user.id)
       } else {
+        pendingRoleLoadCleanupRef.current?.()
         setAuthState({ status: 'unauthenticated' })
       }
       setLoading(false)
@@ -84,8 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updated?.user ?? null)
       if (updated?.user) {
         setAuthState({ status: 'authenticated', userId: updated.user.id, email: updated.user.email ?? '' })
-        fetchRoleAndPlan(updated.user.id)
+        scheduleRoleAndPlanLoad(updated.user.id)
       } else {
+        pendingRoleLoadCleanupRef.current?.()
         setRole('user')
         setPlan('free')
         setAuthState({ status: 'unauthenticated' })
@@ -94,9 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => {
+      pendingRoleLoadCleanupRef.current?.()
       data.subscription.unsubscribe()
     }
-  }, [])
+  }, [scheduleRoleAndPlanLoad])
 
   const login = async (email: string, password: string) => {
     if (!supabaseConfigured) {

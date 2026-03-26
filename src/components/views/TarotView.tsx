@@ -3,7 +3,6 @@ import { useReadingStore } from '@/store/reading-store';
 import { ReadingIntakeForm } from '@/components/tarot/reading-intake-form';
 import { ZodiacBadge } from '@/components/tarot/zodiac-badge';
 import { ShuffleAnimation } from '@/components/tarot/shuffle-animation';
-import { SpreadLayout } from '@/components/tarot/spread-layout';
 import { TarotCardDisplay } from '@/components/tarot/tarot-card-display';
 import { InterpretationPanel } from '@/components/tarot/interpretation-panel';
 import { ReadingSummary } from '@/components/tarot/reading-summary';
@@ -11,7 +10,7 @@ import { OfferGrid } from '@/components/tarot/offer-grid';
 import { EmailCapture } from '@/components/tarot/email-capture';
 import { FooterDisclaimer } from '@/components/tarot/footer-disclaimer';
 import { READING_PREAMBLE } from '@/lib/copy/disclaimers';
-import { ArrowLeft } from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
 
 export function TarotView() {
   const store = useReadingStore();
@@ -30,12 +29,8 @@ export function TarotView() {
           >
             {/* Ambient glow */}
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="tarot-ambient-glow absolute inset-0 pointer-events-none"
               aria-hidden="true"
-              style={{
-                background:
-                  'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)',
-              }}
             />
 
             {/* Symbol */}
@@ -46,10 +41,7 @@ export function TarotView() {
               className="relative"
             >
               <div className="text-6xl select-none" aria-hidden="true">✦</div>
-              <div
-                className="absolute inset-0 blur-2xl opacity-30"
-                style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.6) 0%, transparent 70%)' }}
-              />
+              <div className="tarot-symbol-glow absolute inset-0 blur-2xl opacity-30" />
             </motion.div>
 
             {/* Heading */}
@@ -106,7 +98,7 @@ export function TarotView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}
               onClick={store.startIntake}
-              className="px-10 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-neutral-950"
+              className="px-10 py-4 rounded-full bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-neutral-950"
               aria-label="Begin your tarot reading"
             >
               Begin Your Reading
@@ -146,7 +138,7 @@ export function TarotView() {
 
               <ReadingIntakeForm
                 onSubmit={store.submitIntake}
-                isLoading={store.phase === 'shuffling'}
+                isLoading={(store.phase as string) === 'shuffling'}
                 error={store.error}
               />
 

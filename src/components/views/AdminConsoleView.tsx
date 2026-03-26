@@ -1,25 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Users,
-  UserPlus,
-  ShieldCheck,
-  Flag,
-  Ticket,
-  ClipboardText,
-  ArrowsClockwise,
-  CheckCircle,
-  WarningCircle,
-  XCircle,
-  Question,
-  Gauge,
-  MagnifyingGlass,
-  CaretLeft,
-  CaretRight,
-  PencilSimple,
-  Spinner,
-  Shield,
-} from '@phosphor-icons/react';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { CaretLeft } from '@phosphor-icons/react/CaretLeft';
+import { CaretRight } from '@phosphor-icons/react/CaretRight';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { ClipboardText } from '@phosphor-icons/react/ClipboardText';
+import { CreditCard } from '@phosphor-icons/react/CreditCard';
+import { Flag } from '@phosphor-icons/react/Flag';
+import { Gauge } from '@phosphor-icons/react/Gauge';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Question } from '@phosphor-icons/react/Question';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { Ticket } from '@phosphor-icons/react/Ticket';
+import { UserPlus } from '@phosphor-icons/react/UserPlus';
+import { Users } from '@phosphor-icons/react/Users';
+import { WarningCircle } from '@phosphor-icons/react/WarningCircle';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase-client';
@@ -63,6 +62,7 @@ import { Separator } from '@/components/ui/separator';
 import type {
   UserRole,
   EntitlementPlan,
+  EntitlementStatus,
   ServiceStatus,
   ServiceHealth,
   AdminUser,
@@ -429,8 +429,12 @@ function UsersTab() {
   // Edit form
   const [editRole, setEditRole] = useState<UserRole>('user');
   const [editPlan, setEditPlan] = useState<EntitlementPlan>('free');
+  const [editEntitlementStatus, setEditEntitlementStatus] = useState<EntitlementStatus>('active');
+  const [editTrialEndsAt, setEditTrialEndsAt] = useState('');
+  const [editExpiresAt, setEditExpiresAt] = useState('');
   const [editStatus, setEditStatus] = useState<AdminUser['status']>('active');
   const [editLoading, setEditLoading] = useState(false);
+  const [resetUsageLoading, setResetUsageLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
   const load = useCallback(async () => {
@@ -458,6 +462,9 @@ function UsersTab() {
     setEditUser(user);
     setEditRole(user.role);
     setEditPlan(user.plan);
+    setEditEntitlementStatus(user.plan_status ?? 'active');
+    setEditTrialEndsAt(user.trial_ends_at ? String(user.trial_ends_at).slice(0, 10) : '');
+    setEditExpiresAt(user.expires_at ? String(user.expires_at).slice(0, 10) : '');
     setEditStatus(user.status);
     setEditError('');
   }
@@ -491,7 +498,14 @@ function UsersTab() {
       const token = await getToken();
       const res = await apiFetch(`/.netlify/functions/admin-users/${editUser.id}`, token, {
         method: 'PATCH',
-        body: JSON.stringify({ role: editRole, plan: editPlan, status: editStatus }),
+        body: JSON.stringify({
+          role: editRole,
+          plan: editPlan,
+          entitlement_status: editEntitlementStatus,
+          trial_ends_at: editTrialEndsAt || null,
+          expires_at: editExpiresAt || null,
+          status: editStatus,
+        }),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? 'Failed'); }
       setEditUser(null);
@@ -500,6 +514,29 @@ function UsersTab() {
       setEditError((e as Error).message);
     } finally {
       setEditLoading(false);
+    }
+  }
+
+  async function handleResetUsage() {
+    if (!editUser) return;
+    setResetUsageLoading(true);
+    setEditError('');
+    try {
+      const token = await getToken();
+      const res = await apiFetch(`/.netlify/functions/admin-users/${editUser.id}`, token, {
+        method: 'PATCH',
+        body: JSON.stringify({ reset_usage: true }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? 'Failed'); }
+      await load();
+      setEditUser((current) => current ? {
+        ...current,
+        usage: { media_generation: 0, agent_task: 0 },
+      } : current);
+    } catch (e) {
+      setEditError((e as Error).message);
+    } finally {
+      setResetUsageLoading(false);
     }
   }
 
@@ -532,6 +569,8 @@ function UsersTab() {
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Plan</TableHead>
+                <TableHead>Usage</TableHead>
+                <TableHead>Billing</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Last Sign In</TableHead>
@@ -540,20 +579,40 @@ function UsersTab() {
             </TableHeader>
             <TableBody>
               {state.loading ? (
-                <LoadingRows cols={8} />
+                <LoadingRows cols={10} />
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={10}>
                     <EmptyState message="No users found" />
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((user) => (
-                  <TableRow key={user.id} className="border-border hover:bg-white/[0.02]">
+                  <TableRow key={user.id} className="border-border hover:bg-white/2">
                     <TableCell className="font-mono text-xs text-foreground">{user.email}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{user.display_name ?? '—'}</TableCell>
                     <TableCell><RoleBadge role={user.role} /></TableCell>
-                    <TableCell><PlanBadge plan={user.plan} /></TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <PlanBadge plan={user.plan} />
+                        <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{user.plan_status ?? 'active'}</div>
+                        {(user.trial_ends_at || user.expires_at) && (
+                          <div className="text-[10px] text-muted-foreground">
+                            {user.trial_ends_at ? `Trial ${new Date(user.trial_ends_at).toLocaleDateString()}` : ''}
+                            {user.trial_ends_at && user.expires_at ? ' · ' : ''}
+                            {user.expires_at ? `Expires ${new Date(user.expires_at).toLocaleDateString()}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      <div>Media {user.usage?.media_generation ?? 0}</div>
+                      <div>Agents {user.usage?.agent_task ?? 0}</div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      <div>{user.billing_status ?? '—'}</div>
+                      <div>{user.current_period_end ? new Date(user.current_period_end).toLocaleDateString() : '—'}</div>
+                    </TableCell>
                     <TableCell><StatusBadge status={user.status} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(user.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -647,7 +706,7 @@ function UsersTab() {
                 <AlertDescription className="text-red-300 text-sm">{editError}</AlertDescription>
               </Alert>
             )}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div className="space-y-1.5">
                 <Label>Role</Label>
                 <Select value={editRole} onValueChange={(v) => setEditRole(v as UserRole)}>
@@ -681,9 +740,52 @@ function UsersTab() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label>Entitlement</Label>
+                <Select value={editEntitlementStatus} onValueChange={(v) => setEditEntitlementStatus(v as EntitlementStatus)}>
+                  <SelectTrigger className="bg-background border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="active">active</SelectItem>
+                    <SelectItem value="trial">trial</SelectItem>
+                    <SelectItem value="expired">expired</SelectItem>
+                    <SelectItem value="suspended">suspended</SelectItem>
+                    <SelectItem value="none">none</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Trial Ends</Label>
+                <Input type="date" value={editTrialEndsAt} onChange={(e) => setEditTrialEndsAt(e.target.value)} className="bg-background border-border" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Access Expires</Label>
+                <Input type="date" value={editExpiresAt} onChange={(e) => setEditExpiresAt(e.target.value)} className="bg-background border-border" />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-black/20 p-3 text-xs text-muted-foreground space-y-1">
+              <div className="flex items-center justify-between">
+                <span>Media usage this month</span>
+                <span className="text-foreground">{editUser?.usage?.media_generation ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Agent tasks this month</span>
+                <span className="text-foreground">{editUser?.usage?.agent_task ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Billing status</span>
+                <span className="text-foreground">{editUser?.billing_status ?? '—'}</span>
+              </div>
             </div>
           </div>
           <DialogFooter>
+            <Button variant="outline" onClick={handleResetUsage} disabled={resetUsageLoading} className="mr-auto gap-2">
+              {resetUsageLoading && <Spinner className="w-3.5 h-3.5 animate-spin" />}
+              Reset Monthly Usage
+            </Button>
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={editLoading} className="gap-2">
               {editLoading && <Spinner className="w-3.5 h-3.5 animate-spin" />}
@@ -899,11 +1001,16 @@ function FeatureFlagsTab() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{flag.description}</p>
                         <div className="mt-1.5 flex items-center gap-2">
-                          <div className="h-1.5 w-24 bg-white/10 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all"
-                              style={{ width: `${flag.rollout_percentage}%` }}
-                            />
+                          <div className="flag-rollout-meter" aria-hidden="true">
+                            {Array.from({ length: 20 }, (_, index) => (
+                              <span
+                                key={`${flag.id}-${index}`}
+                                className={cn(
+                                  'flag-rollout-segment',
+                                  index < Math.round(flag.rollout_percentage / 5) && 'flag-rollout-segment-active'
+                                )}
+                              />
+                            ))}
                           </div>
                           <span className="text-xs text-muted-foreground">{flag.rollout_percentage}% rollout</span>
                         </div>
@@ -1048,7 +1155,7 @@ function SupportTab() {
                 </TableRow>
               ) : (
                 filtered.map((ticket) => (
-                  <TableRow key={ticket.id} className="border-border hover:bg-white/[0.02] cursor-pointer" onClick={() => openTicket(ticket)}>
+                  <TableRow key={ticket.id} className="border-border hover:bg-white/2 cursor-pointer" onClick={() => openTicket(ticket)}>
                     <TableCell className="font-medium text-sm text-foreground max-w-48 truncate">{ticket.title}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{ticket.user_email ?? ticket.user_id}</TableCell>
                     <TableCell>
@@ -1237,7 +1344,7 @@ function AuditLogsTab() {
                 </TableRow>
               ) : (
                 filtered.map((entry) => (
-                  <TableRow key={entry.id} className="border-border hover:bg-white/[0.02]">
+                  <TableRow key={entry.id} className="border-border hover:bg-white/2">
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(entry.created_at).toLocaleString()}
                     </TableCell>
@@ -1293,6 +1400,130 @@ function AuditLogsTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Tab: Billing
+// ---------------------------------------------------------------------------
+interface BillingSummary {
+  countsByPlan: Record<EntitlementPlan, number>;
+  paidActive: number;
+  cancellationsScheduled: number;
+  recentSubscriptions: Array<{
+    user_id: string;
+    stripe_subscription_id: string | null;
+    stripe_price_id: string | null;
+    status: string;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean;
+    updated_at: string;
+  }>;
+}
+
+function BillingTab() {
+  const [state, setState] = useState<FetchState<BillingSummary>>(initFetch());
+
+  const load = useCallback(async () => {
+    setState(initFetch());
+    try {
+      const token = await getToken();
+      const res = await apiFetch('/.netlify/functions/admin-billing', token);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to load billing analytics.');
+      }
+      const json = await res.json();
+      setState({ data: json.data ?? json, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err instanceof Error ? err.message : 'Failed to load billing analytics.' });
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const data = state.data;
+
+  return (
+    <motion.div {...tabMotion} className="space-y-4">
+      {state.error && <ErrorCard message={state.error} onRetry={load} />}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Card className="border-border/70 bg-black/20">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Free</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{data?.countsByPlan.free ?? '—'}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 bg-black/20">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Pro</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{data?.countsByPlan.pro ?? '—'}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 bg-black/20">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Enterprise</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{data?.countsByPlan.enterprise ?? '—'}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 bg-black/20">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Paid Active</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{data?.paidActive ?? '—'}</div>
+            <p className="text-xs text-muted-foreground mt-1">Canceling soon: {data?.cancellationsScheduled ?? '—'}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/70 bg-black/20">
+        <CardHeader>
+          <CardTitle className="text-sm">Recent Stripe Subscription Sync</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <ScrollArea className="max-h-[360px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border">
+                  <TableHead>User</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Price ID</TableHead>
+                  <TableHead>Period End</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {state.loading ? (
+                  <LoadingRows cols={4} rows={4} />
+                ) : (data?.recentSubscriptions?.length ?? 0) === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4}>
+                      <EmptyState message="No subscription records found yet." />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data?.recentSubscriptions.map((row) => (
+                    <TableRow key={row.stripe_subscription_id ?? row.user_id} className="border-border hover:bg-white/2">
+                      <TableCell className="text-xs font-mono text-muted-foreground">{row.user_id}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs font-medium border-border/70 text-foreground/85">
+                          {row.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono max-w-44 truncate">{row.stripe_price_id ?? '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {row.current_period_end ? new Date(row.current_period_end).toLocaleDateString() : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 export function AdminConsoleView() {
@@ -1311,6 +1542,7 @@ export function AdminConsoleView() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Gauge },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'health', label: 'System Health', icon: ShieldCheck },
     { id: 'flags', label: 'Feature Flags', icon: Flag },
     { id: 'support', label: 'Support', icon: Ticket },
@@ -1357,6 +1589,9 @@ export function AdminConsoleView() {
             </TabsContent>
             <TabsContent value="users">
               <UsersTab />
+            </TabsContent>
+            <TabsContent value="billing">
+              <BillingTab />
             </TabsContent>
             <TabsContent value="health">
               <SystemHealthTab />

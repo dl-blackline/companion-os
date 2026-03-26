@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useImageMemory } from '@/hooks/use-image-memory';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -17,26 +16,24 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import {
-  Brain,
-  Plus,
-  MagnifyingGlass,
-  Star,
-  Trash,
-  PencilSimple,
-  Tag,
-  Shield,
-  CheckCircle,
-  X,
-  UploadSimple,
-  Image as ImageIcon,
-  VideoCamera,
-  SpinnerGap,
-  Eye,
-  ThumbsUp,
-  ThumbsDown,
-  ImageSquare,
-} from '@phosphor-icons/react';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { Eye } from '@phosphor-icons/react/Eye';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { ImageSquare } from '@phosphor-icons/react/ImageSquare';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { SpinnerGap } from '@phosphor-icons/react/SpinnerGap';
+import { Star } from '@phosphor-icons/react/Star';
+import { Tag } from '@phosphor-icons/react/Tag';
+import { ThumbsDown } from '@phosphor-icons/react/ThumbsDown';
+import { ThumbsUp } from '@phosphor-icons/react/ThumbsUp';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { Memory, MemoryCategory, PrivacyLevel, MemoryCandidate, UploadedMedia } from '@/types';
 import { generateId, getRelativeTime, formatDateTime } from '@/lib/helpers';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,8 +73,6 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 /** Fallback user ID used when auth is not available. */
-const MEMORY_LOCAL_USER_ID = 'local-user';
-
 interface MemoryFormState {
   title: string;
   content: string;
@@ -97,8 +92,6 @@ const EMPTY_FORM: MemoryFormState = {
 };
 
 export function MemoryView() {
-  const { user: authUser } = useAuth();
-  const memoryUserId = authUser?.id ?? MEMORY_LOCAL_USER_ID;
   const [memories, setMemories] = useLocalStorage<Memory[]>('memories', []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -1057,12 +1050,18 @@ export function MemoryView() {
                           Images up to 10 MB · Videos up to 100 MB
                         </p>
                       </div>
+                      <label htmlFor="memory-media-upload" className="sr-only">
+                        Upload image or video
+                      </label>
                       <input
+                        id="memory-media-upload"
                         ref={fileInputRef}
                         type="file"
                         accept={[...ACCEPTED_IMAGE_TYPES, ...ACCEPTED_VIDEO_TYPES].join(',')}
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMediaFile(f); }}
                         className="hidden"
+                        title="Upload image or video"
+                        aria-label="Upload image or video"
                       />
                     </div>
                   )}
@@ -1087,6 +1086,8 @@ export function MemoryView() {
                         <button
                           onClick={clearMediaUpload}
                           className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 transition-colors"
+                          title="Remove media preview"
+                          aria-label="Remove media preview"
                         >
                           <X size={14} />
                         </button>

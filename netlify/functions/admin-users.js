@@ -4,6 +4,12 @@
  */
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
+
+function getCurrentUsageWindowStart() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
 
 async function resolveActor(supabase, token) {
   if (!token) return null;
@@ -67,13 +73,33 @@ export async function handler(event) {
 
       // Fetch roles and entitlements for these users
       const userIds = users.map((u) => u.id);
-      const [{ data: roles }, { data: entitlements }] = await Promise.all([
+      const usageWindowStart = getCurrentUsageWindowStart();
+      const [{ data: roles }, { data: entitlements }, { data: subscriptions }, { data: usageEvents }] = await Promise.all([
         supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
-        supabase.from("user_entitlements").select("user_id, plan, status").in("user_id", userIds),
+        supabase.from("user_entitlements").select("user_id, plan, status, trial_ends_at, expires_at").in("user_id", userIds),
+        supabase
+          .from("billing_subscriptions")
+          .select("user_id, status, current_period_end, cancel_at_period_end")
+          .in("user_id", userIds),
+        supabase
+          .from("feature_usage_events")
+          .select("user_id, feature_key")
+          .in("user_id", userIds)
+          .gte("created_at", usageWindowStart),
       ]);
 
       const roleMap = Object.fromEntries((roles || []).map((r) => [r.user_id, r.role]));
-      const planMap = Object.fromEntries((entitlements || []).map((e) => [e.user_id, { plan: e.plan, status: e.status }]));
+      const planMap = Object.fromEntries((entitlements || []).map((e) => [e.user_id, e]));
+      const subscriptionMap = Object.fromEntries((subscriptions || []).map((s) => [s.user_id, s]));
+      const usageMap = {};
+      for (const usageEvent of usageEvents || []) {
+        if (!usageMap[usageEvent.user_id]) {
+          usageMap[usageEvent.user_id] = { media_generation: 0, agent_task: 0 };
+        }
+        if (usageEvent.feature_key === "media_generation" || usageEvent.feature_key === "agent_task") {
+          usageMap[usageEvent.user_id][usageEvent.feature_key] += 1;
+        }
+      }
 
       let result = users.map((u) => ({
         id: u.id,
@@ -82,9 +108,15 @@ export async function handler(event) {
         role: roleMap[u.id] || "user",
         plan: planMap[u.id]?.plan || "free",
         plan_status: planMap[u.id]?.status || "active",
+        trial_ends_at: planMap[u.id]?.trial_ends_at || null,
+        expires_at: planMap[u.id]?.expires_at || null,
         status: u.banned_until ? "suspended" : (u.deleted_at ? "deactivated" : "active"),
         created_at: u.created_at,
         last_sign_in: u.last_sign_in_at,
+        current_period_end: subscriptionMap[u.id]?.current_period_end || null,
+        cancel_at_period_end: Boolean(subscriptionMap[u.id]?.cancel_at_period_end),
+        billing_status: subscriptionMap[u.id]?.status || null,
+        usage: usageMap[u.id] || { media_generation: 0, agent_task: 0 },
       }));
 
       if (search) {
@@ -141,7 +173,7 @@ export async function handler(event) {
     const matchUpdate = path.match(/^\/([^/]+)$/);
     if (event.httpMethod === "PATCH" && matchUpdate) {
       const targetUserId = matchUpdate[1];
-      const { role, plan, status, display_name } = JSON.parse(event.body || "{}");
+      const { role, plan, entitlement_status, status, display_name, trial_ends_at, expires_at, reset_usage } = JSON.parse(event.body || "{}");
 
       const updates = [];
 
@@ -151,12 +183,35 @@ export async function handler(event) {
         );
       }
 
-      if (plan) {
+      if (plan || entitlement_status || trial_ends_at !== undefined || expires_at !== undefined) {
+        const { data: existingEntitlement } = await supabase
+          .from("user_entitlements")
+          .select("plan, status, trial_ends_at, expires_at")
+          .eq("user_id", targetUserId)
+          .single();
+
         updates.push(
           supabase.from("user_entitlements").upsert(
-            { user_id: targetUserId, plan, status: "active", overridden_by: actor.id },
+            {
+              user_id: targetUserId,
+              plan: plan || existingEntitlement?.plan || "free",
+              status: entitlement_status || existingEntitlement?.status || "active",
+              trial_ends_at: trial_ends_at === undefined ? (existingEntitlement?.trial_ends_at || null) : (trial_ends_at || null),
+              expires_at: expires_at === undefined ? (existingEntitlement?.expires_at || null) : (expires_at || null),
+              overridden_by: actor.id,
+            },
             { onConflict: "user_id" }
           )
+        );
+      }
+
+      if (reset_usage) {
+        updates.push(
+          supabase
+            .from("feature_usage_events")
+            .delete()
+            .eq("user_id", targetUserId)
+            .gte("created_at", getCurrentUsageWindowStart())
         );
       }
 
@@ -181,7 +236,7 @@ export async function handler(event) {
       }
 
       await Promise.all(updates);
-      await auditLog(supabase, actor.id, actor.email, "user.updated", "user", targetUserId, { role, plan, status, display_name });
+      await auditLog(supabase, actor.id, actor.email, "user.updated", "user", targetUserId, { role, plan, entitlement_status, status, display_name, trial_ends_at, expires_at, reset_usage: Boolean(reset_usage) });
 
       return ok({ updated: true });
     }

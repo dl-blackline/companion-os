@@ -123,6 +123,17 @@ export interface EmojiOrbConfig {
 /** The active appearance mode for the companion orb. */
 export type OrbAppearanceMode = 'default' | 'emoji';
 
+/** User-selectable orb color theme. */
+export type OrbColorTheme = 'silver' | 'sapphire' | 'emerald' | 'violet' | 'crimson';
+
+export const ORB_COLOR_LABELS: Record<OrbColorTheme, string> = {
+  silver: 'Silver',
+  sapphire: 'Sapphire',
+  emerald: 'Emerald',
+  violet: 'Violet',
+  crimson: 'Crimson',
+};
+
 // ─── Flow States ──────────────────────────────────────────────────────────────
 
 /** Discriminated union tracking the emoji orb customization flow. */
@@ -146,6 +157,7 @@ export type EmojiOrbFlowState =
 /** The orb preference payload stored in the user_preferences prefs JSONB. */
 export interface OrbPreferencePayload {
   readonly mode: OrbAppearanceMode;
+  readonly orbColor?: OrbColorTheme;
   readonly emojiConfig?: EmojiOrbFeatureSet;
   readonly styleMode?: EmojiOrbStyleMode;
   readonly emoji?: string;
@@ -153,4 +165,5 @@ export interface OrbPreferencePayload {
 
 export const DEFAULT_ORB_PREFERENCE: OrbPreferencePayload = {
   mode: 'default',
+  orbColor: 'silver',
 };

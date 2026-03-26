@@ -20,14 +20,24 @@ import type {
   RealtimeSession,
   SSEEventName,
 } from '@/types/realtime';
+import { supabase, supabaseConfigured } from '@/lib/supabase-client';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const COMPANION_STREAM_URL = '/.netlify/functions/companion-stream';
-const COMPANION_BRAIN_URL = '/.netlify/functions/companion-brain';
 const START_SESSION_URL = '/.netlify/functions/start-session';
 const END_SESSION_URL = '/.netlify/functions/end-session';
 const GENERATE_MEDIA_URL = '/.netlify/functions/generate-media';
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabaseConfigured) return {};
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  } catch {
+    return {};
+  }
+}
 
 // ─── SSE Event Parsing ────────────────────────────────────────────────────────
 
@@ -305,9 +315,10 @@ export async function generateConversationImage(
   const start = Date.now();
 
   try {
+    const authHeaders = await getAuthHeaders();
     const res = await fetch(GENERATE_MEDIA_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         type: 'image',
         prompt: request.prompt,

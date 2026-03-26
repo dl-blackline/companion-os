@@ -39,6 +39,7 @@ import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 import { isNofilterModel } from "../../lib/nofilter-client.js";
 import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
 import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
+import { ensureFeatureWithinQuota, recordFeatureUsage } from "../../lib/_entitlements.js";
 import { log } from "../../lib/_log.js";
 
 
@@ -382,15 +383,30 @@ async function handleMedia(data) {
     return fail("Prompt required", "ERR_VALIDATION", 400);
   }
 
+  if (!data.user_id) {
+    return fail("Unauthorized", "ERR_AUTH", 401);
+  }
+
+  const quota = await ensureFeatureWithinQuota(data.user_id, "media_generation");
+  if (!quota.allowed) {
+    return fail(quota.message, "ERR_PLAN_LIMIT", 402);
+  }
+
   try {
+    const mediaType = data.media_type || data.type || "image";
     const result = await runMediaTask({
-      type: data.media_type || data.type || "image",
+      type: mediaType,
       prompt: data.prompt,
       model: data.model,
       options: data.options || {},
     });
 
-    return ok(result);
+    await recordFeatureUsage(data.user_id, "media_generation", {
+      type: mediaType,
+      model: data.model || null,
+    });
+
+    return ok({ ...result, quota: quota.feature });
   } catch (err) {
     log.error("[ai]", "media generation error:", err.message);
     return fail(err.message, "ERR_MEDIA", 500);
@@ -938,13 +954,37 @@ export async function handler(event) {
         return await handleMemory(payload);
 
       case "media":
+        if (payload && typeof payload === "object") {
+          if (authUser?.id) {
+            payload.user_id = authUser.id;
+          }
+          if (!payload.user_id) {
+            return fail("Unauthorized", "ERR_AUTH", 401);
+          }
+        }
         return await handleMedia(payload);
 
       // Explicit image/video aliases — route through the media handler
       case "image":
+        if (payload && typeof payload === "object") {
+          if (authUser?.id) {
+            payload.user_id = authUser.id;
+          }
+          if (!payload.user_id) {
+            return fail("Unauthorized", "ERR_AUTH", 401);
+          }
+        }
         return await handleMedia({ ...payload, media_type: "image" });
 
       case "video":
+        if (payload && typeof payload === "object") {
+          if (authUser?.id) {
+            payload.user_id = authUser.id;
+          }
+          if (!payload.user_id) {
+            return fail("Unauthorized", "ERR_AUTH", 401);
+          }
+        }
         return await handleMedia({ ...payload, media_type: "video" });
 
       case "workflow":

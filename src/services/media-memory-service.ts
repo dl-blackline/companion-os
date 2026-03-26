@@ -8,7 +8,6 @@ import type {
   UploadedMedia,
   MemoryCandidate,
   MediaType,
-  MediaProcessingState,
 } from '@/types';
 import { success, error, appError } from '@/types';
 

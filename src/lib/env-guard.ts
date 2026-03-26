@@ -63,7 +63,6 @@ function looksLikeServiceRoleJwt(value: string): boolean {
  * Call once at app startup.
  */
 export function assertNoSecrets(): void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const env = import.meta.env as Record<string, string | undefined>;
 
   // ── Layer 1: Name-based checks ──
