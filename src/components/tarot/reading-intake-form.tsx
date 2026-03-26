@@ -45,7 +45,6 @@ export function ReadingIntakeForm({ onSubmit, isLoading, error }: ReadingIntakeF
           {...register('firstName')}
           className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/60 transition disabled:opacity-50"
           aria-describedby={errors.firstName ? 'tarot-first-name-error' : undefined}
-          aria-invalid={!!errors.firstName}
         />
         {errors.firstName && (
           <p id="tarot-first-name-error" className="text-sm text-red-400" role="alert">
@@ -67,9 +66,8 @@ export function ReadingIntakeForm({ onSubmit, isLoading, error }: ReadingIntakeF
           max={maxDobStr}
           disabled={isLoading}
           {...register('dateOfBirth')}
-          className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/60 transition disabled:opacity-50 [color-scheme:dark]"
+          className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/60 transition disabled:opacity-50 scheme-dark"
           aria-describedby={errors.dateOfBirth ? 'tarot-dob-error' : undefined}
-          aria-invalid={!!errors.dateOfBirth}
         />
         {errors.dateOfBirth && (
           <p id="tarot-dob-error" className="text-sm text-red-400" role="alert">
@@ -87,8 +85,7 @@ export function ReadingIntakeForm({ onSubmit, isLoading, error }: ReadingIntakeF
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full py-4 px-6 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-semibold tracking-wide transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-black"
-        aria-busy={isLoading}
+        className="w-full py-4 px-6 rounded-lg bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-semibold tracking-wide transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-black"
       >
         {isLoading ? 'Preparing your reading…' : 'Reveal My Reading'}
       </button>

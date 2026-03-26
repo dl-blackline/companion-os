@@ -16,15 +16,13 @@ import {
   type IdentityStyle,
   type UserIdentityProfile,
 } from '@/services/user-identity-service';
-import {
-  CheckCircle,
-  Image as ImageIcon,
-  Smiley,
-  Sparkle,
-  Spinner,
-  UploadSimple,
-  WarningCircle,
-} from '@phosphor-icons/react';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { Smiley } from '@phosphor-icons/react/Smiley';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { WarningCircle } from '@phosphor-icons/react/WarningCircle';
 
 const DEFAULT_VARIATION_COUNT = 3;
 

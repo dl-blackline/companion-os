@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import type {
   OrbAppearanceMode,
+  OrbColorTheme,
   OrbPreferencePayload,
   EmojiOrbFeatureSet,
   EmojiOrbStyleMode,
@@ -27,6 +28,16 @@ import { useAuth } from '@/context/auth-context';
 
 // ── Local storage key (fallback when not authenticated) ──────────────────────
 const ORB_PREF_STORAGE_KEY = 'companion-orb-preference';
+
+function scheduleIdleTask(task: () => void): () => void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(task, { timeout: 1500 });
+    return () => cancelIdleCallback(id);
+  }
+
+  const timeoutId = setTimeout(task, 220);
+  return () => clearTimeout(timeoutId);
+}
 
 // ── Context type ─────────────────────────────────────────────────────────────
 
@@ -39,10 +50,14 @@ interface OrbAppearanceContextType {
   styleMode: EmojiOrbStyleMode | null;
   /** Active emoji character. */
   emoji: string | null;
+  /** Active orb color theme. */
+  orbColor: OrbColorTheme;
   /** Whether the preference is currently being loaded. */
   loading: boolean;
   /** Apply an emoji orb configuration and persist it. */
   applyEmojiOrb: (features: EmojiOrbFeatureSet, styleMode: EmojiOrbStyleMode, emoji: string) => Promise<void>;
+  /** Set orb color theme and persist it. */
+  setOrbColor: (theme: OrbColorTheme) => Promise<void>;
   /** Reset to the default orb appearance. */
   resetToDefault: () => Promise<void>;
 }
@@ -83,6 +98,7 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
   const emojiFeatures = pref.mode === 'emoji' ? (pref.emojiConfig ?? null) : null;
   const styleMode = pref.mode === 'emoji' ? (pref.styleMode ?? null) : null;
   const emoji = pref.mode === 'emoji' ? (pref.emoji ?? null) : null;
+  const orbColor: OrbColorTheme = pref.orbColor ?? 'silver';
 
   // Load from backend when authenticated user changes
   useEffect(() => {
@@ -109,8 +125,17 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setLoading(false);
       }
     }
-    loadFromBackend();
-    return () => { cancelled = true; };
+
+    const cancelScheduledLoad = scheduleIdleTask(() => {
+      if (!cancelled) {
+        loadFromBackend();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      cancelScheduledLoad();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
@@ -153,6 +178,7 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
   ) => {
     const newPref: OrbPreferencePayload = {
       mode: 'emoji',
+      orbColor,
       emojiConfig: features,
       styleMode: styleModeVal,
       emoji: emojiVal,
@@ -166,18 +192,34 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
       const old = loadFromLocalStorage();
       setPref(old);
     }
-  }, [persistPreference]);
+  }, [persistPreference, orbColor]);
+
+  const setOrbColor = useCallback(async (theme: OrbColorTheme) => {
+    if (pref.orbColor === theme) return;
+    try {
+      await persistPreference({
+        ...pref,
+        orbColor: theme,
+      });
+    } catch {
+      toast.error('Failed to save orb color');
+      setPref(loadFromLocalStorage());
+    }
+  }, [persistPreference, pref]);
 
   const resetToDefault = useCallback(async () => {
     try {
-      await persistPreference(DEFAULT_ORB_PREFERENCE);
+      await persistPreference({
+        ...DEFAULT_ORB_PREFERENCE,
+        orbColor: pref.orbColor ?? 'silver',
+      });
       toast.success('Orb reset to default');
     } catch {
       toast.error('Failed to reset orb appearance');
       const old = loadFromLocalStorage();
       setPref(old);
     }
-  }, [persistPreference]);
+  }, [persistPreference, pref.orbColor]);
 
   return (
     <OrbAppearanceContext.Provider
@@ -186,8 +228,10 @@ export function OrbAppearanceProvider({ children }: { children: ReactNode }) {
         emojiFeatures,
         styleMode,
         emoji,
+        orbColor,
         loading,
         applyEmojiOrb,
+        setOrbColor,
         resetToDefault,
       }}
     >

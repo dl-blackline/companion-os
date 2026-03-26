@@ -6,24 +6,22 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CompanionOrb } from '@/components/CompanionOrb';
 import { toast } from 'sonner';
-import {
-  Images,
-  FilmSlate,
-  Sparkle,
-  DownloadSimple,
-  Trash,
-  ClockCounterClockwise,
-  ArrowsOutSimple,
-  ArrowCounterClockwise,
-  Copy,
-  MagicWand,
-  Warning,
-  UploadSimple,
-  FloppyDisk,
-  SpeakerHigh,
-  SpeakerSlash,
-  ArrowClockwise,
-} from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react/ArrowClockwise';
+import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
+import { ArrowsOutSimple } from '@phosphor-icons/react/ArrowsOutSimple';
+import { ClockCounterClockwise } from '@phosphor-icons/react/ClockCounterClockwise';
+import { Copy } from '@phosphor-icons/react/Copy';
+import { DownloadSimple } from '@phosphor-icons/react/DownloadSimple';
+import { FilmSlate } from '@phosphor-icons/react/FilmSlate';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { Images } from '@phosphor-icons/react/Images';
+import { MagicWand } from '@phosphor-icons/react/MagicWand';
+import { SpeakerHigh } from '@phosphor-icons/react/SpeakerHigh';
+import { SpeakerSlash } from '@phosphor-icons/react/SpeakerSlash';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { UploadSimple } from '@phosphor-icons/react/UploadSimple';
+import { Warning } from '@phosphor-icons/react/Warning';
 import type { CompanionState, MediaGeneration, MediaStyle, VideoAudioMode, RefinementAction } from '@/types';
 import { generateId } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
@@ -31,6 +29,8 @@ import { MediaUploader, type MediaFile } from '@/components/MediaUploader';
 import { IMAGE_REFINEMENT_ACTIONS, VIDEO_REFINEMENT_ACTIONS, buildRefinementPrompt } from '@/services/media-refinement-service';
 import { useAuth } from '@/context/auth-context';
 import { useAIControl } from '@/context/ai-control-context';
+import { useSubscription } from '@/hooks/use-subscription';
+import { isPaidPlan } from '@/lib/subscription-plans';
 import { runAI } from '@/services/ai-orchestrator';
 
 /** Aspect ratio options for image generation */
@@ -142,13 +142,11 @@ function GenerationCard({
         className="group relative rounded-2xl overflow-hidden border border-border bg-card/60 backdrop-blur-sm"
       >
         {/* Visual placeholder / result area */}
-        <div className="aspect-[4/3] flex items-center justify-center relative overflow-hidden"
-          style={{
-            background:
-              item.status === 'complete'
-                ? 'radial-gradient(circle at 40% 35%, oklch(0.30 0.10 285) 0%, oklch(0.20 0.05 270) 100%)'
-                : 'oklch(0.20 0.02 260)',
-          }}
+        <div
+          className={cn(
+            'aspect-4/3 flex items-center justify-center relative overflow-hidden',
+            item.status === 'complete' ? 'media-stage-complete' : 'media-stage-idle'
+          )}
         >
           {item.status === 'generating' && (
             <div className="flex flex-col items-center gap-3">
@@ -179,10 +177,7 @@ function GenerationCard({
           )}
           {item.status === 'complete' && !item.resultUrl && (
             <div className="flex flex-col items-center gap-2 p-4 text-center">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ background: 'oklch(0.40 0.14 285 / 0.40)' }}
-              >
+              <div className="media-empty-art w-12 h-12 rounded-full flex items-center justify-center">
                 {item.type === 'video' ? (
                   <FilmSlate size={20} weight="fill" className="text-[oklch(0.70_0.18_65)]" />
                 ) : (
@@ -267,7 +262,7 @@ function GenerationCard({
               <p className="text-xs font-medium text-foreground line-clamp-1 flex-1">{item.prompt}</p>
               <button
                 onClick={handleCopyPrompt}
-                className="shrink-0 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
+                className="shrink-0 opacity-0 group-hover:opacity-60 hover:opacity-100! transition-opacity"
                 title="Copy prompt"
               >
                 <Copy size={11} className="text-muted-foreground" />
@@ -332,8 +327,9 @@ function GenerationCard({
 }
 
 export function MediaView({ companionState, setCompanionState, aiName }: MediaViewProps) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, plan } = useAuth();
   const { orchestratorConfig } = useAIControl();
+  const { usage } = useSubscription();
   const [activeTab, setActiveTab] = useState<MediaTab>('photo');
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<MediaStyle>('photorealistic');
@@ -357,6 +353,7 @@ export function MediaView({ companionState, setCompanionState, aiName }: MediaVi
   const imageEnabled = orchestratorConfig.capabilities.image;
   const videoEnabled = orchestratorConfig.capabilities.video;
   const canGenerateCurrentType = activeTab === 'photo' ? imageEnabled : videoEnabled;
+  const mediaUsage = usage.media_generation;
 
   /** Run a single generation job for given prompt/style/ratio/type */
   const runGeneration = useCallback(
@@ -470,6 +467,11 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
   );
 
   const handleGenerate = async () => {
+    if (!authUser) {
+      toast.error('Sign in to generate media.');
+      return;
+    }
+
     if (!canGenerateCurrentType) {
       toast.error(`${activeTab === 'photo' ? 'Image' : 'Video'} capability is disabled in Control Center`);
       return;
@@ -575,7 +577,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
       if (result.success && result.data) {
         const data = result.data.data ?? result.data;
         if (data.url || data.refined_url) {
-          setRefinedUrl(data.url || data.refined_url);
+          setRefinedUrl(data.url || data.refined_url || null);
           toast.success('Media refined successfully');
         } else {
           toast.info('Refinement submitted — result will appear shortly');
@@ -643,21 +645,12 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
   return (
     <div className="relative flex flex-col h-full bg-background overflow-hidden">
       {/* Ambient background */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 50% at 50% 20%, oklch(0.30 0.10 300 / 0.30) 0%, transparent 70%)',
-        }}
-      />
+      <div className="media-ambient-glow pointer-events-none absolute inset-0" />
 
       {/* Header */}
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 md:px-6 pt-5 pb-4 border-b border-border/50">
         <div>
-          <h2
-            className="text-lg font-bold tracking-tight"
-            style={{ fontFamily: 'var(--font-space)' }}
-          >
+          <h2 className="font-space text-lg font-bold tracking-tight">
             Create
           </h2>
           <p className="text-xs text-muted-foreground">Photo & video generation · Upload & refine</p>
@@ -713,6 +706,21 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <ClockCounterClockwise size={14} />
               {completedCount} created
             </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="relative z-10 px-4 md:px-6 pt-4">
+        <div className="rounded-xl border border-border/60 bg-black/20 px-4 py-3 text-sm">
+          <span className="font-medium text-foreground">
+            {isPaidPlan(plan)
+              ? 'Paid plan active: media generation runs with expanded capacity.'
+              : `Free plan: ${mediaUsage?.remaining ?? 0} of ${mediaUsage?.limit ?? 0} media generations remaining this month.`}
+          </span>
+          {!isPaidPlan(plan) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Upgrade in Settings to keep creating after the monthly starter allowance is used.
+            </p>
           )}
         </div>
       </div>
@@ -870,8 +878,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
               <Button
                 onClick={handleGenerate}
                 disabled={!prompt.trim() || isGenerating || !canGenerateCurrentType}
-                className="w-full gap-2 rounded-xl h-11 font-semibold"
-                style={{ fontFamily: 'var(--font-space)' }}
+                className="font-space w-full gap-2 rounded-xl h-11 font-semibold"
               >
                 <Sparkle size={16} weight="fill" />
                 {isGenerating
@@ -1022,10 +1029,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
         <div className="flex-1 min-w-0">
           {gallery.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{ background: 'oklch(0.28 0.08 285 / 0.35)' }}
-              >
+              <div className="media-gallery-empty w-16 h-16 rounded-2xl flex items-center justify-center">
                 {activeTab === 'photo' ? (
                   <Images size={28} weight="fill" className="text-muted-foreground" />
                 ) : (

@@ -70,5 +70,5 @@ if (supabaseClientKey && isForbiddenBrowserSupabaseKey(supabaseClientKey)) {
 }
 
 export const supabase: SupabaseClient = supabaseConfigured
-  ? createClient(supabaseUrl, supabaseClientKey)
+  ? createClient(supabaseUrl as string, supabaseClientKey as string)
   : (null as unknown as SupabaseClient)

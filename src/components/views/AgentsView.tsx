@@ -12,20 +12,21 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import {
-  Robot,
-  MagnifyingGlass,
-  Notepad,
-  ImageSquare,
-  ListChecks,
-  Brain,
-  Plus,
-  Spinner,
-  CheckCircle,
-  XCircle,
-  Clock,
-  ArrowClockwise,
-} from '@phosphor-icons/react';
+import { ArrowClockwise } from '@phosphor-icons/react/ArrowClockwise';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { Clock } from '@phosphor-icons/react/Clock';
+import { ImageSquare } from '@phosphor-icons/react/ImageSquare';
+import { ListChecks } from '@phosphor-icons/react/ListChecks';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Notepad } from '@phosphor-icons/react/Notepad';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { XCircle } from '@phosphor-icons/react/XCircle';
+import { useAuth } from '@/context/auth-context';
+import { useSubscription } from '@/hooks/use-subscription';
+import { isPaidPlan } from '@/lib/subscription-plans';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -75,6 +76,8 @@ interface AgentTask {
 }
 
 export function AgentsView() {
+  const { getAccessToken, plan } = useAuth();
+  const { usage } = useSubscription();
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -90,7 +93,10 @@ export function AgentsView() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/.netlify/functions/agent-task?list=true');
+      const token = getAccessToken();
+      const res = await fetch('/.netlify/functions/agent-task?list=true', {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (res.ok) {
         const data = await res.json();
         setTasks(Array.isArray(data) ? data : []);
@@ -102,7 +108,7 @@ export function AgentsView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAccessToken]);
 
   useEffect(() => {
     fetchTasks();
@@ -115,9 +121,13 @@ export function AgentsView() {
     setSubmitting(true);
     setError(null);
     try {
+      const token = getAccessToken();
       const res = await fetch('/.netlify/functions/agent-task', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ agent_type: selectedAgent, task: taskDescription.trim() }),
       });
       if (res.ok) {
@@ -134,6 +144,8 @@ export function AgentsView() {
       setSubmitting(false);
     }
   };
+
+  const agentUsage = usage.agent_task;
 
   // ---- Filtering ------------------------------------------------------------
 
@@ -176,6 +188,19 @@ export function AgentsView() {
               <Plus size={16} className="mr-1" /> New Task
             </Button>
           </div>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-border/70 bg-black/20 px-4 py-3">
+          <p className="text-sm font-medium text-foreground">
+            {isPaidPlan(plan)
+              ? 'Paid plan active: agent tasks are available without the free-tier cap.'
+              : `Free plan: ${agentUsage?.remaining ?? 0} of ${agentUsage?.limit ?? 0} agent tasks remaining this month.`}
+          </p>
+          {!isPaidPlan(plan) && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Upgrade in Settings to unlock higher automation capacity and ongoing agent workflows.
+            </p>
+          )}
         </div>
 
         {/* Agent cards */}

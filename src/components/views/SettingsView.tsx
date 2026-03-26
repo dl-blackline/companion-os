@@ -21,34 +21,32 @@ import {
   TabsContent,
 } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Gear,
-  Robot,
-  Brain,
-  Shield,
-  Sliders,
-  ChatCircle,
-  Database,
-  Export,
-  Heartbeat,
-  Microphone,
-  CheckCircle,
-  XCircle,
-  ArrowsClockwise,
-  User,
-  Lock,
-  Bell,
-  Palette,
-  SignOut,
-  Trash,
-  Warning,
-  WarningCircle,
-  FloppyDisk,
-  Spinner,
-} from '@phosphor-icons/react';
+import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
+import { Bell } from '@phosphor-icons/react/Bell';
+import { Brain } from '@phosphor-icons/react/Brain';
+import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
+import { CheckCircle } from '@phosphor-icons/react/CheckCircle';
+import { CreditCard } from '@phosphor-icons/react/CreditCard';
+import { Database } from '@phosphor-icons/react/Database';
+import { Export } from '@phosphor-icons/react/Export';
+import { FloppyDisk } from '@phosphor-icons/react/FloppyDisk';
+import { Gear } from '@phosphor-icons/react/Gear';
+import { Heartbeat } from '@phosphor-icons/react/Heartbeat';
+import { Lock } from '@phosphor-icons/react/Lock';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { Palette } from '@phosphor-icons/react/Palette';
+import { Robot } from '@phosphor-icons/react/Robot';
+import { Shield } from '@phosphor-icons/react/Shield';
+import { SignOut } from '@phosphor-icons/react/SignOut';
+import { Sliders } from '@phosphor-icons/react/Sliders';
+import { Spinner } from '@phosphor-icons/react/Spinner';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { User } from '@phosphor-icons/react/User';
+import { Warning } from '@phosphor-icons/react/Warning';
+import { WarningCircle } from '@phosphor-icons/react/WarningCircle';
+import { XCircle } from '@phosphor-icons/react/XCircle';
 import type { ConversationMode, SettingsAccountViewModel } from '@/types';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import {
   getCachedModels,
   preloadModels,
@@ -56,8 +54,10 @@ import {
 import { useSettings } from '@/context/settings-context';
 import { useAuth } from '@/context/auth-context';
 import { useVoice } from '@/context/voice-context';
+import { useSubscription } from '@/hooks/use-subscription';
 import { EmojiOrbCustomizer } from '@/components/EmojiOrbCustomizer';
 import { UserIdentityCard } from '@/components/settings/UserIdentityCard';
+import { PLAN_DESCRIPTORS, isPaidPlan } from '@/lib/subscription-plans';
 import { toast } from 'sonner';
 
 const CONVERSATION_MODES: { value: ConversationMode; label: string }[] = [
@@ -261,8 +261,23 @@ export function SettingsView() {
     updatePreferences: savePrefs,
     updatePreferencesDebounced: savePrefsDebounced,
   } = useSettings();
-  const { user, logout, configured: authConfigured, authState, loading: authLoading } = useAuth();
+  const { user, logout, configured: authConfigured, authState, loading: authLoading, plan } = useAuth();
   const { voice: realtimeVoice, setVoice: setRealtimeVoice } = useVoice();
+  const {
+    loading: subscriptionLoading,
+    error: subscriptionError,
+    currentPlan,
+    status: subscriptionStatus,
+    trialEndsAt,
+    expiresAt,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    canManageBilling,
+    usage,
+    startCheckout,
+    openBillingPortal,
+    refresh: refreshSubscription,
+  } = useSubscription();
 
   const update = (patch: Partial<typeof settings>) => {
     updateSettings(patch);
@@ -363,6 +378,8 @@ export function SettingsView() {
 
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<'pro' | 'enterprise' | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     setDisplayName(prefs.display_name ?? '');
@@ -375,6 +392,33 @@ export function SettingsView() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  const effectivePlan = currentPlan || plan;
+  const currentPlanDescriptor = PLAN_DESCRIPTORS[effectivePlan];
+
+  const handleUpgrade = async (targetPlan: 'pro' | 'enterprise') => {
+    setCheckoutLoadingPlan(targetPlan);
+    try {
+      const checkoutUrl = await startCheckout(targetPlan);
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to start checkout.');
+    } finally {
+      setCheckoutLoadingPlan(null);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const portalUrl = await openBillingPortal();
+      window.location.href = portalUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to open billing portal.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   // Compute the auth display view-model for the Account tab
   const accountVM: SettingsAccountViewModel = (() => {
@@ -397,6 +441,7 @@ export function SettingsView() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
+          className="settings-hero"
         >
           <p className="executive-eyebrow">Identity, Controls, and Privacy</p>
           <div className="flex items-center gap-3 mb-2">
@@ -410,36 +455,36 @@ export function SettingsView() {
 
         <Tabs defaultValue="account" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70">
-              <TabsTrigger value="account" className="gap-1.5">
+            <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70 rounded-xl p-1">
+              <TabsTrigger value="account" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <User size={16} /> Account
               </TabsTrigger>
-              <TabsTrigger value="ai-controls" className="gap-1.5">
+              <TabsTrigger value="ai-controls" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Robot size={16} /> AI Controls
               </TabsTrigger>
-              <TabsTrigger value="model" className="gap-1.5">
+              <TabsTrigger value="model" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Sliders size={16} /> Models
               </TabsTrigger>
-              <TabsTrigger value="memory" className="gap-1.5">
+              <TabsTrigger value="memory" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Brain size={16} /> Memory
               </TabsTrigger>
-              <TabsTrigger value="privacy" className="gap-1.5">
+              <TabsTrigger value="privacy" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Shield size={16} /> Privacy
               </TabsTrigger>
-              <TabsTrigger value="voice" className="gap-1.5">
+              <TabsTrigger value="voice" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Microphone size={16} /> Voice
               </TabsTrigger>
-              <TabsTrigger value="diagnostics" className="gap-1.5">
+              <TabsTrigger value="diagnostics" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Heartbeat size={16} /> Diagnostics
               </TabsTrigger>
-              <TabsTrigger value="appearance" className="gap-1.5">
+              <TabsTrigger value="appearance" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Palette size={16} /> Appearance
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="gap-1.5">
+              <TabsTrigger value="notifications" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <Bell size={16} /> Notifications
               </TabsTrigger>
               {authConfigured && (
-                <TabsTrigger value="security" className="gap-1.5">
+                <TabsTrigger value="security" className="focus-ring-lux touch-target gap-1.5 px-3">
                   <Lock size={16} /> Security
                 </TabsTrigger>
               )}
@@ -453,7 +498,7 @@ export function SettingsView() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Profile</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -515,7 +560,7 @@ export function SettingsView() {
                 )}
               </Card>
               {authConfigured && (
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Password</h3>
                 <p className="text-sm text-muted-foreground">
                   Password changes are handled via email. Use the &quot;Forgot password&quot; flow on the login screen to receive a reset link.
@@ -523,10 +568,120 @@ export function SettingsView() {
               </Card>
               )}
 
+              {authConfigured && user && (
+                <Card className="settings-surface p-6">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold">Subscription</h3>
+                    {(subscriptionLoading || portalLoading) && <SavingIndicator saving />}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Manage your plan, unlock premium workflows, and monitor billing state.
+                  </p>
+                  <Separator />
+
+                  <SettingRow
+                    icon={CreditCard}
+                    label="Current Plan"
+                    description={currentPlanDescriptor.tagline}
+                  >
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-foreground">{currentPlanDescriptor.name}</div>
+                      <div className="text-xs text-muted-foreground">{currentPlanDescriptor.monthlyPrice}/month</div>
+                    </div>
+                  </SettingRow>
+
+                  <Separator />
+
+                  <div className="py-4 space-y-2">
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Included</p>
+                    <ul className="space-y-1.5 text-sm text-muted-foreground">
+                      {currentPlanDescriptor.highlights.map((line) => (
+                        <li key={line} className="flex items-start gap-2">
+                          <CheckCircle size={14} className="mt-0.5 text-primary" />
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <Separator />
+
+                  <div className="py-4 space-y-3">
+                    {!isPaidPlan(effectivePlan) && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => handleUpgrade('pro')}
+                          disabled={checkoutLoadingPlan !== null}
+                          className="gap-2"
+                        >
+                          {checkoutLoadingPlan === 'pro' && <Spinner size={14} className="animate-spin" />}
+                          Upgrade to Pro
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleUpgrade('enterprise')}
+                          disabled={checkoutLoadingPlan !== null}
+                          className="gap-2"
+                        >
+                          {checkoutLoadingPlan === 'enterprise' && <Spinner size={14} className="animate-spin" />}
+                          Upgrade to Enterprise
+                        </Button>
+                      </div>
+                    )}
+
+                    {isPaidPlan(effectivePlan) && canManageBilling && (
+                      <Button
+                        variant="outline"
+                        onClick={handleOpenBillingPortal}
+                        disabled={portalLoading}
+                        className="gap-2"
+                      >
+                        {portalLoading && <Spinner size={14} className="animate-spin" />}
+                        Manage Billing
+                      </Button>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
+                      Status: {subscriptionStatus}
+                      {trialEndsAt ? ` · Trial ends ${new Date(trialEndsAt).toLocaleDateString()}` : ''}
+                      {expiresAt ? ` · Access expires ${new Date(expiresAt).toLocaleDateString()}` : ''}
+                      {currentPeriodEnd ? ` · Renews ${new Date(currentPeriodEnd).toLocaleDateString()}` : ''}
+                      {cancelAtPeriodEnd ? ' · Cancels at period end' : ''}
+                    </p>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-border/70 bg-black/20 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground mb-1">Media This Month</p>
+                        <p className="text-sm text-foreground font-medium">
+                          {usage.media_generation?.used ?? 0}
+                          {usage.media_generation?.limit === null ? ' / unlimited' : ` / ${usage.media_generation?.limit ?? 0}`}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border/70 bg-black/20 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground mb-1">Agent Tasks This Month</p>
+                        <p className="text-sm text-foreground font-medium">
+                          {usage.agent_task?.used ?? 0}
+                          {usage.agent_task?.limit === null ? ' / unlimited' : ` / ${usage.agent_task?.limit ?? 0}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {subscriptionError && (
+                      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive flex items-center justify-between gap-3">
+                        <span>{subscriptionError}</span>
+                        <Button size="sm" variant="outline" onClick={() => void refreshSubscription()}>
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
               <UserIdentityCard />
 
               {/* ── Auth / Account Status — always visible ── */}
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Authentication</h3>
                 <p className="text-sm text-muted-foreground mb-4">Your current sign-in status and account controls.</p>
                 <Separator />
@@ -596,7 +751,7 @@ export function SettingsView() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">General</h3>
                 <p className="text-sm text-muted-foreground mb-4">Set your companion's identity and default behavior.</p>
                 <Separator />
@@ -616,7 +771,7 @@ export function SettingsView() {
                 </SettingRow>
               </Card>
 
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Personality &amp; Style</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -670,7 +825,7 @@ export function SettingsView() {
                 </SettingRow>
               </Card>
 
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Behavioral Sliders</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -714,7 +869,7 @@ export function SettingsView() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Model Selection</h3>
                 <p className="text-sm text-muted-foreground mb-4">Choose which models power your companion.</p>
                 <Separator />
@@ -822,7 +977,7 @@ export function SettingsView() {
                 </SettingRow>
               </Card>
 
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Fine-Tuning</h3>
                 <p className="text-sm text-muted-foreground mb-4">Adjust how the model generates responses.</p>
                 <Separator />
@@ -874,7 +1029,7 @@ export function SettingsView() {
 
           <TabsContent value="memory">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Memory Settings</h3>
                 <p className="text-sm text-muted-foreground mb-4">Control how your companion captures and manages memories.</p>
                 <Separator />
@@ -899,7 +1054,7 @@ export function SettingsView() {
 
           <TabsContent value="privacy">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Privacy Settings</h3>
                 <p className="text-sm text-muted-foreground mb-4">Manage how your data is stored, exported, and audited.</p>
                 <Separator />
@@ -924,7 +1079,7 @@ export function SettingsView() {
 
           <TabsContent value="voice">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Voice Mode</h3>
                 <p className="text-sm text-muted-foreground mb-4">Choose how the microphone behaves during Live Talk sessions.</p>
                 <Separator />
@@ -940,7 +1095,7 @@ export function SettingsView() {
                   </p>
                 </div>
               </Card>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Realtime Voice</h3>
                 <p className="text-sm text-muted-foreground mb-4">Select the AI voice used for realtime conversations. Live Talk uses OpenAI Realtime API for low-latency speech-to-speech.</p>
                 <Separator />
@@ -966,7 +1121,7 @@ export function SettingsView() {
 
           <TabsContent value="diagnostics">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">System Diagnostics</h3>
                 <p className="text-sm text-muted-foreground mb-4">Check the status of all connected services and APIs.</p>
                 <Separator />
@@ -993,7 +1148,7 @@ export function SettingsView() {
 
           <TabsContent value="appearance">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Appearance</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -1001,7 +1156,7 @@ export function SettingsView() {
                 <p className="text-sm text-muted-foreground mb-4">Customize the look and feel of the app.</p>
                 <Separator />
                 <SettingRow icon={Palette} label="Theme" description="Choose between dark, light, or follow system preference.">
-                  <Select value={prefs.theme} onValueChange={(value) => { savePrefs({ theme: value as typeof prefs.theme }); try { localStorage.setItem('theme', value); } catch {} }}>
+                  <Select value={prefs.theme} onValueChange={(value) => { savePrefs({ theme: value as typeof prefs.theme }); try { localStorage.setItem('theme', value); } catch { /* localStorage unavailable in private browsing */ } }}>
                     <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="dark">Dark</SelectItem>
@@ -1032,7 +1187,7 @@ export function SettingsView() {
               </Card>
 
               {/* Emoji Orb Customizer */}
-              <Card className="p-6 mt-6">
+              <Card className="settings-surface p-6 mt-6">
                 <h3 className="font-semibold mb-1">Orb Appearance</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Upload an image to generate a personalized emoji-style orb. Your image is analyzed locally to create a custom orb skin.
@@ -1045,7 +1200,7 @@ export function SettingsView() {
 
           <TabsContent value="notifications">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-semibold">Notifications</h3>
                   <SavingIndicator saving={prefsSaving} />
@@ -1070,7 +1225,7 @@ export function SettingsView() {
           {authConfigured && (
           <TabsContent value="security">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-6">
-              <Card className="p-6">
+              <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Current Session</h3>
                 <p className="text-sm text-muted-foreground mb-4">Information about your active login.</p>
                 <Separator />
@@ -1096,7 +1251,7 @@ export function SettingsView() {
                   <p className="text-xs text-muted-foreground mt-2">You will be returned to the login screen.</p>
                 </div>
               </Card>
-              <Card className="p-6 border-destructive/40">
+              <Card className="settings-surface p-6 border-destructive/40">
                 <div className="flex items-center gap-2 mb-1">
                   <Warning size={18} className="text-destructive" />
                   <h3 className="font-semibold text-destructive">Danger Zone</h3>
@@ -1119,3 +1274,4 @@ export function SettingsView() {
     </div>
   );
 }
+

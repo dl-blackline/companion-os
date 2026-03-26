@@ -6,20 +6,18 @@ import { CompanionOrb } from '@/components/CompanionOrb';
 import { BackgroundGlow } from '@/components/ui/background-glow';
 import { AudioVisualizer } from '@/components/voice/audio-visualizer';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  Microphone,
-  MicrophoneSlash,
-  ArrowLeft,
-  SpeakerSimpleHigh,
-  SpeakerSimpleSlash,
-  Trash,
-  MagicWand,
-  Image as ImageIcon,
-  Lightning,
-  X,
-  VideoCamera,
-  Books,
-} from '@phosphor-icons/react';
+import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
+import { Books } from '@phosphor-icons/react/Books';
+import { Image as ImageIcon } from '@phosphor-icons/react/Image';
+import { Lightning } from '@phosphor-icons/react/Lightning';
+import { MagicWand } from '@phosphor-icons/react/MagicWand';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { MicrophoneSlash } from '@phosphor-icons/react/MicrophoneSlash';
+import { SpeakerSimpleHigh } from '@phosphor-icons/react/SpeakerSimpleHigh';
+import { SpeakerSimpleSlash } from '@phosphor-icons/react/SpeakerSimpleSlash';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { VideoCamera } from '@phosphor-icons/react/VideoCamera';
+import { X } from '@phosphor-icons/react/X';
 import type { KnowledgeItem } from '@/types';
 import type { CompanionState, TalkSession, TalkTurn } from '@/types';
 import { generateId } from '@/lib/helpers';
@@ -632,9 +630,10 @@ Prefer using tools over just talking about doing something. If the user asks for
             data.action.type === 'roleplay_started' ||
             data.action.type === 'roleplay_continued'
           ) {
+            const action = data.action as { type?: string; character?: string; scenario?: string };
             const ctx: RoleplayContext = {
-              character: data.action.character || 'a character',
-              scenario: data.action.scenario || '',
+              character: action.character || 'a character',
+              scenario: action.scenario || '',
             };
             roleplayRef.current = ctx;
             setRoleplayMode(ctx);
@@ -883,10 +882,7 @@ Prefer using tools over just talking about doing something. If the user asks for
           <ArrowLeft size={16} />
           Back
         </Button>
-        <span
-          className="text-sm font-semibold tracking-widest uppercase text-muted-foreground"
-          style={{ fontFamily: 'var(--font-space)' }}
-        >
+        <span className="font-space text-sm font-semibold tracking-widest uppercase text-muted-foreground">
           Live Talk
         </span>
         <div className="flex items-center gap-2">
@@ -959,8 +955,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'oklch(0.60 0.22 310)' }}
+                      className="live-talk-dot-thinking w-2 h-2 rounded-full"
                       animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
                       transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.22 }}
                     />
@@ -980,8 +975,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'oklch(0.65 0.22 60)' }}
+                      className="live-talk-dot-image w-2 h-2 rounded-full"
                       animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
                       transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.20 }}
                     />
@@ -1001,8 +995,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'oklch(0.60 0.24 180)' }}
+                      className="live-talk-dot-video w-2 h-2 rounded-full"
                       animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
                       transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.22 }}
                     />

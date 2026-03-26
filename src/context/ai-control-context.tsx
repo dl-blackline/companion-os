@@ -23,6 +23,16 @@ interface AIControlContextType {
 
 const AIControlContext = createContext<AIControlContextType | undefined>(undefined);
 
+function scheduleIdleTask(task: () => void): () => void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(task, { timeout: 1200 });
+    return () => cancelIdleCallback(id);
+  }
+
+  const timeoutId = setTimeout(task, 180);
+  return () => clearTimeout(timeoutId);
+}
+
 function mergeConfig(prev: AIControlConfig, patch: Partial<AIControlConfig>): AIControlConfig {
   return {
     ...prev,
@@ -62,7 +72,13 @@ export function AIControlProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    reloadConfig();
+    const cancelScheduledReload = scheduleIdleTask(() => {
+      reloadConfig();
+    });
+
+    return () => {
+      cancelScheduledReload();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
