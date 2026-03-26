@@ -20,21 +20,69 @@ interface CompanionStatusIconProps {
 function getStateStyle(state: CompanionState) {
   switch (state) {
     case 'listening':
-      return { icon: Microphone, iconClass: 'text-sky-200', ringClass: 'border-sky-300/45 bg-sky-500/10' };
+      return {
+        icon: Microphone,
+        iconClass: 'text-sky-100',
+        frameClass: 'border-sky-300/50 bg-slate-950/85',
+        neonClass: 'from-sky-300/90 via-cyan-200/70 to-indigo-300/90',
+        glowClass: 'bg-sky-300/45',
+      };
     case 'speaking':
-      return { icon: SpeakerHigh, iconClass: 'text-rose-100', ringClass: 'border-rose-300/45 bg-rose-500/10' };
+      return {
+        icon: SpeakerHigh,
+        iconClass: 'text-rose-50',
+        frameClass: 'border-rose-300/55 bg-slate-950/85',
+        neonClass: 'from-rose-300/90 via-orange-200/75 to-fuchsia-300/85',
+        glowClass: 'bg-rose-300/45',
+      };
     case 'thinking':
-      return { icon: Brain, iconClass: 'text-amber-100', ringClass: 'border-amber-200/50 bg-amber-500/10' };
+      return {
+        icon: Brain,
+        iconClass: 'text-amber-50',
+        frameClass: 'border-amber-200/60 bg-slate-950/85',
+        neonClass: 'from-amber-200/90 via-yellow-100/80 to-orange-300/85',
+        glowClass: 'bg-amber-200/45',
+      };
     case 'generating-image':
-      return { icon: ImageSquare, iconClass: 'text-indigo-100', ringClass: 'border-indigo-300/45 bg-indigo-500/10' };
+      return {
+        icon: ImageSquare,
+        iconClass: 'text-indigo-50',
+        frameClass: 'border-indigo-300/55 bg-slate-950/85',
+        neonClass: 'from-indigo-300/90 via-fuchsia-200/80 to-sky-300/85',
+        glowClass: 'bg-indigo-300/45',
+      };
     case 'generating-video':
-      return { icon: FilmSlate, iconClass: 'text-violet-100', ringClass: 'border-violet-300/45 bg-violet-500/10' };
+      return {
+        icon: FilmSlate,
+        iconClass: 'text-violet-50',
+        frameClass: 'border-violet-300/55 bg-slate-950/85',
+        neonClass: 'from-violet-300/90 via-pink-200/80 to-cyan-300/85',
+        glowClass: 'bg-violet-300/45',
+      };
     case 'writing':
-      return { icon: PencilSimple, iconClass: 'text-emerald-100', ringClass: 'border-emerald-300/45 bg-emerald-500/10' };
+      return {
+        icon: PencilSimple,
+        iconClass: 'text-emerald-50',
+        frameClass: 'border-emerald-300/55 bg-slate-950/85',
+        neonClass: 'from-emerald-300/90 via-teal-200/80 to-cyan-300/85',
+        glowClass: 'bg-emerald-300/45',
+      };
     case 'analyzing':
-      return { icon: MagnifyingGlass, iconClass: 'text-cyan-100', ringClass: 'border-cyan-300/45 bg-cyan-500/10' };
+      return {
+        icon: MagnifyingGlass,
+        iconClass: 'text-cyan-50',
+        frameClass: 'border-cyan-300/55 bg-slate-950/85',
+        neonClass: 'from-cyan-300/90 via-sky-200/80 to-emerald-300/85',
+        glowClass: 'bg-cyan-300/45',
+      };
     default:
-      return { icon: Sparkle, iconClass: 'text-zinc-200', ringClass: 'border-zinc-300/35 bg-zinc-500/10' };
+      return {
+        icon: Sparkle,
+        iconClass: 'text-zinc-100',
+        frameClass: 'border-zinc-300/40 bg-slate-950/85',
+        neonClass: 'from-zinc-200/80 via-zinc-100/50 to-zinc-300/75',
+        glowClass: 'bg-zinc-300/30',
+      };
   }
 }
 
@@ -55,14 +103,34 @@ export function CompanionStatusIcon({ state, size = 'md', onClick, className }: 
       animate={active ? { scale: [1, 1.05, 1] } : { scale: 1 }}
       transition={active ? { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
       className={cn(
-        'relative inline-flex items-center justify-center border shadow-[0_10px_24px_rgba(0,0,0,0.25)]',
+        'relative inline-flex items-center justify-center overflow-hidden border shadow-[0_14px_36px_rgba(0,0,0,0.38)]',
         conf.box,
-        style.ringClass,
+        style.frameClass,
         className
       )}
     >
-      <Icon size={conf.icon} weight="fill" className={style.iconClass} />
-      {active && <span className="absolute -inset-1 rounded-[inherit] border border-white/10" />}
+      <span className={cn('absolute -inset-3 blur-xl opacity-60 pointer-events-none', style.glowClass)} />
+
+      <motion.span
+        className={cn(
+          'absolute -inset-[44%] pointer-events-none rounded-full bg-linear-to-r opacity-55',
+          style.neonClass
+        )}
+        animate={active ? { rotate: [0, 360] } : { rotate: 0 }}
+        transition={active ? { duration: 5.5, repeat: Infinity, ease: 'linear' } : { duration: 0.2 }}
+      />
+
+      <span className="absolute inset-[1.5px] rounded-[inherit] bg-slate-950/88 backdrop-blur-md" />
+      <span className="absolute inset-0 rounded-[inherit] bg-linear-to-br from-white/14 via-transparent to-black/25" />
+
+      <motion.span
+        className="absolute -left-2 top-0 h-full w-4 rotate-14 bg-white/18 blur-[1px]"
+        animate={active ? { x: ['-30%', '360%'] } : { x: '-30%' }}
+        transition={active ? { duration: 2.8, repeat: Infinity, repeatDelay: 0.7, ease: 'easeInOut' } : { duration: 0.2 }}
+      />
+
+      <Icon size={conf.icon} weight="fill" className={cn('relative z-10 drop-shadow-[0_0_12px_rgba(255,255,255,0.26)]', style.iconClass)} />
+      {active && <span className="absolute inset-0 rounded-[inherit] border border-white/25" />}
     </motion.div>
   );
 
