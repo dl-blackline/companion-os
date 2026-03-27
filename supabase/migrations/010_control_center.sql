@@ -19,6 +19,9 @@ CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role);
 
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_roles_select" ON user_roles;
+DROP POLICY IF EXISTS "user_roles_admin_write" ON user_roles;
+
 -- SECURITY DEFINER function checks admin status without triggering RLS on user_roles,
 -- preventing infinite recursion (PostgreSQL error 42P17).
 CREATE OR REPLACE FUNCTION public.is_admin(uid uuid DEFAULT auth.uid())
@@ -67,6 +70,9 @@ CREATE INDEX IF NOT EXISTS idx_user_entitlements_plan ON user_entitlements(plan)
 
 ALTER TABLE user_entitlements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "entitlements_self_select" ON user_entitlements;
+DROP POLICY IF EXISTS "entitlements_admin_all" ON user_entitlements;
+
 CREATE POLICY "entitlements_self_select" ON user_entitlements
   FOR SELECT USING (user_id = auth.uid());
 
@@ -95,6 +101,9 @@ CREATE INDEX IF NOT EXISTS idx_feature_flags_key ON feature_flags(key);
 CREATE INDEX IF NOT EXISTS idx_feature_flags_category ON feature_flags(category);
 
 ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "feature_flags_read_public" ON feature_flags;
+DROP POLICY IF EXISTS "feature_flags_admin_write" ON feature_flags;
 
 -- All authenticated users can read non-admin-only flags
 CREATE POLICY "feature_flags_read_public" ON feature_flags
@@ -145,6 +154,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DE
 
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "audit_logs_admin_read" ON audit_logs;
+DROP POLICY IF EXISTS "audit_logs_service_insert" ON audit_logs;
+
 -- Only admins can view audit logs
 CREATE POLICY "audit_logs_admin_read" ON audit_logs
   FOR SELECT USING (
@@ -179,6 +191,9 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(cre
 
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tickets_self_select" ON support_tickets;
+DROP POLICY IF EXISTS "tickets_admin_all" ON support_tickets;
+
 -- Users can see their own tickets
 CREATE POLICY "tickets_self_select" ON support_tickets
   FOR SELECT USING (user_id = auth.uid());
@@ -203,6 +218,9 @@ CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user
 
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "prefs_self" ON user_preferences;
+DROP POLICY IF EXISTS "prefs_admin_read" ON user_preferences;
+
 CREATE POLICY "prefs_self" ON user_preferences
   FOR ALL USING (user_id = auth.uid());
 
@@ -218,18 +236,22 @@ RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_feature_flags_updated_at ON feature_flags;
 CREATE TRIGGER trg_feature_flags_updated_at
   BEFORE UPDATE ON feature_flags
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS trg_user_entitlements_updated_at ON user_entitlements;
 CREATE TRIGGER trg_user_entitlements_updated_at
   BEFORE UPDATE ON user_entitlements
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS trg_support_tickets_updated_at ON support_tickets;
 CREATE TRIGGER trg_support_tickets_updated_at
   BEFORE UPDATE ON support_tickets
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS trg_user_preferences_updated_at ON user_preferences;
 CREATE TRIGGER trg_user_preferences_updated_at
   BEFORE UPDATE ON user_preferences
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

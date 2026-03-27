@@ -36,6 +36,8 @@ CREATE INDEX IF NOT EXISTS idx_uploaded_media_type
 
 ALTER TABLE uploaded_media ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "uploaded_media_owner" ON uploaded_media;
+
 CREATE POLICY "uploaded_media_owner" ON uploaded_media
   FOR ALL USING (user_id = auth.uid());
 
@@ -77,6 +79,8 @@ CREATE INDEX IF NOT EXISTS idx_media_analysis_embedding
 
 ALTER TABLE media_analysis ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "media_analysis_owner" ON media_analysis;
+
 CREATE POLICY "media_analysis_owner" ON media_analysis
   FOR ALL USING (user_id = auth.uid());
 
@@ -111,6 +115,8 @@ CREATE INDEX IF NOT EXISTS idx_memory_candidates_media_id
 
 ALTER TABLE memory_candidates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "memory_candidates_owner" ON memory_candidates;
+
 CREATE POLICY "memory_candidates_owner" ON memory_candidates
   FOR ALL USING (user_id = auth.uid());
 
@@ -129,6 +135,8 @@ CREATE TABLE IF NOT EXISTS media_memory_links (
 );
 
 ALTER TABLE media_memory_links ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "media_memory_links_owner" ON media_memory_links;
 
 CREATE POLICY "media_memory_links_owner" ON media_memory_links
   FOR ALL USING (user_id = auth.uid());
@@ -164,6 +172,8 @@ CREATE INDEX IF NOT EXISTS idx_media_knowledge_embedding
 
 ALTER TABLE media_knowledge_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "media_knowledge_owner" ON media_knowledge_entries;
+
 CREATE POLICY "media_knowledge_owner" ON media_knowledge_entries
   FOR ALL USING (user_id = auth.uid());
 
@@ -180,6 +190,8 @@ CREATE TABLE IF NOT EXISTS user_memory_preferences (
 );
 
 ALTER TABLE user_memory_preferences ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "memory_prefs_owner" ON user_memory_preferences;
 
 CREATE POLICY "memory_prefs_owner" ON user_memory_preferences
   FOR ALL USING (user_id = auth.uid());

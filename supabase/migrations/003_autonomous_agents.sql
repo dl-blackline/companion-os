@@ -27,6 +27,10 @@ create table if not exists autonomous_insights (
   created_at timestamp with time zone default now()
 );
 
+-- Backward-compatibility for pre-existing tables that may miss newer columns.
+alter table if exists autonomous_insights
+  add column if not exists agent_type text;
+
 -- INDEXES
 create index if not exists autonomous_tasks_user_id_idx
   on autonomous_tasks (user_id);

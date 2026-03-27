@@ -25,6 +25,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_user_identity_profiles_one_active
 
 ALTER TABLE user_identity_profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_identity_profiles_owner" ON user_identity_profiles;
+
 CREATE POLICY "user_identity_profiles_owner"
   ON user_identity_profiles
   FOR ALL
