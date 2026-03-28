@@ -24,6 +24,7 @@ const GoalsView = lazy(() => import('@/components/views/GoalsView').then((module
 const InsightsView = lazy(() => import('@/components/views/InsightsView').then((module) => ({ default: module.InsightsView })));
 const CareersView = lazy(() => import('@/components/views/CareersView').then((module) => ({ default: module.CareersView })));
 const FinanceView = lazy(() => import('@/components/views/FinanceView').then((module) => ({ default: module.FinanceView })));
+const AutomotiveFinanceView = lazy(() => import('@/components/views/AutomotiveFinanceView').then((module) => ({ default: module.AutomotiveFinanceView })));
 const WorkflowsView = lazy(() => import('@/components/views/WorkflowsView').then((module) => ({ default: module.WorkflowsView })));
 const SettingsView = lazy(() => import('@/components/views/SettingsView').then((module) => ({ default: module.SettingsView })));
 const ControlCenterView = lazy(() => import('@/components/views/ControlCenterView').then((module) => ({ default: module.ControlCenterView })));
@@ -47,6 +48,7 @@ function sectionFromPathname(pathname: string): NavSection {
   if (pathname === '/control-center') return 'control-center';
   if (pathname === '/careers') return 'careers';
   if (pathname === '/finance') return 'finance';
+  if (pathname === '/automotive-finance') return 'automotive-finance';
   return 'home';
 }
 
@@ -54,6 +56,7 @@ function pathnameFromSection(section: NavSection): string {
   if (section === 'control-center') return '/control-center';
   if (section === 'careers') return '/careers';
   if (section === 'finance') return '/finance';
+  if (section === 'automotive-finance') return '/automotive-finance';
   return '/';
 }
 
@@ -203,6 +206,8 @@ function App() {
         return <CareersView />;
       case 'finance':
         return <FinanceView />;
+      case 'automotive-finance':
+        return <AutomotiveFinanceView />;
       case 'agents':
         return <AgentsView />;
       case 'control-center':

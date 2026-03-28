@@ -8,6 +8,8 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+DROP POLICY IF EXISTS "media_uploads_update_own" ON storage.objects;
+
 CREATE POLICY "media_uploads_update_own"
   ON storage.objects
   FOR UPDATE

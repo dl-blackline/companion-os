@@ -77,6 +77,11 @@ $$;
 
 alter table brain_memory enable row level security;
 
+drop policy if exists "Users can read own brain_memory" on brain_memory;
+drop policy if exists "Users can insert own brain_memory" on brain_memory;
+drop policy if exists "Users can update own brain_memory" on brain_memory;
+drop policy if exists "Users can delete own brain_memory" on brain_memory;
+
 create policy "Users can read own brain_memory"
   on brain_memory for select
   using (auth.uid() = user_id);

@@ -4,12 +4,12 @@ import { Microphone } from '@phosphor-icons/react/Microphone';
 import { MicrophoneSlash } from '@phosphor-icons/react/MicrophoneSlash';
 import { SpeakerSimpleHigh } from '@phosphor-icons/react/SpeakerSimpleHigh';
 import { Stop } from '@phosphor-icons/react/Stop';
+import { Sparkle } from '@phosphor-icons/react/Sparkle';
 import { useVoice } from '@/context/voice-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { triggerHaptic } from '@/utils/haptics';
 import { REALTIME_VOICES, type RealtimeVoice } from '@/lib/realtime-voice-client';
-import { HeartbeatTrace } from '@/components/ui/heartbeat-trace';
 
 /**
  * FloatingLiveOrb — A persistent floating button that allows the user to
@@ -63,7 +63,7 @@ export function FloatingLiveOrb() {
     }
   }, [longPressTimer]);
 
-  // Status label shown below/above orb
+  // Status label shown below/above launcher
   const statusLabel = (() => {
     switch (status) {
       case 'connecting':
@@ -81,22 +81,21 @@ export function FloatingLiveOrb() {
     }
   })();
 
-  // Determine orb visual style based on state
-  const orbStyle = (() => {
-    if (status === 'error') return 'floating-orb--error';
-    if (isSpeaking) return 'floating-orb--speaking';
-    if (isListening) return isMuted ? 'floating-orb--muted' : 'floating-orb--listening';
-    if (status === 'connecting' || status === 'thinking') return 'floating-orb--connecting';
-    return 'floating-orb--idle';
+  const styleClass = (() => {
+    if (status === 'error') return 'border-destructive/70 text-destructive bg-background/95';
+    if (isSpeaking) return 'border-rose-300/70 text-rose-100 bg-rose-500/12';
+    if (isListening && !isMuted) return 'border-sky-300/70 text-sky-100 bg-sky-500/12';
+    if (status === 'connecting' || status === 'thinking') return 'border-amber-200/70 text-amber-100 bg-amber-500/12';
+    return 'border-border/70 text-foreground bg-background/95';
   })();
 
   return (
-    <div className="floating-orb-container" style={{ zIndex: 9999 }}>
+    <div className="fixed right-4 md:right-6 bottom-5 md:bottom-6 z-9999 flex flex-col items-end gap-2">
       {/* Expansion panel */}
       <AnimatePresence>
         {isPanelOpen && isActive && (
           <motion.div
-            className="floating-orb-panel"
+            className="w-[250px] rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md shadow-[0_14px_30px_rgba(0,0,0,0.25)] p-2 space-y-2"
             initial={{ opacity: 0, y: 12, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.9 }}
@@ -104,7 +103,7 @@ export function FloatingLiveOrb() {
           >
             {/* Mute / Unmute mic */}
             <button
-              className="floating-orb-panel-btn"
+              className="w-full h-10 px-3 rounded-xl border border-border/70 bg-black/20 hover:bg-black/30 transition-colors inline-flex items-center gap-2"
               onClick={() => {
                 triggerHaptic('light');
                 toggleMute();
@@ -116,10 +115,10 @@ export function FloatingLiveOrb() {
             </button>
 
             {/* Voice selector */}
-            <div className="floating-orb-panel-voice">
+            <div className="w-full h-10 px-3 rounded-xl border border-border/70 bg-black/20 inline-flex items-center gap-2">
               <SpeakerSimpleHigh size={16} className="text-muted-foreground" aria-hidden="true" />
               <select
-                className="floating-orb-panel-select"
+                className="flex-1 bg-transparent text-sm outline-none"
                 value={voice}
                 onChange={(e) => setVoice(e.target.value as RealtimeVoice)}
                 aria-label="Select AI voice"
@@ -134,7 +133,7 @@ export function FloatingLiveOrb() {
 
             {/* End session */}
             <button
-              className="floating-orb-panel-btn floating-orb-panel-btn--danger"
+              className="w-full h-10 px-3 rounded-xl border border-destructive/45 text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors inline-flex items-center gap-2"
               onClick={() => {
                 triggerHaptic('medium');
                 stopLiveTalk();
@@ -153,7 +152,7 @@ export function FloatingLiveOrb() {
       <AnimatePresence>
         {statusLabel && (
           <motion.div
-            className="floating-orb-status"
+            className="rounded-md border border-border/70 bg-background/90 px-2 py-1 text-[11px] text-muted-foreground"
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
@@ -165,12 +164,15 @@ export function FloatingLiveOrb() {
         )}
       </AnimatePresence>
 
-      {/* The orb button */}
+      {/* The compact launcher */}
       <motion.button
-        className={cn('floating-orb-btn', orbStyle)}
+        className={cn(
+          'relative inline-flex items-center justify-center rounded-xl border shadow-[0_10px_28px_rgba(0,0,0,0.3)] backdrop-blur-md transition-colors',
+          styleClass
+        )}
         style={{
-          width: isMobile ? 64 : 56,
-          height: isMobile ? 64 : 56,
+          width: isMobile ? 50 : 44,
+          height: isMobile ? 50 : 44,
         }}
         onClick={handleClick}
         onPointerDown={handlePointerDown}
@@ -180,25 +182,14 @@ export function FloatingLiveOrb() {
         whileTap={{ scale: 0.93 }}
         aria-label={isActive ? 'Stop Live Talk' : 'Start Live Talk'}
       >
-        {/* Pulse ring when listening */}
-        {isListening && !isMuted && (
-          <span className="floating-orb-pulse" />
-        )}
-
-        {isSpeaking ? (
-          <HeartbeatTrace
-            color="rgba(255, 243, 243, 0.96)"
-            duration={0.9}
-            className="pointer-events-none h-5 w-8 overflow-hidden drop-shadow-[0_0_8px_rgba(255,240,240,0.45)]"
-          />
-        ) : isActive ? (
+        {isActive ? (
           isMuted ? (
-            <MicrophoneSlash size={isMobile ? 28 : 24} weight="fill" />
+            <MicrophoneSlash size={isMobile ? 22 : 19} weight="fill" />
           ) : (
-            <Microphone size={isMobile ? 28 : 24} weight="fill" />
+            <Microphone size={isMobile ? 22 : 19} weight="fill" />
           )
         ) : (
-          <Microphone size={isMobile ? 28 : 24} weight="fill" />
+          <Sparkle size={isMobile ? 22 : 19} weight="fill" />
         )}
       </motion.button>
     </div>
