@@ -8,6 +8,8 @@ export * from './companion';
 export * from './financial';
 export * from './careers';
 export * from './financial-intelligence';
+export * from './automotive-finance';
+export * from './automotive-domain';
 
 import type { OrbPreferencePayload } from './emoji-orb';
 

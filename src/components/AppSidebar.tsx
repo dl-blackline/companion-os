@@ -8,6 +8,7 @@ import { Images } from '@phosphor-icons/react/Images';
 import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
 import { Lightning } from '@phosphor-icons/react/Lightning';
 import { Briefcase } from '@phosphor-icons/react/Briefcase';
+import { Car } from '@phosphor-icons/react/Car';
 import { Money } from '@phosphor-icons/react/Money';
 import { Microphone } from '@phosphor-icons/react/Microphone';
 import { MoonStars } from '@phosphor-icons/react/MoonStars';
@@ -41,6 +42,7 @@ export type NavSection =
   | 'insights'
   | 'careers'
   | 'finance'
+  | 'automotive-finance'
   | 'agents'
   | 'control-center'
   | 'settings'
@@ -68,6 +70,7 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
   { id: 'insights', label: 'Insights', icon: Lightbulb, group: 'tools' },
   { id: 'careers', label: 'Careers', icon: Briefcase, group: 'tools' },
   { id: 'finance', label: 'Finance', icon: Money, group: 'tools' },
+  { id: 'automotive-finance', label: 'Auto Finance', icon: Car, group: 'tools' },
   { id: 'agents', label: 'Agents', icon: Robot, group: 'tools' },
   { id: 'control-center', label: 'Control', icon: Sliders, group: 'system' },
   { id: 'settings', label: 'Settings', icon: Gear, group: 'system' },
