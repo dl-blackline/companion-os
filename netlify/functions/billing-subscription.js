@@ -87,10 +87,10 @@ async function ensureStripeCustomer(user) {
   return customer.id;
 }
 
-async function getSubscriptionSnapshot(userId, email) {
+async function getSubscriptionSnapshot(actor) {
   // Super-admin gets an immediate override without touching the DB for entitlements
-  if (isSuperAdminUser({ email })) {
-    const usage = await getUsageSummary(userId, email);
+  if (isSuperAdminUser(actor)) {
+    const usage = await getUsageSummary(actor.id, actor.email);
     return {
       currentPlan: 'admin_override',
       status: 'active',
@@ -105,6 +105,7 @@ async function getSubscriptionSnapshot(userId, email) {
     };
   }
 
+  const userId = actor.id;
   const [{ data: entitlement }, { data: subscription }, { data: customer }, usage] = await Promise.all([
     supabase.from('user_entitlements').select('plan,status,trial_ends_at,expires_at').eq('user_id', userId).single(),
     supabase
@@ -141,7 +142,7 @@ export async function handler(event) {
 
   try {
     if (event.httpMethod === 'GET') {
-      return ok(await getSubscriptionSnapshot(actor.id, actor.email));
+      return ok(await getSubscriptionSnapshot(actor));
     }
 
     if (event.httpMethod !== 'POST') {
