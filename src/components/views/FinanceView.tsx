@@ -236,7 +236,7 @@ export function FinanceView() {
             variant="outline"
             onClick={() => {
               sync();
-              void refreshAccount();
+              refreshAccount().catch(() => toast.error('Failed to refresh account data.'));
             }}
             disabled={syncing || loading}
             className="gap-2"

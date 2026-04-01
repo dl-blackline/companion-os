@@ -130,7 +130,7 @@ async function handleCreateSession(user) {
   log.info("[stripe-fc]", "Creating FC session for user", user.id);
 
   // Create a Financial Connections Session via Stripe API.
-  // Permissions requested: account_numbers for last4, balances + transactions for future features.
+  // Permissions: balances (extend with transactions, ownership as needed).
   const session = await stripePost("financial_connections/sessions", {
     "account_holder[type]": "customer",
     "account_holder[customer]": await ensureStripeCustomer(user),
@@ -168,13 +168,17 @@ async function ensureStripeCustomer(user) {
     "metadata[supabase_user_id]": user.id,
   });
 
-  await supabase.from("billing_customers").upsert(
+  const { error } = await supabase.from("billing_customers").upsert(
     {
       user_id: user.id,
       stripe_customer_id: customer.id,
     },
     { onConflict: "user_id" }
   );
+
+  if (error) {
+    log.error("[stripe-fc]", "Failed to persist customer record:", error.message);
+  }
 
   return customer.id;
 }
