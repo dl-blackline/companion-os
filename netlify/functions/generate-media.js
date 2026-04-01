@@ -41,7 +41,7 @@ export async function handler(event) {
       return fail("Unsupported media type", "ERR_VALIDATION", 400);
     }
 
-    const quota = await ensureFeatureWithinQuota(user.id, "media_generation");
+    const quota = await ensureFeatureWithinQuota(user.id, "media_generation", user.email);
     if (!quota.allowed) {
       return fail(quota.message, "ERR_PLAN_LIMIT", 402);
     }

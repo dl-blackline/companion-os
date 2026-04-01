@@ -8,6 +8,7 @@
 import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
 import { getUsageSummary } from '../../lib/_entitlements.js';
+import { isSuperAdminUser } from '../../lib/_super-admin.js';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_PRICE_PRO = process.env.STRIPE_PRICE_PRO || process.env.STRIPE_PRICE_PRO_MONTHLY;
@@ -86,7 +87,24 @@ async function ensureStripeCustomer(user) {
   return customer.id;
 }
 
-async function getSubscriptionSnapshot(userId) {
+async function getSubscriptionSnapshot(userId, email) {
+  // Super-admin gets an immediate override without touching the DB for entitlements
+  if (isSuperAdminUser({ email })) {
+    const usage = await getUsageSummary(userId, email);
+    return {
+      currentPlan: 'admin_override',
+      status: 'active',
+      trialEndsAt: null,
+      expiresAt: null,
+      customerId: null,
+      stripeSubscriptionId: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      canManageBilling: false,
+      usage: usage.features,
+    };
+  }
+
   const [{ data: entitlement }, { data: subscription }, { data: customer }, usage] = await Promise.all([
     supabase.from('user_entitlements').select('plan,status,trial_ends_at,expires_at').eq('user_id', userId).single(),
     supabase
@@ -123,7 +141,7 @@ export async function handler(event) {
 
   try {
     if (event.httpMethod === 'GET') {
-      return ok(await getSubscriptionSnapshot(actor.id));
+      return ok(await getSubscriptionSnapshot(actor.id, actor.email));
     }
 
     if (event.httpMethod !== 'POST') {
