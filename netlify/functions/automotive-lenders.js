@@ -10,6 +10,17 @@ import {
 import { canTransition } from '../../lib/automotive/state-machine.js';
 import { sanitizeAiResponse } from '../../lib/automotive/compliance-guardrails.js';
 
+const SUPPORTED_ACTIONS = new Set([
+  'upsert_lender',
+  'list_lenders',
+  'upsert_program',
+  'list_programs',
+  'upsert_guideline',
+  'list_guidelines',
+  'ingest_callback',
+  'list_callbacks',
+]);
+
 function getAuthToken(event) {
   const h = event.headers?.authorization || event.headers?.Authorization;
   return h?.replace('Bearer ', '') || '';
@@ -43,9 +54,8 @@ async function upsertLender(userId, body) {
 
   const payload = {
     user_id: userId,
-    lender_name: lenderName,
-    lender_code: toStr(body.lenderCode),
-    lender_type: toStr(body.lenderType) || 'bank',
+    name: lenderName,
+    short_code: toStr(body.lenderCode),
     contact_name: toStr(body.contactName),
     contact_phone: toStr(body.contactPhone),
     contact_email: toStr(body.contactEmail),
@@ -80,7 +90,7 @@ async function listLenders(userId) {
     .from('automotive_lenders')
     .select('*')
     .eq('user_id', userId)
-    .order('lender_name');
+    .order('name');
   if (error) return fail('Failed to fetch lenders.', 'ERR_DB', 500);
   return ok({ lenders: data });
 }
@@ -96,17 +106,22 @@ async function upsertProgram(userId, body) {
     lender_id: lenderId,
     program_name: toStr(body.programName) || 'Standard',
     deal_types: Array.isArray(body.dealTypes) ? body.dealTypes : ['retail'],
-    min_credit_score: body.minCreditScore ? parseInt(body.minCreditScore, 10) : null,
+    vehicle_conditions: Array.isArray(body.vehicleConditions) ? body.vehicleConditions : ['new', 'used'],
+    min_fico: body.minCreditScore ? parseInt(body.minCreditScore, 10) : null,
     max_ltv_percent: toNum(body.maxLtvPercent) || null,
     max_pti_percent: toNum(body.maxPtiPercent) || null,
     max_dti_percent: toNum(body.maxDtiPercent) || null,
+    max_backend_amount: toNum(body.maxBackendAmount) || null,
     max_backend_percent: toNum(body.maxBackendPercent) || null,
     max_term_months: body.maxTermMonths ? parseInt(body.maxTermMonths, 10) : 84,
     max_advance_percent: toNum(body.maxAdvancePercent) || null,
+    reserve_flat: toNum(body.reserveFlat) || null,
+    reserve_percent: toNum(body.reservePercent) || null,
     reserve_cap_percent: toNum(body.reserveCapPercent) || null,
-    vehicle_age_max_years: body.vehicleAgeMaxYears ? parseInt(body.vehicleAgeMaxYears, 10) : null,
-    max_mileage: body.maxMileage ? parseInt(body.maxMileage, 10) : null,
-    special_conditions: body.specialConditions || {},
+    stips_required: Array.isArray(body.stipsRequired) ? body.stipsRequired : null,
+    program_notes: toStr(body.programNotes),
+    effective_date: toStr(body.effectiveDate),
+    expiration_date: toStr(body.expirationDate),
     is_active: body.isActive !== false,
   };
 
@@ -132,7 +147,7 @@ async function upsertProgram(userId, body) {
 }
 
 async function listPrograms(userId, body) {
-  const lenderId = toStr(body.lenderId) || event?.queryStringParameters?.lenderId;
+  const lenderId = toStr(body?.lenderId);
   const filter = supabase
     .from('automotive_lender_programs')
     .select('*')
@@ -154,14 +169,14 @@ async function upsertGuideline(userId, body) {
     user_id: userId,
     lender_id: lenderId,
     program_id: toStr(body.programId),
-    document_id: toStr(body.documentId),
+    document_name: toStr(body.documentName) || toStr(body.title) || 'Guideline Document',
+    document_type: toStr(body.documentType) || 'general',
+    content_text: toStr(body.rawText),
+    storage_path: toStr(body.storagePath),
+    deal_types: Array.isArray(body.dealTypes) ? body.dealTypes : null,
     effective_date: toStr(body.effectiveDate),
     expiration_date: toStr(body.expirationDate),
-    version_label: toStr(body.versionLabel) || '1.0',
-    raw_text: toStr(body.rawText),
-    parsed_criteria: body.parsedCriteria || {},
-    notes: toStr(body.notes),
-    is_current: body.isCurrent !== false,
+    source_confirmed: body.sourceConfirmed === true,
   };
 
   let result;
@@ -250,12 +265,17 @@ async function ingestCallback(userId, body) {
       user_id: userId,
       deal_id: dealId,
       lender_id: deal.lender_id,
-      raw_callback_text: rawCallbackText,
-      lender_name: parsedCallback.lenderName || null,
+      raw_input: rawCallbackText,
       callback_rep: parsedCallback.callbackRep || null,
       lender_notes: parsedCallback.lenderNotes || null,
-      ai_raw_response: aiRaw,
-      parse_error: parsedCallback.parseError || null,
+      normalized_data: {
+        lenderName: parsedCallback.lenderName || null,
+        parseError: parsedCallback.parseError || null,
+      },
+      interpreter_output: {
+        raw: aiRaw,
+        parseError: parsedCallback.parseError || null,
+      },
       status: parsedCallback.options.length > 0 ? 'normalized' : 'received',
     })
     .select('id')
@@ -275,17 +295,16 @@ async function ingestCallback(userId, body) {
         user_id: userId,
         deal_id: dealId,
         callback_id: callbackId,
-        option_index: i,
-        tier_label: normalized.tierLabel,
-        approved_amount: normalized.approvedAmount,
-        approved_term: normalized.approvedTerm,
-        apr_offered: normalized.aprOffered,
-        conditions: normalized.conditions,
-        stips_list: normalized.stipsList,
-        is_counter_offer: normalized.isCounterOffer,
+        option_number: i + 1,
+        label: normalized.tierLabel,
+        term_months: normalized.approvedTerm,
+        rate_percent: normalized.aprOffered,
+        max_amount_financed: normalized.approvedAmount,
+        stips_required: Array.isArray(normalized.stipsList) ? normalized.stipsList : [],
+        customer_restrictions: normalized.conditions || {},
         estimated_payment: enriched.estimatedPayment,
         estimated_ltv: enriched.estimatedLtv,
-        ai_confidence: normalized.confidence,
+        comparison_notes: normalized.isCounterOffer ? 'Counter-offer' : null,
       })
       .select('id')
       .single();
@@ -334,7 +353,7 @@ async function listCallbacksForDeal(userId, dealId) {
     .select('*')
     .eq('deal_id', dealId)
     .eq('user_id', userId)
-    .order('option_index');
+    .order('option_number');
 
   const byCallbackId = {};
   for (const opt of options || []) {
@@ -378,7 +397,11 @@ export async function handler(event) {
     return fail('Invalid JSON body', 'ERR_PARSE', 400);
   }
 
-  const action = body.action;
+  const action = typeof body.action === 'string' ? body.action : '';
+  if (!SUPPORTED_ACTIONS.has(action)) {
+    return fail(`Unknown action: ${action || 'undefined'}`, 'ERR_ACTION', 400);
+  }
+
   switch (action) {
     case 'upsert_lender':      return upsertLender(userId, body);
     case 'list_lenders':       return listLenders(userId);

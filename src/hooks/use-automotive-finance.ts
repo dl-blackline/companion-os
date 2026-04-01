@@ -235,7 +235,11 @@ export function useAutomotiveFinance() {
   }, [getAccessToken]);
 
   // Generic caller for Phase 2 endpoints that return arbitrary data (not dashboard).
-  const callEndpoint = useCallback(async (endpoint: string, body: Record<string, unknown>) => {
+  const callEndpoint = useCallback(async (
+    endpoint: string,
+    body: Record<string, unknown>,
+    options?: { suppressStatusCodes?: number[] },
+  ) => {
     const token = getAccessToken();
     if (!token) throw new Error('You must be signed in.');
 
@@ -252,7 +256,13 @@ export function useAutomotiveFinance() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || `${endpoint} request failed.`);
+        const status = response.status;
+        const suppressed = options?.suppressStatusCodes || [];
+        if (suppressed.includes(status)) {
+          setSaving(false);
+          return {} as Record<string, unknown>;
+        }
+        throw new Error(payload?.error || `${endpoint} request failed (HTTP ${status}).`);
       }
       return payload.data as Record<string, unknown>;
     } catch (err) {
@@ -265,7 +275,9 @@ export function useAutomotiveFinance() {
   }, [getAccessToken]);
 
   const callManagement = useCallback(async (body: Record<string, unknown>) => {
-    return callEndpoint('automotive-management', body);
+    // Some environments may not have Phase 5 endpoint/migration available yet.
+    // Gracefully degrade management features in those cases.
+    return callEndpoint('automotive-management', body, { suppressStatusCodes: [404, 406] });
   }, [callEndpoint]);
 
   const getEndpoint = useCallback(async (endpoint: string, params?: Record<string, string | number | undefined>) => {

@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
+import { createHash } from 'node:crypto';
 import {
   normalizeInboundPayload,
   detectDuplicate,
@@ -22,6 +23,13 @@ async function resolveActor(token) {
 
 function toStr(v) { const s = typeof v === 'string' ? v.trim() : ''; return s || null; }
 function toBool(v) { return v === true || v === 'true'; }
+function toObject(v, fallback = {}) { return v && typeof v === 'object' && !Array.isArray(v) ? v : fallback; }
+
+function hashSecret(secret) {
+  const raw = toStr(secret);
+  if (!raw) return null;
+  return createHash('sha256').update(raw).digest('hex');
+}
 
 // ── Integration Sources ────────────────────────────────────────────────────
 async function upsertSource(userId, body) {
@@ -33,10 +41,13 @@ async function upsertSource(userId, body) {
     user_id: userId,
     source_type: sourceType,
     source_name: toStr(body.sourceName) || sourceType,
-    webhook_secret: toStr(body.webhookSecret),
-    field_map: body.fieldMap || {},
-    auto_create_deal: toBool(body.autoCreateDeal),
-    dedup_fields: Array.isArray(body.dedupFields) ? body.dedupFields : ['vin', 'applicant_last_name'],
+    webhook_secret_hash: hashSecret(body.webhookSecret),
+    field_map: toObject(body.fieldMap),
+    normalization_rules: {
+      ...toObject(body.normalizationRules),
+      auto_create_deal: toBool(body.autoCreateDeal),
+    },
+    duplicate_check_fields: Array.isArray(body.dedupFields) ? body.dedupFields : ['customer_last_name', 'vin'],
     is_active: body.isActive !== false,
     notes: toStr(body.notes),
   };
@@ -83,9 +94,17 @@ async function upsertDestination(userId, body) {
     destination_type: destinationType,
     destination_name: toStr(body.destinationName) || destinationType,
     endpoint_url: toStr(body.endpointUrl),
-    auth_header_name: toStr(body.authHeaderName),
-    auth_header_value: toStr(body.authHeaderValue),
-    field_map: body.fieldMap || {},
+    auth_type: toStr(body.authType) || 'none',
+    auth_config: {
+      ...toObject(body.authConfig),
+      ...(toStr(body.authHeaderName) && toStr(body.authHeaderValue)
+        ? { headerName: toStr(body.authHeaderName), headerValue: toStr(body.authHeaderValue) }
+        : {}),
+    },
+    field_map: toObject(body.fieldMap),
+    transform_rules: toObject(body.transformRules),
+    requires_approval: body.requiresApproval !== false,
+    retry_config: toObject(body.retryConfig, { max_retries: 3, backoff_seconds: 30 }),
     is_active: body.isActive !== false,
     notes: toStr(body.notes),
   };
@@ -114,7 +133,7 @@ async function upsertDestination(userId, body) {
 async function listDestinations(userId) {
   const { data, error } = await supabase
     .from('automotive_integration_destinations')
-    .select('id, destination_type, destination_name, endpoint_url, is_active, created_at')
+    .select('id, destination_type, destination_name, endpoint_url, auth_type, requires_approval, is_active, created_at')
     .eq('user_id', userId)
     .order('destination_name');
   if (error) return fail('Failed to fetch destinations.', 'ERR_DB', 500);
@@ -130,7 +149,7 @@ async function previewOutbound(userId, body) {
   const { data: deal } = await supabase
     .from('automotive_deals')
     .select(`
-      id, status, deal_type, customer_name, customer_phone, customer_email,
+      id, status, deal_type, deal_name,
       automotive_applicants(first_name, last_name, ssn_last_four, date_of_birth),
       automotive_vehicles(vin, year, make, model, mileage, msrp),
       automotive_deal_structures(amount_financed, apr_percent, term_months, selling_price, cash_down)
@@ -177,7 +196,7 @@ async function sendOutbound(userId, body) {
   const { data: deal } = await supabase
     .from('automotive_deals')
     .select(`
-      id, status, deal_type, customer_name, customer_phone, customer_email,
+      id, status, deal_type, deal_name,
       automotive_applicants(first_name, last_name, ssn_last_four, date_of_birth),
       automotive_vehicles(vin, year, make, model, mileage, msrp),
       automotive_deal_structures(amount_financed, apr_percent, term_months, selling_price, cash_down)
@@ -197,8 +216,15 @@ async function sendOutbound(userId, body) {
 
   // Build request headers — avoid forwarding any secrets blindly
   const headers = { 'Content-Type': 'application/json' };
-  if (dest.auth_header_name && dest.auth_header_value) {
-    headers[dest.auth_header_name] = dest.auth_header_value;
+  if (dest.auth_type === 'bearer' && dest.auth_config?.token) {
+    headers.Authorization = `Bearer ${dest.auth_config.token}`;
+  }
+  if (dest.auth_type === 'api_key' && dest.auth_config?.headerName && dest.auth_config?.headerValue) {
+    headers[dest.auth_config.headerName] = dest.auth_config.headerValue;
+  }
+  if (dest.auth_type === 'basic' && dest.auth_config?.username && dest.auth_config?.password) {
+    const encoded = Buffer.from(`${dest.auth_config.username}:${dest.auth_config.password}`).toString('base64');
+    headers.Authorization = `Basic ${encoded}`;
   }
 
   const startedAt = Date.now();
@@ -227,15 +253,16 @@ async function sendOutbound(userId, body) {
     userId,
     dealId,
     direction: 'outbound',
-    sourceOrDestinationType: dest.destination_type,
-    sourceOrDestinationId: destinationId,
-    eventType: 'deal_submitted',
-    payload,
-    responseStatusCode,
-    responseBody: responseBody.slice(0, 2000),
-    error: sendError,
-    durationMs,
-    succeeded,
+    sourceOrDestination: dest.destination_type,
+    status: succeeded ? 'sent' : 'failed',
+    rawPayload: payload,
+    mappedPayload: {
+      mappedFields,
+      responseStatusCode,
+      responseBody: responseBody.slice(0, 2000),
+      durationMs,
+    },
+    errorMessage: sendError,
   });
 
   await supabase.from('automotive_integration_events').insert(logEntry);
@@ -275,14 +302,24 @@ async function ingestInbound(userId, body) {
   // Dedup check
   const { data: existingDeals } = await supabase
     .from('automotive_deals')
-    .select('id, customer_name, status')
+    .select('id, deal_name, status, automotive_vehicles(vin), automotive_applicants(last_name)')
     .eq('user_id', userId)
     .not('status', 'eq', 'archived');
 
+  const dedupComparableDeals = (existingDeals || []).map((deal) => ({
+    id: deal.id,
+    deal_name: deal.deal_name,
+    status: deal.status,
+    vin: deal.automotive_vehicles?.[0]?.vin || null,
+    vehicle_vin: deal.automotive_vehicles?.[0]?.vin || null,
+    customer_last_name: deal.automotive_applicants?.[0]?.last_name || null,
+    applicant_last_name: deal.automotive_applicants?.[0]?.last_name || null,
+  }));
+
   const { isDuplicate, matchedDealId, matchScore } = detectDuplicate(
     normalized,
-    existingDeals || [],
-    source.dedup_fields || ['vin', 'applicant_last_name'],
+    dedupComparableDeals,
+    source.duplicate_check_fields || ['customer_last_name', 'vin'],
   );
 
   // Log the inbound event
@@ -290,11 +327,10 @@ async function ingestInbound(userId, body) {
     userId,
     dealId: isDuplicate ? matchedDealId : null,
     direction: 'inbound',
-    sourceOrDestinationType: source.source_type,
-    sourceOrDestinationId: sourceId,
-    eventType: isDuplicate ? 'duplicate_detected' : 'lead_received',
-    payload: normalized,
-    succeeded: true,
+    sourceOrDestination: source.source_type,
+    status: isDuplicate ? 'needs_review' : 'mapped',
+    rawPayload,
+    mappedPayload: normalized,
   });
 
   await supabase.from('automotive_integration_events').insert(logEntry);
@@ -310,17 +346,17 @@ async function ingestInbound(userId, body) {
   }
 
   // Create deal if source is configured to do so
+  const shouldAutoCreateDeal = Boolean(source.normalization_rules?.auto_create_deal === true);
   let createdDealId = null;
-  if (source.auto_create_deal) {
+  if (shouldAutoCreateDeal) {
     const { data: newDeal } = await supabase
       .from('automotive_deals')
       .insert({
         user_id: userId,
         status: 'lead_received',
         deal_type: normalized.deal_type || 'retail',
-        customer_name: [normalized.applicant_first_name, normalized.applicant_last_name].filter(Boolean).join(' ') || 'Unknown',
-        customer_phone: normalized.customer_phone || null,
-        customer_email: normalized.customer_email || null,
+        deal_name: [normalized.applicant_first_name, normalized.applicant_last_name].filter(Boolean).join(' ') || 'Inbound Lead',
+        source_channel: source.source_type,
         lead_source: source.source_type,
         store_reference: normalized.dealer_reference || null,
         notes: `Auto-created from ${source.source_name} integration.`,
@@ -345,7 +381,7 @@ async function ingestInbound(userId, body) {
 
   return ok({
     ingested: true,
-    autoCreatedDeal: source.auto_create_deal,
+    autoCreatedDeal: shouldAutoCreateDeal,
     createdDealId,
     normalized,
     unmappedFields,

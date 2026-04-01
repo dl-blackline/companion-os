@@ -113,8 +113,8 @@ export interface AutomotiveDashboardDocument {
   deal_id: string;
   document_type: string | null;
   filename: string | null;
-  document_status: string;
-  confidence_score: number | null;
+  review_status: string;
+  extraction_confidence: number | null;
   reviewed_at: string | null;
   created_at: string;
 }

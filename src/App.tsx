@@ -31,6 +31,7 @@ const ControlCenterView = lazy(() => import('@/components/views/ControlCenterVie
 const AgentsView = lazy(() => import('@/components/views/AgentsView').then((module) => ({ default: module.AgentsView })));
 const AdminConsoleView = lazy(() => import('@/components/views/AdminConsoleView').then((module) => ({ default: module.AdminConsoleView })));
 const TarotView = lazy(() => import('@/components/views/TarotView').then((module) => ({ default: module.TarotView })));
+const StripeReturnView = lazy(() => import('@/components/views/StripeReturnView').then((module) => ({ default: module.StripeReturnView })));
 const FloatingLiveOrb = lazy(() => import('@/components/FloatingLiveOrb').then((module) => ({ default: module.FloatingLiveOrb })));
 
 function SectionFallback() {
@@ -47,6 +48,7 @@ function SectionFallback() {
 function sectionFromPathname(pathname: string): NavSection {
   if (pathname === '/control-center') return 'control-center';
   if (pathname === '/careers') return 'careers';
+  if (pathname.startsWith('/finance/stripe/return')) return 'stripe-return' as NavSection;
   if (pathname === '/finance') return 'finance';
   if (pathname === '/automotive-finance') return 'automotive-finance';
   return 'home';
@@ -206,6 +208,14 @@ function App() {
         return <CareersView />;
       case 'finance':
         return <FinanceView />;
+      case 'stripe-return':
+        return (
+          <StripeReturnView
+            onNavigateToFinance={() => {
+              setActiveSection('finance');
+            }}
+          />
+        );
       case 'automotive-finance':
         return <AutomotiveFinanceView />;
       case 'agents':
