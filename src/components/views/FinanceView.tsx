@@ -485,6 +485,10 @@ export function FinanceView() {
             <Lightbulb size={14} />
             Refresh Insights
           </Button>
+          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
+            <Lightbulb size={14} />
+            Refresh Insights
+          </Button>
         </div>
       </div>
 
