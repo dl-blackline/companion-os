@@ -477,18 +477,6 @@ export function FinanceView() {
             <Lightbulb size={14} />
             Refresh Insights
           </Button>
-          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
-            <Lightbulb size={14} />
-            Refresh Insights
-          </Button>
-          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
-            <Lightbulb size={14} />
-            Refresh Insights
-          </Button>
-          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
-            <Lightbulb size={14} />
-            Refresh Insights
-          </Button>
         </div>
       </div>
 
@@ -593,6 +581,62 @@ export function FinanceView() {
 
       {activeTab === 'dashboard' && (
         <>
+          {/* ── Linked Accounts Summary ── */}
+          {linkedAccountsLoading && linkedAccountsDashboard.accounts.length === 0 && (
+            <Card className="p-5">
+              <p className="text-sm text-muted-foreground animate-pulse">Loading linked accounts…</p>
+            </Card>
+          )}
+
+          {!linkedAccountsLoading && linkedAccountsDashboard.accounts.length === 0 && (
+            <Card className="p-5 border-dashed border-border/50 text-center space-y-3">
+              <CreditCard size={28} className="mx-auto text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">No bank accounts linked yet. Connect an account to unlock full financial intelligence.</p>
+              <Button size="sm" variant="outline" onClick={handleStripeConnect} disabled={stripeConnecting} className="gap-2">
+                <CreditCard size={14} />
+                {stripeConnecting ? 'Connecting…' : 'Link Bank Account'}
+              </Button>
+            </Card>
+          )}
+
+          {linkedAccountsDashboard.accounts.length > 0 && (
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Linked Accounts</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[10px]">
+                    {linkedAccountsDashboard.accounts.length} account{linkedAccountsDashboard.accounts.length !== 1 ? 's' : ''}
+                  </Badge>
+                  {linkedAccountsDashboard.totalTransactions > 0 && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {linkedAccountsDashboard.totalTransactions} transactions
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {linkedAccountsDashboard.accounts.map(acct => (
+                  <div key={acct.id} className="rounded-lg border border-border/70 p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{acct.institution_name || 'Unknown Institution'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {acct.account_display_name || acct.account_subtype || 'Account'} {acct.account_last4 ? `••${acct.account_last4}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {acct.latest_balance ? (
+                        <p className="text-sm font-semibold">{currency(acct.latest_balance.current_balance ?? 0)}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/60 italic">Syncing…</p>
+                      )}
+                      <Badge variant={acct.status === 'connected' ? 'default' : 'secondary'} className="text-[10px] capitalize mt-0.5">{acct.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* ── Financial Scorecard Summary ── */}
           {scorecard && (
             <Card className="p-5 border-primary/20">
@@ -854,7 +898,10 @@ export function FinanceView() {
                   )}
 
                   {!acct.latest_balance && (
-                    <p className="text-xs text-muted-foreground/60 italic">Balance not yet available</p>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic">
+                      <ArrowsClockwise size={12} className="animate-spin" />
+                      <span>Balance syncing…</span>
+                    </div>
                   )}
 
                   {acct.last_sync_at && (
