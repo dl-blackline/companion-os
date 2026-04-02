@@ -647,7 +647,7 @@ async function handleRemoveAccount(user, body) {
 async function handleGetLinkedAccounts(userId) {
   console.log(`[stripe-fc] GET linked accounts for user=${userId}`);
 
-  const [connectionsRes, balancesRes, txCountRes] = await Promise.all([
+  const [connectionsRes, balancesRes, txCountRes, ledgerRes] = await Promise.all([
     supabase
       .from('financial_connections')
       .select('*')
@@ -663,16 +663,23 @@ async function handleGetLinkedAccounts(userId) {
       .from('normalized_transactions')
       .select('connection_id', { count: 'exact', head: true })
       .eq('user_id', userId),
+    supabase
+      .from('ledger_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true }),
   ]);
 
   if (connectionsRes.error) console.error('[stripe-fc] GET connections error:', connectionsRes.error.message);
   if (balancesRes.error) console.error('[stripe-fc] GET balances error:', balancesRes.error.message);
   if (txCountRes.error) console.error('[stripe-fc] GET tx count error:', txCountRes.error.message);
+  if (ledgerRes.error) console.error('[stripe-fc] GET ledger error:', ledgerRes.error.message);
 
   const connections = connectionsRes.data || [];
   const balances = balancesRes.data || [];
+  const ledgerEntries = ledgerRes.data || [];
 
-  console.log(`[stripe-fc] Found ${connections.length} connections, ${balances.length} balance snapshots, ${txCountRes.count ?? 0} transactions`);
+  console.log(`[stripe-fc] Found ${connections.length} connections, ${balances.length} balance snapshots, ${txCountRes.count ?? 0} transactions, ${ledgerEntries.length} ledger entries`);
 
   // Attach latest balance to each connection
   const enriched = connections.map((conn) => {
@@ -683,10 +690,134 @@ async function handleGetLinkedAccounts(userId) {
     };
   });
 
+  // Compute aggregate metrics from connected accounts
+  const connectedAccounts = enriched.filter((a) => a.status === 'connected' && a.latest_balance);
+  let totalBalance = 0;
+  let totalAvailableCredit = 0;
+  let totalCashOnHand = 0;
+
+  for (const acct of connectedAccounts) {
+    const bal = acct.latest_balance;
+    const current = bal.current_balance ?? 0;
+    const available = bal.available_balance ?? 0;
+    const subtype = (acct.account_subtype || '').toLowerCase();
+
+    totalBalance += current;
+
+    if (subtype === 'credit_card' || subtype === 'credit') {
+      // For credit cards, available_balance is remaining credit limit
+      totalAvailableCredit += available;
+    } else {
+      // checking, savings = cash on hand
+      totalCashOnHand += current;
+    }
+  }
+
   return ok({
     accounts: enriched,
     totalTransactions: txCountRes.count || 0,
+    ledgerEntries,
+    aggregates: {
+      totalBalance,
+      totalAvailableCredit,
+      totalCashOnHand,
+      accountCount: connectedAccounts.length,
+    },
   });
+}
+
+/* ── Account update (nickname, notes) ── */
+
+async function handleUpdateAccount(user, body) {
+  const connectionId = body?.connectionId;
+  if (!connectionId) return fail('Missing connectionId', 'ERR_VALIDATION', 400);
+
+  const updates = {};
+  if (body.nickname !== undefined) updates.nickname = body.nickname || null;
+  if (body.user_notes !== undefined) updates.user_notes = body.user_notes || null;
+  if (body.website_url !== undefined) updates.website_url = body.website_url || null;
+
+  if (Object.keys(updates).length === 0) return fail('Nothing to update', 'ERR_VALIDATION', 400);
+
+  const { error } = await supabase
+    .from('financial_connections')
+    .update(updates)
+    .eq('id', connectionId)
+    .eq('user_id', user.id);
+
+  if (error) return fail('Failed to update account: ' + error.message, 'ERR_DB', 500);
+  return ok({ updated: true });
+}
+
+/* ── Ledger entries ── */
+
+async function handleCreateLedgerEntry(user, body) {
+  const { title, amount, direction, due_date, recurrence, category, notes, connection_id } = body || {};
+  if (!title || amount == null || !direction || !due_date) {
+    return fail('Missing required fields: title, amount, direction, due_date', 'ERR_VALIDATION', 400);
+  }
+  if (!['inflow', 'outflow'].includes(direction)) return fail('direction must be inflow or outflow', 'ERR_VALIDATION', 400);
+
+  const { data, error } = await supabase
+    .from('ledger_entries')
+    .insert({
+      user_id: user.id,
+      connection_id: connection_id || null,
+      title,
+      amount: Math.abs(Number(amount)),
+      direction,
+      due_date,
+      recurrence: recurrence || 'once',
+      category: category || null,
+      notes: notes || null,
+    })
+    .select()
+    .single();
+
+  if (error) return fail('Failed to create ledger entry: ' + error.message, 'ERR_DB', 500);
+  return ok(data);
+}
+
+async function handleUpdateLedgerEntry(user, body) {
+  const entryId = body?.entryId;
+  if (!entryId) return fail('Missing entryId', 'ERR_VALIDATION', 400);
+
+  const allowed = ['title', 'amount', 'direction', 'due_date', 'recurrence', 'category', 'notes', 'status', 'connection_id'];
+  const updates = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) {
+      updates[key] = body[key];
+    }
+  }
+  if (updates.amount != null) updates.amount = Math.abs(Number(updates.amount));
+  if (updates.status === 'completed') updates.completed_at = new Date().toISOString();
+
+  if (Object.keys(updates).length === 0) return fail('Nothing to update', 'ERR_VALIDATION', 400);
+
+  const { data, error } = await supabase
+    .from('ledger_entries')
+    .update(updates)
+    .eq('id', entryId)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) return fail('Failed to update ledger entry: ' + error.message, 'ERR_DB', 500);
+  return ok(data);
+}
+
+async function handleDeleteLedgerEntry(user, body) {
+  const entryId = body?.entryId;
+  if (!entryId) return fail('Missing entryId', 'ERR_VALIDATION', 400);
+
+  const { error } = await supabase
+    .from('ledger_entries')
+    .delete()
+    .eq('id', entryId)
+    .eq('user_id', user.id);
+
+  if (error) return fail('Failed to delete ledger entry: ' + error.message, 'ERR_DB', 500);
+  return ok({ deleted: true });
 }
 
 /* ── Handler ── */
@@ -729,8 +860,12 @@ export async function handler(event) {
     if (action === 'complete_session') return handleCompleteSession(user, body);
     if (action === 'refresh_account') return handleRefreshAccount(user, body);
     if (action === 'sync_transactions') return handleSyncTransactions(user);
+    if (action === 'update_account') return handleUpdateAccount(user, body);
     if (action === 'disconnect_account') return handleDisconnectAccount(user, body);
     if (action === 'remove_account') return handleRemoveAccount(user, body);
+    if (action === 'create_ledger_entry') return handleCreateLedgerEntry(user, body);
+    if (action === 'update_ledger_entry') return handleUpdateLedgerEntry(user, body);
+    if (action === 'delete_ledger_entry') return handleDeleteLedgerEntry(user, body);
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);
   } catch (error) {

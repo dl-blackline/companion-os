@@ -2,12 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type {
   LinkedAccountsDashboard,
+  LedgerEntry,
   StripeSessionPayload,
 } from '@/types/stripe-financial';
 
 const EMPTY_DASHBOARD: LinkedAccountsDashboard = {
   accounts: [],
   totalTransactions: 0,
+  ledgerEntries: [],
+  aggregates: {
+    totalBalance: 0,
+    totalAvailableCredit: 0,
+    totalCashOnHand: 0,
+    accountCount: 0,
+  },
 };
 
 const FC_URL = '/.netlify/functions/stripe-financial-connections';
@@ -212,6 +220,72 @@ export function useStripeFinancialConnections() {
     [authedFetch, refresh],
   );
 
+  const updateAccount = useCallback(
+    async (connectionId: string, updates: { nickname?: string; user_notes?: string }) => {
+      setError(null);
+      try {
+        await authedFetch(FC_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'update_account', connectionId, ...updates }),
+        });
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update account.');
+      }
+    },
+    [authedFetch, refresh],
+  );
+
+  const createLedgerEntry = useCallback(
+    async (entry: { title: string; amount: number; direction: 'inflow' | 'outflow'; due_date: string; recurrence?: string; category?: string; notes?: string; connection_id?: string }) => {
+      setError(null);
+      try {
+        const data = await authedFetch(FC_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'create_ledger_entry', ...entry }),
+        }) as LedgerEntry;
+        await refresh();
+        return data;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create ledger entry.');
+        return null;
+      }
+    },
+    [authedFetch, refresh],
+  );
+
+  const updateLedgerEntry = useCallback(
+    async (entryId: string, updates: Record<string, unknown>) => {
+      setError(null);
+      try {
+        await authedFetch(FC_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'update_ledger_entry', entryId, ...updates }),
+        });
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update ledger entry.');
+      }
+    },
+    [authedFetch, refresh],
+  );
+
+  const deleteLedgerEntry = useCallback(
+    async (entryId: string) => {
+      setError(null);
+      try {
+        await authedFetch(FC_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'delete_ledger_entry', entryId }),
+        });
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete ledger entry.');
+      }
+    },
+    [authedFetch, refresh],
+  );
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -236,7 +310,11 @@ export function useStripeFinancialConnections() {
     completeSession,
     refreshAccount,
     syncTransactions,
+    updateAccount,
     disconnectAccount,
     removeAccount,
+    createLedgerEntry,
+    updateLedgerEntry,
+    deleteLedgerEntry,
   };
 }

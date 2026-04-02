@@ -10,6 +10,9 @@ export interface LinkedAccount {
   account_last4: string | null;
   account_type: string | null;
   account_subtype: string | null;
+  nickname: string | null;
+  user_notes: string | null;
+  website_url: string | null;
   livemode: boolean;
   status: 'connected' | 'error' | 'disconnected';
   last_sync_at: string | null;
@@ -33,6 +36,32 @@ export interface BalanceSnapshot {
 export interface LinkedAccountsDashboard {
   accounts: LinkedAccount[];
   totalTransactions: number;
+  ledgerEntries: LedgerEntry[];
+  aggregates: AccountAggregates;
+}
+
+export interface AccountAggregates {
+  totalBalance: number;
+  totalAvailableCredit: number;
+  totalCashOnHand: number;
+  accountCount: number;
+}
+
+export interface LedgerEntry {
+  id: string;
+  user_id: string;
+  connection_id: string | null;
+  title: string;
+  amount: number;
+  direction: 'inflow' | 'outflow';
+  due_date: string;
+  recurrence: 'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annual';
+  category: string | null;
+  notes: string | null;
+  status: 'pending' | 'completed' | 'skipped' | 'overdue';
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /* ── Unified transactions ── */
