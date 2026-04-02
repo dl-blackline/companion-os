@@ -11,6 +11,7 @@ import { useAIControl } from '@/context/ai-control-context';
 import { useOrbAppearance } from '@/context/orb-appearance-context';
 import { useRuntimeHealth } from '@/hooks/use-runtime-health';
 import { List } from '@phosphor-icons/react/List';
+import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
 import { X } from '@phosphor-icons/react/X';
 import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
@@ -33,6 +34,7 @@ const AdminConsoleView = lazy(() => import('@/components/views/AdminConsoleView'
 const TarotView = lazy(() => import('@/components/views/TarotView').then((module) => ({ default: module.TarotView })));
 const StripeReturnView = lazy(() => import('@/components/views/StripeReturnView').then((module) => ({ default: module.StripeReturnView })));
 const FloatingLiveOrb = lazy(() => import('@/components/FloatingLiveOrb').then((module) => ({ default: module.FloatingLiveOrb })));
+const CommandPalette = lazy(() => import('@/components/CommandPalette').then((module) => ({ default: module.CommandPalette })));
 
 function SectionFallback() {
   return (
@@ -82,6 +84,7 @@ function App() {
   );
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isActive: isGlobalVoiceActive, stopLiveTalk, status: voiceStatus } = useVoice();
   const { isAdmin, plan } = useAuth();
@@ -156,6 +159,18 @@ function App() {
 
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Global Ctrl/Cmd+K shortcut for command palette
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
   const handleNavigate = (section: string) => {
@@ -264,7 +279,13 @@ function App() {
           >
             {settings.aiName}
           </span>
-          <div className="w-11 rounded-xl border border-border/60 bg-black/20 h-11" aria-hidden="true" />
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="flex items-center justify-center w-11 h-11 rounded-xl bg-black/20 hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-colors"
+            aria-label="Open command palette"
+          >
+            <MagnifyingGlass size={18} />
+          </button>
           </div>
 
           <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-0.5">
@@ -340,6 +361,16 @@ function App() {
           <FloatingLiveOrb />
         </Suspense>
       )}
+
+      {/* Command Palette — global action layer */}
+      <Suspense fallback={null}>
+        <CommandPalette
+          open={commandPaletteOpen}
+          onOpenChange={setCommandPaletteOpen}
+          activeSection={activeSection}
+          onNavigate={handleNavigate}
+        />
+      </Suspense>
 
       <Toaster />
     </div>
