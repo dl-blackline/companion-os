@@ -524,6 +524,39 @@ async function handleDisconnectAccount(user, body) {
   return ok({ disconnected: true });
 }
 
+async function handleRemoveAccount(user, body) {
+  const connectionId = body?.connectionId;
+  if (!connectionId) return fail('Missing connectionId', 'ERR_VALIDATION', 400);
+
+  const { data: conn } = await supabase
+    .from('financial_connections')
+    .select('id, stripe_account_id')
+    .eq('id', connectionId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!conn) return fail('Account not found', 'ERR_NOT_FOUND', 404);
+
+  // Disconnect on Stripe side if still active
+  if (conn.stripe_account_id) {
+    try {
+      const stripe = requireStripe();
+      await stripe.financialConnections.accounts.disconnect(conn.stripe_account_id);
+    } catch (err) {
+      // Already disconnected or not found — fine, we're deleting anyway
+      console.warn(`[stripe-fc] Stripe disconnect before remove for ${conn.stripe_account_id}:`, err.message);
+    }
+  }
+
+  // Delete related data first (balance snapshots, transactions), then the connection
+  await supabase.from('normalized_transactions').delete().eq('connection_id', conn.id).eq('user_id', user.id);
+  await supabase.from('account_balance_snapshots').delete().eq('connection_id', conn.id).eq('user_id', user.id);
+  await supabase.from('financial_connections').delete().eq('id', conn.id).eq('user_id', user.id);
+
+  console.log(`[stripe-fc] Removed account ${conn.id} (stripe: ${conn.stripe_account_id || 'n/a'})`);
+  return ok({ removed: true });
+}
+
 async function handleGetLinkedAccounts(userId) {
   console.log(`[stripe-fc] GET linked accounts for user=${userId}`);
 
@@ -609,6 +642,7 @@ export async function handler(event) {
     if (action === 'complete_session') return handleCompleteSession(user, body);
     if (action === 'refresh_account') return handleRefreshAccount(user, body);
     if (action === 'disconnect_account') return handleDisconnectAccount(user, body);
+    if (action === 'remove_account') return handleRemoveAccount(user, body);
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);
   } catch (error) {
