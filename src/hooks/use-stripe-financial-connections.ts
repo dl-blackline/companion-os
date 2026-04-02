@@ -89,14 +89,14 @@ export function useStripeFinancialConnections() {
   }, [authedFetch]);
 
   const completeSession = useCallback(
-    async (sessionId: string): Promise<boolean> => {
+    async (sessionId: string, accountIds?: string[]): Promise<boolean> => {
       setError(null);
       try {
         const result = await authedFetch(FC_URL, {
           method: 'POST',
-          body: JSON.stringify({ action: 'complete_session', sessionId }),
+          body: JSON.stringify({ action: 'complete_session', sessionId, accountIds }),
         });
-        console.log('[stripe-fc] completeSession result:', result);
+        console.log('[stripe-fc] completeSession result:', JSON.stringify(result));
         await refresh();
         return true;
       } catch (err) {

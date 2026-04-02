@@ -226,21 +226,74 @@ async function handleCompleteSession(user, body) {
   const sessionId = body?.sessionId;
   if (!sessionId) return fail('Missing sessionId', 'ERR_VALIDATION', 400);
 
-  console.log(`[stripe-fc] complete_session: user=${user.id}, sessionId=${sessionId}`);
+  // The frontend may pass account IDs from the Stripe JS result as a hint
+  const accountIdsFromClient = body?.accountIds || [];
 
-  let session;
+  console.log(`[stripe-fc] complete_session: user=${user.id}, sessionId=${sessionId}, clientAccountIds=${JSON.stringify(accountIdsFromClient)}`);
+
+  // Step 1: Try to get accounts from the session retrieve
+  let accounts = [];
   try {
-    session = await stripe.financialConnections.sessions.retrieve(sessionId);
+    const session = await stripe.financialConnections.sessions.retrieve(sessionId);
+    accounts = session.accounts?.data || [];
+    console.log(`[stripe-fc] Session retrieve returned ${accounts.length} account(s), session.status=${session.status || 'n/a'}`);
   } catch (err) {
     console.error('[stripe-fc] Session retrieve failed:', err.message);
-    return fail('Failed to retrieve Stripe session. It may have expired.', 'ERR_STRIPE_SESSION', 400);
+    // Don't bail yet — we may still be able to fetch accounts directly
   }
 
-  const accounts = session.accounts?.data || [];
-  console.log(`[stripe-fc] Session contains ${accounts.length} account(s)`);
+  // Step 2: If session retrieve returned no accounts, try fetching each
+  //         account ID provided by the frontend directly from Stripe
+  if (accounts.length === 0 && accountIdsFromClient.length > 0) {
+    console.log(`[stripe-fc] Session had 0 accounts, fetching ${accountIdsFromClient.length} account(s) by ID from client hint`);
+    for (const acctId of accountIdsFromClient) {
+      try {
+        const acct = await stripe.financialConnections.accounts.retrieve(acctId);
+        if (acct && acct.id) {
+          accounts.push(acct);
+          console.log(`[stripe-fc] Retrieved account ${acct.id} (${acct.institution_name || 'unknown'})`);
+        }
+      } catch (err) {
+        console.warn(`[stripe-fc] Could not retrieve account ${acctId}:`, err.message);
+      }
+    }
+  }
+
+  // Step 3: Last resort — list recent accounts for this customer
+  if (accounts.length === 0) {
+    console.log('[stripe-fc] Still 0 accounts, trying accounts.list as last resort');
+    try {
+      const customerIdRow = await supabase
+        .from('billing_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (customerIdRow?.data?.stripe_customer_id) {
+        const listed = await stripe.financialConnections.accounts.list({
+          account_holder: {
+            customer: customerIdRow.data.stripe_customer_id,
+          },
+          limit: 20,
+        });
+        // Only take active accounts we haven't already persisted
+        const { data: existingConns } = await supabase
+          .from('financial_connections')
+          .select('stripe_account_id')
+          .eq('user_id', user.id)
+          .eq('provider', 'stripe');
+        const existingIds = new Set((existingConns || []).map(c => c.stripe_account_id));
+        accounts = (listed.data || []).filter(a => a.status === 'active' && !existingIds.has(a.id));
+        console.log(`[stripe-fc] accounts.list returned ${listed.data?.length || 0} total, ${accounts.length} new active`);
+      }
+    } catch (err) {
+      console.warn('[stripe-fc] accounts.list fallback failed:', err.message);
+    }
+  }
 
   if (accounts.length === 0) {
-    return ok({ linked: 0, message: 'No accounts were linked.' });
+    console.warn('[stripe-fc] No accounts found via any method');
+    return ok({ linked: 0, message: 'No accounts were linked. The session may have expired or the connection was not completed.' });
   }
 
   let linked = 0;

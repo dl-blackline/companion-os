@@ -250,8 +250,16 @@ export function FinanceView() {
         return;
       }
 
-      // Accounts linked successfully
-      const success = await completeSession(sessionPayload.sessionId);
+      // Extract account IDs from the Stripe JS result to pass as hints
+      // (session.retrieve may not auto-expand accounts)
+      const linkedAccounts = result.financialConnectionsSession?.accounts ?? [];
+      const accountIds = Array.isArray(linkedAccounts)
+        ? linkedAccounts.map((a: { id: string }) => a.id)
+        : (linkedAccounts as { data?: { id: string }[] })?.data?.map((a) => a.id) ?? [];
+      console.log('[stripe-fc] Stripe JS linked account IDs:', accountIds);
+
+      // Accounts linked successfully — pass account IDs as backup for session retrieve
+      const success = await completeSession(sessionPayload.sessionId, accountIds);
       if (success) {
         toast.success('Bank account linked via Stripe. Syncing data…');
         setActiveTab('accounts');
