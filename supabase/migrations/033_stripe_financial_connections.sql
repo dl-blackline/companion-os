@@ -27,10 +27,11 @@ ALTER TABLE financial_connections
   ADD COLUMN IF NOT EXISTS livemode BOOLEAN DEFAULT true,
   ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ;
 
--- Unique constraint for Stripe FC accounts
-CREATE UNIQUE INDEX IF NOT EXISTS idx_financial_connections_stripe_account
-  ON financial_connections(user_id, stripe_account_id)
-  WHERE stripe_account_id IS NOT NULL;
+-- Unique constraint for Stripe FC accounts (full constraint, not partial index,
+-- so PostgREST ON CONFLICT works correctly)
+ALTER TABLE financial_connections
+  ADD CONSTRAINT uq_financial_connections_stripe_account
+  UNIQUE (user_id, stripe_account_id);
 
 -- ── Balance snapshots ──
 CREATE TABLE IF NOT EXISTS account_balance_snapshots (

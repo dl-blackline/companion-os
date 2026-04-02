@@ -77,14 +77,20 @@ async function persistAccount(userId, stripeAccount) {
 async function persistBalanceSnapshot(userId, connectionId, balance) {
   if (!balance) return;
 
+  // Stripe FC balance.current and balance.cash.available are currency-keyed objects
+  // e.g. balance.current = { "usd": -7800 } (amount in cents)
+  const currency = Object.keys(balance.current || {})[0] || 'usd';
+  const currentCents = balance.current?.[currency];
+  const availableCents = balance.cash?.available?.[currency];
+
+  console.log(`[stripe-fc] Balance snapshot: currency=${currency}, currentCents=${currentCents}, availableCents=${availableCents}, raw=`, JSON.stringify(balance));
+
   await supabase.from('account_balance_snapshots').insert({
     user_id: userId,
     connection_id: connectionId,
-    current_balance: balance.current != null ? balance.current / 100 : null,
-    available_balance: balance.cash?.available?.[0]?.amount != null
-      ? balance.cash.available[0].amount / 100
-      : null,
-    currency: balance.cash?.available?.[0]?.currency || 'usd',
+    current_balance: currentCents != null ? currentCents / 100 : null,
+    available_balance: availableCents != null ? availableCents / 100 : null,
+    currency,
     as_of: balance.as_of ? new Date(balance.as_of * 1000).toISOString() : new Date().toISOString(),
   });
 }
