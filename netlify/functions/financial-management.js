@@ -54,7 +54,7 @@ function toNumber(value) {
 }
 
 async function loadSummary(userId) {
-  const [connectionsRes, accountsRes, txRes] = await Promise.all([
+  const [connectionsRes, accountsRes, txRes, stripeBalancesRes, stripeTxRes] = await Promise.all([
     supabase
       .from('financial_connections')
       .select('id, provider, institution_name, status, last_sync_at, error_message')
@@ -71,19 +71,62 @@ async function loadSummary(userId) {
       .eq('user_id', userId)
       .order('transaction_date', { ascending: false })
       .limit(50),
+    // Stripe FC: latest balance per connection (distinct on connection_id, ordered by as_of desc)
+    supabase
+      .from('account_balance_snapshots')
+      .select('connection_id, current_balance, available_balance, currency, as_of')
+      .eq('user_id', userId)
+      .order('as_of', { ascending: false }),
+    // Stripe FC: normalized transactions from the last 90 days
+    supabase
+      .from('normalized_transactions')
+      .select('id, connection_id, amount, direction, description, merchant_name, category, status, transaction_date')
+      .eq('user_id', userId)
+      .order('transaction_date', { ascending: false })
+      .limit(500),
   ]);
 
   const connections = connectionsRes.data || [];
-  const accounts = accountsRes.data || [];
-  const transactions = txRes.data || [];
+  const plaidAccounts = accountsRes.data || [];
+  const plaidTransactions = txRes.data || [];
 
-  const pulse = buildHealthPulse({ accounts, transactions });
+  // Deduplicate Stripe balance snapshots: keep latest per connection_id
+  const stripeBalanceMap = new Map();
+  for (const snap of (stripeBalancesRes.data || [])) {
+    if (!stripeBalanceMap.has(snap.connection_id)) {
+      stripeBalanceMap.set(snap.connection_id, snap);
+    }
+  }
+
+  // Convert Stripe balances to the same shape as Plaid accounts for pulse calculation
+  const stripeAccountsForPulse = [...stripeBalanceMap.values()].map(snap => ({
+    current_balance: snap.current_balance,
+    available_balance: snap.available_balance,
+  }));
+
+  // Convert Stripe normalized transactions to the shape pulse expects
+  // Stripe normalized_transactions stores amount as positive + direction (inflow/outflow)
+  // Plaid convention: negative = income, positive = expense
+  const stripeTxForPulse = (stripeTxRes.data || []).map(tx => ({
+    transaction_date: tx.transaction_date,
+    pending: tx.status === 'pending',
+    amount: tx.direction === 'inflow' ? -toNumber(tx.amount) : toNumber(tx.amount),
+    name: tx.description,
+    merchant_name: tx.merchant_name,
+    category: tx.category,
+  }));
+
+  // Merge both sources
+  const allAccounts = [...plaidAccounts, ...stripeAccountsForPulse];
+  const allTransactions = [...plaidTransactions, ...stripeTxForPulse];
+
+  const pulse = buildHealthPulse({ accounts: allAccounts, transactions: allTransactions });
   return {
     configured: plaidConfigured,
     connected: connections.some((c) => c.status === 'connected'),
     connections,
-    accounts,
-    transactions,
+    accounts: allAccounts,
+    transactions: allTransactions,
     pulse,
   };
 }
