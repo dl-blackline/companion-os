@@ -70,7 +70,7 @@ CREATE INDEX idx_decoded_bills_document ON decoded_bills(document_id);
 
 CREATE TRIGGER set_decoded_bills_updated_at
   BEFORE UPDATE ON decoded_bills
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- ─── User Vehicles ──────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ CREATE INDEX idx_user_vehicles_active ON user_vehicles(user_id, status) WHERE st
 
 CREATE TRIGGER set_user_vehicles_updated_at
   BEFORE UPDATE ON user_vehicles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- ─── Financial Scorecard Snapshots ──────────────────────────────────────────
