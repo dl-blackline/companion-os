@@ -36,11 +36,11 @@ export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps)
     sessionStorage.removeItem('stripe_fc_session_id');
 
     (async () => {
-      try {
-        await completeSession(sessionId);
+      const success = await completeSession(sessionId);
+      if (success) {
         setStatus('success');
         setMessage('Your bank account has been linked successfully.');
-      } catch {
+      } else {
         setStatus('error');
         setMessage('Something went wrong completing the link. You can try again from the finance section.');
       }

@@ -79,7 +79,7 @@ export function useStripeFinancialConnections() {
   }, [authedFetch]);
 
   const completeSession = useCallback(
-    async (sessionId: string) => {
+    async (sessionId: string): Promise<boolean> => {
       setError(null);
       try {
         await authedFetch(FC_URL, {
@@ -87,8 +87,10 @@ export function useStripeFinancialConnections() {
           body: JSON.stringify({ action: 'complete_session', sessionId }),
         });
         await refresh();
+        return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to complete session.');
+        return false;
       }
     },
     [authedFetch, refresh],

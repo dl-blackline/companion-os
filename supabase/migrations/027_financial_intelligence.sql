@@ -17,6 +17,7 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "financial_documents_insert" ON storage.objects;
 CREATE POLICY "financial_documents_insert"
   ON storage.objects
   FOR INSERT
@@ -26,6 +27,7 @@ CREATE POLICY "financial_documents_insert"
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
+DROP POLICY IF EXISTS "financial_documents_select_own" ON storage.objects;
 CREATE POLICY "financial_documents_select_own"
   ON storage.objects
   FOR SELECT
@@ -35,6 +37,7 @@ CREATE POLICY "financial_documents_select_own"
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
+DROP POLICY IF EXISTS "financial_documents_delete_own" ON storage.objects;
 CREATE POLICY "financial_documents_delete_own"
   ON storage.objects
   FOR DELETE
@@ -81,6 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_financial_documents_user_id_uploaded_at
 
 ALTER TABLE financial_documents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_documents_self" ON financial_documents;
 CREATE POLICY "financial_documents_self"
   ON financial_documents
   FOR ALL
@@ -122,6 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_financial_document_extractions_user_doc
 
 ALTER TABLE financial_document_extractions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_document_extractions_self" ON financial_document_extractions;
 CREATE POLICY "financial_document_extractions_self"
   ON financial_document_extractions
   FOR ALL
@@ -169,6 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_financial_obligations_user_status
 
 ALTER TABLE financial_obligations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_obligations_self" ON financial_obligations;
 CREATE POLICY "financial_obligations_self"
   ON financial_obligations
   FOR ALL
@@ -198,6 +204,7 @@ CREATE INDEX IF NOT EXISTS idx_financial_savings_goals_user
 
 ALTER TABLE financial_savings_goals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_savings_goals_self" ON financial_savings_goals;
 CREATE POLICY "financial_savings_goals_self"
   ON financial_savings_goals
   FOR ALL
@@ -225,6 +232,7 @@ CREATE INDEX IF NOT EXISTS idx_financial_calendar_events_user_date
 
 ALTER TABLE financial_calendar_events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_calendar_events_self" ON financial_calendar_events;
 CREATE POLICY "financial_calendar_events_self"
   ON financial_calendar_events
   FOR ALL
@@ -254,6 +262,7 @@ CREATE INDEX IF NOT EXISTS idx_financial_insights_user_generated
 
 ALTER TABLE financial_insights ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_insights_self" ON financial_insights;
 CREATE POLICY "financial_insights_self"
   ON financial_insights
   FOR ALL
@@ -274,6 +283,7 @@ CREATE TABLE IF NOT EXISTS financial_preferences (
 
 ALTER TABLE financial_preferences ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "financial_preferences_self" ON financial_preferences;
 CREATE POLICY "financial_preferences_self"
   ON financial_preferences
   FOR ALL

@@ -177,10 +177,9 @@ export function useTransactionFeed() {
   );
 
   useEffect(() => {
-    void loadTransactions(filters);
+    void loadTransactions({});
     void loadCategories();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [loadTransactions, loadCategories]);
 
   return {
     transactions,

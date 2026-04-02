@@ -18,6 +18,7 @@ import { ok, fail, preflight } from '../../lib/_responses.js';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_FC_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
 const STRIPE_TIMESTAMP_TOLERANCE_S = 300;
+const PG_UNIQUE_VIOLATION = '23505';
 
 function requireStripe() {
   if (!STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY is not configured.');
@@ -28,12 +29,17 @@ function requireStripe() {
 
 function parseStripeSignature(signatureHeader) {
   const segments = String(signatureHeader || '').split(',').map((s) => s.trim());
-  const parts = {};
+  let timestamp = null;
+  const v1Signatures = [];
   for (const segment of segments) {
-    const [key, value] = segment.split('=');
-    parts[key] = value;
+    const eqIdx = segment.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = segment.slice(0, eqIdx);
+    const value = segment.slice(eqIdx + 1);
+    if (key === 't') timestamp = value;
+    if (key === 'v1') v1Signatures.push(value);
   }
-  return { timestamp: parts.t, signature: parts.v1 };
+  return { timestamp, v1Signatures };
 }
 
 function verifyWebhookSignature(rawBody, signatureHeader) {
@@ -41,24 +47,35 @@ function verifyWebhookSignature(rawBody, signatureHeader) {
     throw new Error('STRIPE_WEBHOOK_SECRET (or STRIPE_FC_WEBHOOK_SECRET) is not configured.');
   }
 
-  const { timestamp, signature } = parseStripeSignature(signatureHeader);
-  if (!timestamp || !signature) throw new Error('Missing Stripe signature metadata.');
+  const { timestamp, v1Signatures } = parseStripeSignature(signatureHeader);
+  if (!timestamp || v1Signatures.length === 0) throw new Error('Missing Stripe signature metadata.');
 
   const webhookAgeSeconds = Math.floor(Date.now() / 1000) - Number(timestamp);
-  if (webhookAgeSeconds > STRIPE_TIMESTAMP_TOLERANCE_S) {
-    throw new Error(`Stripe webhook timestamp too old (${webhookAgeSeconds}s).`);
+  if (Math.abs(webhookAgeSeconds) > STRIPE_TIMESTAMP_TOLERANCE_S) {
+    throw new Error(`Stripe webhook timestamp outside tolerance (${webhookAgeSeconds}s).`);
   }
 
   const signedPayload = `${timestamp}.${rawBody}`;
-  const expected = crypto
+  const expectedHex = crypto
     .createHmac('sha256', STRIPE_WEBHOOK_SECRET)
     .update(signedPayload, 'utf8')
     .digest('hex');
 
-  const expectedBuf = Buffer.from(expected, 'utf8');
-  const providedBuf = Buffer.from(signature, 'utf8');
+  const expectedBuf = Buffer.from(expectedHex, 'hex');
 
-  if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+  const matched = v1Signatures.some((sig) => {
+    try {
+      const providedBuf = Buffer.from(sig, 'hex');
+      return (
+        expectedBuf.length === providedBuf.length &&
+        crypto.timingSafeEqual(expectedBuf, providedBuf)
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  if (!matched) {
     throw new Error('Invalid Stripe webhook signature.');
   }
 }
@@ -75,11 +92,17 @@ async function isEventProcessed(eventId) {
 }
 
 async function markEventProcessed(eventId, eventType, summary = {}) {
-  await supabase.from('webhook_events_processed').insert({
-    event_id: eventId,
-    event_type: eventType,
-    payload_summary: summary,
-  });
+  const { error } = await supabase.from('webhook_events_processed').upsert(
+    {
+      event_id: eventId,
+      event_type: eventType,
+      payload_summary: summary,
+    },
+    { onConflict: 'event_id' },
+  );
+  if (error && error.code !== PG_UNIQUE_VIOLATION) {
+    throw error;
+  }
 }
 
 /* ── Helpers ── */
@@ -293,7 +316,9 @@ export async function handler(event) {
   if (event.httpMethod !== 'POST') return fail('Method not allowed', 'ERR_METHOD', 405);
   if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
 
-  const rawBody = event.body || '';
+  const rawBody = event.isBase64Encoded
+    ? Buffer.from(event.body || '', 'base64').toString('utf8')
+    : (event.body || '');
   const signature = event.headers?.['stripe-signature'] || event.headers?.['Stripe-Signature'];
 
   try {

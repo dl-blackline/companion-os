@@ -48,7 +48,7 @@ function SectionFallback() {
 function sectionFromPathname(pathname: string): NavSection {
   if (pathname === '/control-center') return 'control-center';
   if (pathname === '/careers') return 'careers';
-  if (pathname.startsWith('/finance/stripe/return')) return 'stripe-return' as NavSection;
+  if (pathname.startsWith('/finance/stripe/return')) return 'stripe-return';
   if (pathname === '/finance') return 'finance';
   if (pathname === '/automotive-finance') return 'automotive-finance';
   return 'home';
@@ -59,6 +59,7 @@ function pathnameFromSection(section: NavSection): string {
   if (section === 'careers') return '/careers';
   if (section === 'finance') return '/finance';
   if (section === 'automotive-finance') return '/automotive-finance';
+  if (section === 'stripe-return') return '/finance/stripe/return';
   return '/';
 }
 

@@ -34,7 +34,11 @@ export function useFinancialScorecard() {
   }, [getAccessToken]);
 
   const refresh = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setDashboard(EMPTY);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);

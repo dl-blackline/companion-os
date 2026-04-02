@@ -52,7 +52,7 @@ const SYSTEM_CATEGORIES = [
 async function handleGetTransactions(userId, queryParams) {
   let query = supabase
     .from('normalized_transactions')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('user_id', userId)
     .order('transaction_date', { ascending: false });
 
@@ -123,15 +123,7 @@ async function handleGetTransactions(userId, queryParams) {
     return fail(`Query failed: ${error.message}`, 'ERR_DB', 500);
   }
 
-  // Get total count for pagination
-  let total = count;
-  if (total == null) {
-    const { count: fullCount } = await supabase
-      .from('normalized_transactions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-    total = fullCount || 0;
-  }
+  const total = count ?? 0;
 
   return ok({
     transactions: data || [],
