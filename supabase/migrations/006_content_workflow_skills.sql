@@ -82,6 +82,10 @@ create table if not exists autonomous_agents (
   updated_at timestamp with time zone default now()
 );
 
+-- Backward-compatibility for pre-existing tables that may miss newer columns.
+alter table if exists autonomous_agents
+  add column if not exists agent_type text;
+
 create index if not exists autonomous_agents_type_idx
   on autonomous_agents (agent_type);
 

@@ -28,6 +28,11 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ─── RLS policies for media_uploads bucket ───────────────────────────────────
 
+DROP POLICY IF EXISTS "media_uploads_insert" ON storage.objects;
+DROP POLICY IF EXISTS "media_uploads_select_own" ON storage.objects;
+DROP POLICY IF EXISTS "media_uploads_public_read" ON storage.objects;
+DROP POLICY IF EXISTS "media_uploads_delete_own" ON storage.objects;
+
 -- Allow authenticated users to upload files under their own user-id prefix.
 CREATE POLICY "media_uploads_insert"
   ON storage.objects

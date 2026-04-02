@@ -10,7 +10,7 @@
   # secrecy).  Exclude them from the secrets scanner so the build passes.
   # Also omit SUPABASE_ANON_KEY because some deployments provide both
   # SUPABASE_ANON_KEY and VITE_SUPABASE_ANON_KEY with the same public value.
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_SUPABASE_ANON_KEY,SUPABASE_ANON_KEY"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_SUPABASE_ANON_KEY,SUPABASE_ANON_KEY,VITE_STRIPE_PUBLISHABLE_KEY"
 
 [functions]
   directory = "netlify/functions"

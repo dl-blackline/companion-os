@@ -28,6 +28,9 @@ CREATE INDEX IF NOT EXISTS idx_ai_settings_user_id ON ai_settings(user_id);
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_settings_self" ON user_settings;
+DROP POLICY IF EXISTS "ai_settings_self" ON ai_settings;
+
 CREATE POLICY "user_settings_self" ON user_settings
   FOR ALL USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
@@ -36,10 +39,12 @@ CREATE POLICY "ai_settings_self" ON ai_settings
   FOR ALL USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+DROP TRIGGER IF EXISTS trg_user_settings_updated_at ON user_settings;
 CREATE TRIGGER trg_user_settings_updated_at
   BEFORE UPDATE ON user_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS trg_ai_settings_updated_at ON ai_settings;
 CREATE TRIGGER trg_ai_settings_updated_at
   BEFORE UPDATE ON ai_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

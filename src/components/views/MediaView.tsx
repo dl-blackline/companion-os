@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CompanionOrb } from '@/components/CompanionOrb';
+import { CompanionStatusIcon } from '@/components/CompanionStatusIcon';
 import { toast } from 'sonner';
 import { ArrowClockwise } from '@phosphor-icons/react/ArrowClockwise';
 import { ArrowCounterClockwise } from '@phosphor-icons/react/ArrowCounterClockwise';
@@ -150,11 +150,7 @@ function GenerationCard({
         >
           {item.status === 'generating' && (
             <div className="flex flex-col items-center gap-3">
-              <CompanionOrb
-                state={item.type === 'video' ? 'generating-video' : 'generating-image'}
-                size="sm"
-                showRipples={false}
-              />
+              <CompanionStatusIcon state={item.type === 'video' ? 'generating-video' : 'generating-image'} size="sm" />
               <span className="text-xs text-muted-foreground animate-pulse">
                 {item.type === 'video' ? 'Rendering video…' : 'Generating image…'}
               </span>
@@ -737,12 +733,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
                   animate={{ opacity: 1, y: 0 }}
                   className="flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border"
                 >
-                  <CompanionOrb
-                    state={companionState}
-                    size="sm"
-                    showRipples={false}
-                    className="shrink-0"
-                  />
+                  <CompanionStatusIcon state={companionState} size="sm" className="shrink-0" />
                   <div>
                     <p className="text-xs font-semibold">
                       {activeTab === 'photo' ? 'Generating image…' : 'Rendering video…'}
