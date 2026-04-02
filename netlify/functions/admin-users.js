@@ -5,6 +5,7 @@
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
 import { log } from "../../lib/_log.js";
+import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 function getCurrentUsageWindowStart() {
   const now = new Date();
@@ -18,12 +19,19 @@ async function resolveActor(supabase, token) {
 }
 
 async function isAdmin(supabase, userId) {
+  // Check user_roles table
   const { data } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .maybeSingle();
   return data?.role === "admin";
+}
+
+/** Checks both the super-admin allowlist (by user object) and the DB role. */
+async function isAdminOrSuperAdmin(supabase, user) {
+  if (isSuperAdminUser(user)) return true;
+  return isAdmin(supabase, user.id);
 }
 
 async function auditLog(supabase, actorId, actorEmail, action, targetType, targetId, details) {
@@ -50,7 +58,7 @@ export async function handler(event) {
   const actor = await resolveActor(supabase, token);
   if (!actor) return fail("Unauthorized", "ERR_AUTH", 401);
 
-  const actorIsAdmin = await isAdmin(supabase, actor.id);
+  const actorIsAdmin = await isAdminOrSuperAdmin(supabase, actor);
   if (!actorIsAdmin) return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
   const path = event.path.replace(/.*\/admin-users/, "");

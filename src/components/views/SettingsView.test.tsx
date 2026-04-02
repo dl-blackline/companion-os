@@ -35,7 +35,7 @@ vi.mock('@/context/auth-context', () => ({
 vi.mock('@/context/settings-context', () => ({
   useSettings: () => ({
     settings: {
-      aiName: 'Companion OS',
+      aiName: 'Vuk OS',
       defaultMode: 'neutral',
       memorySettings: { autoCapture: true, requireApproval: false, summarization: true },
       modelSettings: {

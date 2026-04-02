@@ -3,6 +3,7 @@
  */
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
@@ -17,8 +18,8 @@ export async function handler(event) {
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
 
-  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
-  if (roleData?.role !== "admin") return fail("Admin access required", "ERR_FORBIDDEN", 403);
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
+  if (roleData?.role !== "admin" && !isSuperAdminUser(user)) return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
   try {
     const params = event.queryStringParameters || {};

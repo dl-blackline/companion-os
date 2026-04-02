@@ -30,7 +30,7 @@ import { supabase } from '@/lib/supabase-client';
 
 // ── Default CompanionSettings ────────────────────────────────────────────────
 export const DEFAULT_SETTINGS: CompanionSettings = {
-  aiName: 'Companion OS',
+  aiName: 'Vuk OS',
   defaultMode: 'neutral',
   memorySettings: {
     autoCapture: true,

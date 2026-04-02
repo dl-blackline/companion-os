@@ -481,6 +481,14 @@ export function FinanceView() {
             <Lightbulb size={14} />
             Refresh Insights
           </Button>
+          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
+            <Lightbulb size={14} />
+            Refresh Insights
+          </Button>
+          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
+            <Lightbulb size={14} />
+            Refresh Insights
+          </Button>
         </div>
       </div>
 
@@ -1120,7 +1128,7 @@ export function FinanceView() {
             <div>
               <p className="text-sm font-semibold">Bill Decoder</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Upload a financial document, then decode it. Companion will extract structured bill data with per-field confidence.
+                Upload a financial document, then decode it. Vuk will extract structured bill data with per-field confidence.
                 You review, edit, and confirm before data enters the finance ecosystem.
               </p>
             </div>
@@ -1763,7 +1771,7 @@ export function FinanceView() {
       {activeTab === 'documents' && (
         <Card className="p-5 space-y-4">
           <p className="text-sm font-semibold">Financial Document Ingestion</p>
-          <p className="text-xs text-muted-foreground">Upload source documents. Companion preserves source traceability and structures obligations with confidence scoring.</p>
+          <p className="text-xs text-muted-foreground">Upload source documents. The system preserves source traceability and structures obligations with confidence scoring.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="text-sm text-muted-foreground">
               Document type
@@ -1981,7 +1989,7 @@ export function FinanceView() {
       )}
 
       <Card className="p-5">
-        <p className="text-sm font-semibold mb-1">Companion Analysis</p>
+        <p className="text-sm font-semibold mb-1">Vuk Intelligence</p>
         <p className="text-sm text-muted-foreground">{pulse.narrative}</p>
       </Card>
 

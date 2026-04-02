@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react"
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase, supabaseConfigured } from "@/lib/supabase-client"
+import { isSuperAdmin } from "@/lib/super-admin"
 import type { UserRole, EntitlementPlan, AuthState } from "@/types"
 
 interface AuthContextType {
@@ -59,40 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sessionRef.current?.access_token ?? null
   }, [])
 
-  /** Ensures the access token is fresh.  If the cached token expires within
-   *  60 seconds, it calls `getSession()` / `refreshSession()` so the caller
-   *  always gets a usable token.  Use for critical backend calls that happen
-   *  after page redirects (e.g. Stripe return). */
-  const getFreshAccessToken = useCallback(async (): Promise<string | null> => {
-    // Fast path — cached token still has > 60 s of life
-    const cached = sessionRef.current
-    if (cached?.access_token && cached.expires_at) {
-      const now = Math.floor(Date.now() / 1000)
-      if (cached.expires_at - now > 60) return cached.access_token
+  const fetchRoleAndPlan = async (userId: string, email?: string) => {
+    // Super-admin override: skip database and force highest privileges
+    if (isSuperAdmin(email)) {
+      setRole('admin')
+      setPlan('admin_override')
+      return
     }
 
-    // Slow path — force session refresh from Supabase
-    const { data: { session: restored } } = await supabase.auth.getSession()
-    if (restored) {
-      // Check if the restored session is still expired / about to expire
-      const now = Math.floor(Date.now() / 1000)
-      if (restored.expires_at && restored.expires_at - now < 60) {
-        const { data: { session: refreshed } } = await supabase.auth.refreshSession()
-        if (refreshed) {
-          setSession(refreshed)
-          setUser(refreshed.user)
-          return refreshed.access_token
-        }
-        return null
-      }
-      setSession(restored)
-      setUser(restored.user)
-      return restored.access_token
-    }
-    return null
-  }, [])
-
-  const fetchRoleAndPlan = async (userId: string) => {
     if (!supabaseConfigured) return
     try {
       const [{ data: roleData }, { data: planData }] = await Promise.all([
@@ -106,15 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const scheduleRoleAndPlanLoad = useCallback((userId: string) => {
+  const scheduleRoleAndPlanLoad = useCallback((userId: string, email?: string) => {
     pendingRoleLoadCleanupRef.current?.()
     pendingRoleLoadCleanupRef.current = scheduleIdleTask(() => {
-      fetchRoleAndPlan(userId)
+      fetchRoleAndPlan(userId, email)
     })
   }, [])
 
   const refreshRole = async () => {
-    if (user) await fetchRoleAndPlan(user.id)
+    if (user) await fetchRoleAndPlan(user.id, user.email ?? undefined)
   }
 
   useEffect(() => {
@@ -126,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(restored?.user ?? null)
       if (restored?.user) {
         setAuthState({ status: 'authenticated', userId: restored.user.id, email: restored.user.email ?? '' })
-        scheduleRoleAndPlanLoad(restored.user.id)
+        scheduleRoleAndPlanLoad(restored.user.id, restored.user.email ?? undefined)
       } else {
         pendingRoleLoadCleanupRef.current?.()
         setAuthState({ status: 'unauthenticated' })
@@ -139,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updated?.user ?? null)
       if (updated?.user) {
         setAuthState({ status: 'authenticated', userId: updated.user.id, email: updated.user.email ?? '' })
-        scheduleRoleAndPlanLoad(updated.user.id)
+        scheduleRoleAndPlanLoad(updated.user.id, updated.user.email ?? undefined)
       } else {
         pendingRoleLoadCleanupRef.current?.()
         setRole('user')

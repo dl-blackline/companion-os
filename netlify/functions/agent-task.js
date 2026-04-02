@@ -89,7 +89,7 @@ export const handler = async (event) => {
     }
 
     try {
-      const quota = await ensureFeatureWithinQuota(actor.id, "agent_task");
+      const quota = await ensureFeatureWithinQuota(actor.id, "agent_task", actor.email);
       if (!quota.allowed) {
         return fail(quota.message, "ERR_PLAN_LIMIT", 402);
       }

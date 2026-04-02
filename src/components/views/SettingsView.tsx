@@ -449,7 +449,7 @@ export function SettingsView() {
             <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           </div>
           <p className="text-muted-foreground max-w-3xl">
-            Configure your companion's behavior, model controls, and privacy preferences.
+            Configure your system's behavior, model controls, and privacy preferences.
           </p>
         </motion.div>
 
@@ -546,7 +546,7 @@ export function SettingsView() {
                         savePrefs({ bio });
                       }
                     }}
-                    placeholder="Tell your companion a bit about you…"
+                    placeholder="Tell your AI a bit about you…"
                     className="min-h-[80px] resize-none"
                   />
                 </div>
@@ -753,9 +753,9 @@ export function SettingsView() {
             >
               <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">General</h3>
-                <p className="text-sm text-muted-foreground mb-4">Set your companion's identity and default behavior.</p>
+                <p className="text-sm text-muted-foreground mb-4">Set your AI's identity and default behavior.</p>
                 <Separator />
-                <SettingRow icon={Robot} label="AI Name" description="The display name for your AI companion.">
+                <SettingRow icon={Robot} label="AI Name" description="The display name for your AI assistant.">
                   <Input value={settings.aiName} onChange={(e) => update({ aiName: e.target.value })} className="w-48" />
                 </SettingRow>
                 <Separator />
@@ -776,9 +776,9 @@ export function SettingsView() {
                   <h3 className="font-semibold">Personality &amp; Style</h3>
                   <SavingIndicator saving={prefsSaving} />
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">Shape how your companion communicates and responds.</p>
+                <p className="text-sm text-muted-foreground mb-4">Shape how your AI communicates and responds.</p>
                 <Separator />
-                <SettingRow label="Personality Style" description="Overall character of your companion.">
+                <SettingRow label="Personality Style" description="Overall character of your AI.">
                   <Select value={prefs.ai_personality} onValueChange={(value) => savePrefs({ ai_personality: value as typeof prefs.ai_personality })}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -791,7 +791,7 @@ export function SettingsView() {
                   </Select>
                 </SettingRow>
                 <Separator />
-                <SettingRow label="Tone" description="How formal or casual the companion sounds.">
+                <SettingRow label="Tone" description="How formal or casual the AI sounds.">
                   <Select value={prefs.ai_tone} onValueChange={(value) => savePrefs({ ai_tone: value as typeof prefs.ai_tone })}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -802,7 +802,7 @@ export function SettingsView() {
                   </Select>
                 </SettingRow>
                 <Separator />
-                <SettingRow label="Response Length" description="How long the companion's replies tend to be.">
+                <SettingRow label="Response Length" description="How long the AI's replies tend to be.">
                   <Select value={prefs.response_length} onValueChange={(value) => savePrefs({ response_length: value as typeof prefs.response_length })}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -813,7 +813,7 @@ export function SettingsView() {
                   </Select>
                 </SettingRow>
                 <Separator />
-                <SettingRow label="Memory Depth" description="How far back the companion draws from memory.">
+                <SettingRow label="Memory Depth" description="How far back the AI draws from memory.">
                   <Select value={prefs.memory_depth} onValueChange={(value) => savePrefs({ memory_depth: value as typeof prefs.memory_depth })}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -843,7 +843,7 @@ export function SettingsView() {
                 <Separator />
                 <SliderSetting
                   label="Empathy"
-                  description="Higher values make the companion more emotionally attuned."
+                  description="Higher values make the AI more emotionally attuned."
                   value={Math.round(prefs.empathy_level * 100)}
                   min={0} max={100} step={5}
                   format={(v) => `${v}%`}
@@ -871,7 +871,7 @@ export function SettingsView() {
             >
               <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Model Selection</h3>
-                <p className="text-sm text-muted-foreground mb-4">Choose which models power your companion.</p>
+                <p className="text-sm text-muted-foreground mb-4">Choose which models power your AI.</p>
                 <Separator />
                 <SettingRow label="Chat Model" description="Primary model used for all conversations.">
                   <Select
@@ -1031,7 +1031,7 @@ export function SettingsView() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
               <Card className="settings-surface p-6">
                 <h3 className="font-semibold mb-1">Memory Settings</h3>
-                <p className="text-sm text-muted-foreground mb-4">Control how your companion captures and manages memories.</p>
+                <p className="text-sm text-muted-foreground mb-4">Control how your AI captures and manages memories.</p>
                 <Separator />
                 <SettingRow icon={Brain} label="Auto-Capture Memories" description="Automatically save important context from conversations.">
                   <Switch checked={settings.memorySettings.autoCapture} onCheckedChange={(checked) => updateMemory({ autoCapture: checked })} />

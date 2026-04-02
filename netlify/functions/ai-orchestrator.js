@@ -143,7 +143,7 @@ async function handleChat(data) {
         recentHistory = await resolveHistory(conversation_id);
 
         const visionSystemPrompt =
-          "You are an intelligent AI companion with the ability to analyze images and videos. " +
+          "You are an intelligent AI assistant with the ability to analyze images and videos. " +
           "Provide detailed, insightful analysis that connects to the ongoing conversation. " +
           "Your observations help you better understand the user — treat each piece of media " +
           "as an opportunity to learn and grow from what you see.";
@@ -314,7 +314,7 @@ async function handleChat(data) {
     try {
       const aiResponse = await orchestrateSimple({
         prompt: {
-          system: "You are a helpful, mature AI companion. Respond naturally and warmly.",
+          system: "You are a helpful, mature AI assistant. Respond naturally and warmly.",
           user: message,
         },
         model,
@@ -387,7 +387,7 @@ async function handleMedia(data) {
     return fail("Unauthorized", "ERR_AUTH", 401);
   }
 
-  const quota = await ensureFeatureWithinQuota(data.user_id, "media_generation");
+  const quota = await ensureFeatureWithinQuota(data.user_id, "media_generation", data.user_email);
   if (!quota.allowed) {
     return fail(quota.message, "ERR_PLAN_LIMIT", 402);
   }
@@ -591,7 +591,7 @@ async function handleLiveTalk(data) {
     message,
     conversation_history = [],
     mode = "neutral",
-    ai_name = "Companion",
+    ai_name = "Vuk",
     roleplay_context,
     intent_override,
     task_type,
@@ -958,6 +958,9 @@ export async function handler(event) {
           if (authUser?.id) {
             payload.user_id = authUser.id;
           }
+          if (authUser?.email) {
+            payload.user_email = authUser.email;
+          }
           if (!payload.user_id) {
             return fail("Unauthorized", "ERR_AUTH", 401);
           }
@@ -970,6 +973,9 @@ export async function handler(event) {
           if (authUser?.id) {
             payload.user_id = authUser.id;
           }
+          if (authUser?.email) {
+            payload.user_email = authUser.email;
+          }
           if (!payload.user_id) {
             return fail("Unauthorized", "ERR_AUTH", 401);
           }
@@ -980,6 +986,9 @@ export async function handler(event) {
         if (payload && typeof payload === "object") {
           if (authUser?.id) {
             payload.user_id = authUser.id;
+          }
+          if (authUser?.email) {
+            payload.user_email = authUser.email;
           }
           if (!payload.user_id) {
             return fail("Unauthorized", "ERR_AUTH", 401);

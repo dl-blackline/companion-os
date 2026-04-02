@@ -15,6 +15,7 @@ import { Robot } from '@phosphor-icons/react/Robot';
 import { Sliders } from '@phosphor-icons/react/Sliders';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAIControl } from '@/context/ai-control-context';
+import { useAccentLighting, ACCENT_THEMES, type AccentThemeId } from '@/context/accent-lighting-context';
 import { getCachedModels, preloadModels } from '@/utils/model-cache';
 
 const TONE_OPTIONS = [
@@ -45,6 +46,8 @@ export function ControlCenterView() {
     reloadConfig,
     orchestratorConfig,
   } = useAIControl();
+
+  const { activeThemeId, setAccentTheme } = useAccentLighting();
 
   const [modelOptions, setModelOptions] = useState<{ id: string; name: string }[]>(
     () => (getCachedModels()?.chat ?? []).map((m: { id: string; name: string }) => ({ id: m.id, name: m.name }))
@@ -117,7 +120,7 @@ export function ControlCenterView() {
 
       <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.07 }}>
       <Card className="settings-surface p-6 border-border/75">
-          <SectionHeader title="Behavior / Tone" subtitle="Control how the companion responds." />
+          <SectionHeader title="Behavior / Tone" subtitle="Control how the AI responds." />
         <Select
           value={config.tone}
           onValueChange={(value) => setConfig({ tone: value as typeof config.tone })}
@@ -216,6 +219,43 @@ export function ControlCenterView() {
               className="w-40"
             />
           </div>
+        </div>
+      </Card>
+      </motion.div>
+
+      {/* Accent Lighting */}
+      <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.12 }}>
+      <Card className="settings-surface p-6 border-border/75">
+        <SectionHeader title="Accent Lighting" subtitle="Choose the accent color that defines your Vuk OS environment." />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {ACCENT_THEMES.map((preset) => {
+            const isSelected = preset.id === activeThemeId;
+            const previewColor = `oklch(${preset.lightness} ${preset.chroma} ${preset.hue})`;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setAccentTheme(preset.id as AccentThemeId)}
+                className="relative group rounded-xl border p-3 text-left transition-all"
+                style={{
+                  borderColor: isSelected ? previewColor : 'var(--border)',
+                  background: isSelected ? `oklch(${preset.lightness} ${preset.chroma * 0.15} ${preset.hue} / 0.12)` : 'transparent',
+                  boxShadow: isSelected ? `0 0 20px oklch(${preset.lightness} ${preset.chroma} ${preset.hue} / 0.25)` : 'none',
+                }}
+              >
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <span
+                    className="h-4 w-4 rounded-full shrink-0 border border-white/20"
+                    style={{ background: previewColor, boxShadow: `0 0 8px ${previewColor}` }}
+                  />
+                  <span className="text-sm font-medium truncate">{preset.label}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  {isSelected ? 'Active' : 'Select'}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </Card>
       </motion.div>
