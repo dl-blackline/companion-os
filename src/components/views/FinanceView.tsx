@@ -191,6 +191,7 @@ export function FinanceView() {
     completeSession,
     refreshAccount,
     disconnectAccount,
+    removeAccount,
   } = useStripeFinancialConnections();
 
   const {
@@ -923,23 +924,36 @@ export function FinanceView() {
                   )}
 
                   <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs flex-1"
-                      onClick={() => refreshAccount(acct.id)}
-                      disabled={acct.status !== 'connected'}
-                    >
-                      Refresh
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-destructive"
-                      onClick={() => { if (confirm('Disconnect this account? You can re-link it later.')) disconnectAccount(acct.id); }}
-                    >
-                      Disconnect
-                    </Button>
+                    {acct.status === 'connected' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs flex-1"
+                          onClick={() => refreshAccount(acct.id)}
+                        >
+                          Refresh
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-destructive"
+                          onClick={() => { if (confirm('Disconnect this account? You can re-link it later.')) disconnectAccount(acct.id); }}
+                        >
+                          Disconnect
+                        </Button>
+                      </>
+                    )}
+                    {acct.status !== 'connected' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-destructive flex-1"
+                        onClick={() => { if (confirm('Remove this account permanently? All associated data will be deleted.')) removeAccount(acct.id); }}
+                      >
+                        Remove
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}
