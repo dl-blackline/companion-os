@@ -199,14 +199,15 @@ async function handleRefreshedBalance(stripeAccount) {
   const balance = stripeAccount.balance;
   if (!balance) return;
 
+  const cashCurrent = balance.cash?.current?.[0] || null;
+  const cashAvailable = balance.cash?.available?.[0] || null;
+
   await supabase.from('account_balance_snapshots').insert({
     user_id: conn.user_id,
     connection_id: conn.id,
-    current_balance: balance.current != null ? balance.current / 100 : null,
-    available_balance: balance.cash?.available?.[0]?.amount != null
-      ? balance.cash.available[0].amount / 100
-      : null,
-    currency: balance.cash?.available?.[0]?.currency || 'usd',
+    current_balance: cashCurrent?.amount != null ? cashCurrent.amount / 100 : null,
+    available_balance: cashAvailable?.amount != null ? cashAvailable.amount / 100 : null,
+    currency: cashCurrent?.currency || cashAvailable?.currency || 'usd',
     as_of: balance.as_of ? new Date(balance.as_of * 1000).toISOString() : new Date().toISOString(),
   });
 
