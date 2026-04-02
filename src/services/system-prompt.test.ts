@@ -17,7 +17,7 @@ describe('buildSystemPrompt — base identity', () => {
     const result = buildSystemPrompt({});
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
-    expect(result).toContain('companion assistant');
+    expect(result).toContain('AI assistant');
   });
 
   it('includes hard boundaries', () => {
@@ -62,16 +62,16 @@ describe('buildSystemPrompt — custom instructions', () => {
 
 // ─── Companion context injection ────────────────────────────────────────────
 
-describe('buildSystemPrompt — companion context', () => {
-  it('injects companion engine context', () => {
+describe('buildSystemPrompt — intelligence context', () => {
+  it('injects intelligence engine context', () => {
     const result = buildSystemPrompt({
       companionContext: 'USER GOALS\nBusiness:\n  - Launch MVP [high]',
     });
-    expect(result).toContain('COMPANION ENGINE — USER MODEL');
+    expect(result).toContain('INTELLIGENCE ENGINE — USER MODEL');
     expect(result).toContain('Launch MVP');
   });
 
-  it('injects content boundaries from companion context', () => {
+  it('injects content boundaries from intelligence context', () => {
     const result = buildSystemPrompt({
       companionContext: 'USER CONTENT BOUNDARIES (MUST RESPECT)\nThe user has set these content boundaries. Always respect them:\n- Avoid violence: Do not include graphic violence in responses',
     });
@@ -79,7 +79,7 @@ describe('buildSystemPrompt — companion context', () => {
     expect(result).toContain('Avoid violence');
   });
 
-  it('injects privacy preferences from companion context', () => {
+  it('injects privacy preferences from intelligence context', () => {
     const result = buildSystemPrompt({
       companionContext: 'USER PRIVACY PREFERENCES\n- Data retention: Minimize stored personal data',
     });

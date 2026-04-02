@@ -15,7 +15,7 @@ import { ok, fail, preflight } from '../../lib/_responses.js';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const RETURN_URL =
   process.env.STRIPE_FINANCIAL_CONNECTIONS_RETURN_URL ||
-  `${process.env.APP_URL || 'https://companionos.netlify.app'}/finance/stripe/return`;
+  `${process.env.APP_URL || 'https://vukos.netlify.app'}/finance/stripe/return`;
 
 function requireStripe() {
   if (!STRIPE_SECRET_KEY) {

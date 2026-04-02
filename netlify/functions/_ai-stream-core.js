@@ -110,7 +110,7 @@ export async function handler(event) {
   // ── Stream tokens through orchestrator ──
   try {
     const prompt = {
-      system: body.system_prompt || "You are a helpful AI companion.",
+      system: body.system_prompt || "You are a helpful AI assistant.",
       user: message,
     };
 

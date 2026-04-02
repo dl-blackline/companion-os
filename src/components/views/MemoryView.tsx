@@ -1017,7 +1017,7 @@ export function MemoryView() {
                 <div className="p-6 max-w-lg">
                   <h2 className="text-lg font-semibold mb-1">Upload Photo or Video</h2>
                   <p className="text-sm text-muted-foreground mb-6">
-                    Your companion will analyze the media and suggest memories to remember.
+                    Vuk will analyze the media and suggest memories to remember.
                   </p>
 
                   {/* Drop zone */}
@@ -1161,7 +1161,7 @@ export function MemoryView() {
               <div>
                 <h2 className="text-lg font-semibold">Memory Review</h2>
                 <p className="text-sm text-muted-foreground">
-                  Your companion found these potential memories. Approve what you want to keep.
+                  Potential memories detected. Approve what you want to keep.
                 </p>
               </div>
               <Badge variant="outline" className="text-sm">

@@ -393,7 +393,7 @@ export function LiveTalkView({
     const modeConfig = getModeConfig('neutral');
     return `${modeConfig.systemPrompt}
 
-You are ${aiName}, an enterprise-grade real-time AI companion with powerful capabilities. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed.
+You are ${aiName}, an enterprise-grade real-time AI operating system with powerful capabilities. Respond naturally, warmly, and conversationally — as if speaking aloud. Keep responses concise (1-3 sentences) unless detail is specifically needed.
 
 You have the following tools available — use them proactively when the user requests:
 - generate_image: Call this whenever the user wants to see, create, draw, or visualize anything.

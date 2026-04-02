@@ -13,7 +13,7 @@ export const PLAN_DESCRIPTORS: Record<EntitlementPlan, PlanDescriptor> = {
   free: {
     id: 'free',
     name: 'Free',
-    tagline: 'Core companion experience',
+    tagline: 'Core Vuk OS experience',
     monthlyPrice: '$0',
     featured: false,
     highlights: [

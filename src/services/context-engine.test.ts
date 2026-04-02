@@ -43,13 +43,13 @@ describe('summarizeContext', () => {
     expect(result).toContain('1 relationship memories');
   });
 
-  it('includes KG and companion engine when available', () => {
+  it('includes KG and intelligence engine when available', () => {
     const result = summarizeContext({
       knowledgeGraphContext: 'entities...',
       companionContext: 'goals...',
     });
     expect(result).toContain('KG available');
-    expect(result).toContain('Companion engine active');
+    expect(result).toContain('Intelligence engine active');
   });
 
   it('includes short-term memory count', () => {
@@ -91,11 +91,11 @@ describe('formatContextBlock', () => {
     expect(result).toContain('Run 5K');
   });
 
-  it('formats companion context section', () => {
+  it('formats intelligence context section', () => {
     const result = formatContextBlock({
       companionContext: 'Active Goals:\n- Build muscle',
     });
-    expect(result).toContain('COMPANION CONTEXT');
+    expect(result).toContain('INTELLIGENCE CONTEXT');
     expect(result).toContain('Build muscle');
   });
 
@@ -152,6 +152,6 @@ describe('formatContextBlock', () => {
       companionContext: 'Goals active',
     });
     expect(result).not.toContain('USER PROFILE');
-    expect(result).toContain('COMPANION CONTEXT');
+    expect(result).toContain('INTELLIGENCE CONTEXT');
   });
 });

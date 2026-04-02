@@ -1,6 +1,6 @@
-# Companion OS
+# Vuk OS
 
-Production-ready AI companion platform built with React + Vite, Netlify Functions, and Supabase.
+Production-ready AI operating platform built with React + Vite, Netlify Functions, and Supabase.
 
 ## Architecture
 - Frontend: Vite + React + TypeScript in src/
