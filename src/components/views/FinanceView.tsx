@@ -55,17 +55,6 @@ function estimateMonthly(amount: number, frequency: string): number {
   }
 }
 
-function loadPlaidScript() {
-  if (document.querySelector('script[data-plaid-link]')) {
-    return;
-  }
-  const script = document.createElement('script');
-  script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
-  script.async = true;
-  script.dataset.plaidLink = 'true';
-  document.body.appendChild(script);
-}
-
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
@@ -134,8 +123,6 @@ export function FinanceView() {
     syncing,
     error,
     sync,
-    createLinkToken,
-    exchangePublicToken,
   } = useFinancialHealth();
 
   const {
@@ -217,10 +204,6 @@ export function FinanceView() {
   const [txFilterDirection, setTxFilterDirection] = useState<'' | 'inflow' | 'outflow'>('');
   const [txFilterAccount, setTxFilterAccount] = useState('');
 
-  useEffect(() => {
-    loadPlaidScript();
-  }, []);
-
   const handleStripeConnect = useCallback(async () => {
     try {
       const sessionPayload = await createSession();
@@ -271,41 +254,6 @@ export function FinanceView() {
       toast.error(err instanceof Error ? err.message : 'Unable to start Stripe account linking.');
     }
   }, [createSession, completeSession, txRefresh]);
-
-  const handleConnect = useCallback(async () => {
-    try {
-      const tokenResult = await createLinkToken();
-      if (!tokenResult.configured) {
-        toast.info(tokenResult.message || 'Plaid is not configured yet.');
-        return;
-      }
-
-      if (!tokenResult.linkToken) {
-        toast.error('Missing Plaid link token.');
-        return;
-      }
-
-      if (!window.Plaid) {
-        toast.error('Plaid Link failed to load. Please refresh and try again.');
-        return;
-      }
-
-      const handler = window.Plaid.create({
-        token: tokenResult.linkToken,
-        onSuccess: async (publicToken) => {
-          await exchangePublicToken(publicToken);
-          toast.success('Bank account connected.');
-        },
-        onExit: () => {
-          // User exited Link flow.
-        },
-      });
-
-      handler.open();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Unable to start account linking.');
-    }
-  }, [createLinkToken, exchangePublicToken]);
 
   const handleDocumentUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -473,10 +421,6 @@ export function FinanceView() {
           <Button onClick={handleStripeConnect} disabled={stripeConnecting || loading} className="gap-2">
             <CreditCard size={15} />
             {stripeConnecting ? 'Connecting...' : 'Link Bank Account'}
-          </Button>
-          <Button variant="outline" onClick={handleConnect} disabled={syncing || loading} className="gap-2">
-            <Bank size={15} />
-            Plaid Link
           </Button>
           <Button variant="outline" onClick={() => void runAnalysis()} disabled={analyzing || analysisLoading} className="gap-2">
             <ChartLineUp size={14} />
