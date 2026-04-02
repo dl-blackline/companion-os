@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinancialHealth } from '@/hooks/use-financial-health';
 import { useFinancialIntelligence } from '@/hooks/use-financial-intelligence';
+import { useLifeOS } from '@/hooks/use-life-os';
 import { toast } from 'sonner';
 import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
 import { Bank } from '@phosphor-icons/react/Bank';
@@ -86,6 +87,21 @@ export function FinanceView() {
     saveCalendarEvent,
     refreshInsights,
   } = useFinancialIntelligence();
+
+  const { dashboard: lifeOsDashboard, dismissSignal: dismissLifeSignal } = useLifeOS();
+  const financialSignals = useMemo(
+    () =>
+      lifeOsDashboard.signals.filter(
+        (s) =>
+          s.source_system === 'finance' ||
+          s.target_system === 'finance' ||
+          s.signal_type.startsWith('savings_pace') ||
+          s.signal_type.startsWith('cash_flow') ||
+          s.signal_type.startsWith('obligation_threatens') ||
+          s.signal_type.startsWith('payment_window'),
+      ),
+    [lifeOsDashboard.signals],
+  );
 
   useEffect(() => {
     loadPlaidScript();
@@ -318,6 +334,31 @@ export function FinanceView() {
         </Card>
       </div>
 
+      {/* Life OS Coordination Signals */}
+      {financialSignals.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground font-semibold">⚡ Life&nbsp;OS&nbsp;Signals</p>
+          {financialSignals.slice(0, 4).map((s) => (
+            <div
+              key={s.id}
+              className={`flex items-start gap-3 p-3 rounded-lg border-l-4 text-sm ${
+                s.severity === 'critical'
+                  ? 'border-red-500 bg-red-50 dark:bg-red-950/30'
+                  : s.severity === 'high'
+                    ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/30'
+                    : 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-medium">{s.title}</p>
+                {s.action_hint && <p className="text-xs text-muted-foreground mt-0.5">{s.action_hint}</p>}
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => dismissLifeSignal(s.id)}>✕</Button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {activeTab === 'dashboard' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -483,16 +524,50 @@ export function FinanceView() {
             ) : (
               sortedGoals.map((goal) => {
                 const progress = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0;
+                const linkedLifeGoal = lifeOsDashboard.goals.find(
+                  (lg) => lg.financial_goal_id === goal.id,
+                );
+                const linkedSg = lifeOsDashboard.savingsGoals.find(
+                  (sg) => sg.id === goal.id,
+                );
                 return (
                   <div key={goal.id} className="rounded-lg border border-border/70 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold">{goal.name}</p>
-                      <Badge variant="secondary" className="capitalize">{goal.priority}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        {linkedLifeGoal && (
+                          <Badge variant="outline" className="text-xs">🔗 Life&nbsp;Goal</Badge>
+                        )}
+                        {linkedSg?.pace_status && (
+                          <Badge
+                            variant="secondary"
+                            className={`capitalize text-xs ${
+                              linkedSg.pace_status === 'on_track' || linkedSg.pace_status === 'ahead'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : linkedSg.pace_status === 'behind'
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : ''
+                            }`}
+                          >
+                            {linkedSg.pace_status.replace(/_/g, ' ')}
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="capitalize">{goal.priority}</Badge>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {currency(goal.current_amount)} / {currency(goal.target_amount)} • {progress.toFixed(0)}%
                     </p>
                     <Progress value={progress} className="mt-2 h-2" />
+                    {linkedLifeGoal && linkedLifeGoal.feasibility_score != null && (
+                      <p className={`text-xs mt-1.5 font-medium ${
+                        linkedLifeGoal.feasibility_score >= 80 ? 'text-emerald-500' :
+                        linkedLifeGoal.feasibility_score >= 60 ? 'text-blue-500' :
+                        linkedLifeGoal.feasibility_score >= 40 ? 'text-yellow-500' : 'text-red-500'
+                      }`}>
+                        Feasibility: {linkedLifeGoal.feasibility_score}/100
+                      </p>
+                    )}
                   </div>
                 );
               })

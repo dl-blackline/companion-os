@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { CompanionStatusIcon } from '@/components/CompanionStatusIcon';
 import type { CompanionState } from '@/types';
+import { useLifeOS } from '@/hooks/use-life-os';
 import { ArrowRight } from '@phosphor-icons/react/ArrowRight';
 import { Brain } from '@phosphor-icons/react/Brain';
 import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
@@ -102,6 +103,12 @@ const statCards = [
 
 export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashboardProps) {
   const reduceMotion = useReducedMotion();
+  const { dashboard: lifeOs } = useLifeOS();
+
+  const activeGoals = lifeOs?.goals?.filter((g) => g.status === 'active') ?? [];
+  const financialGoals = activeGoals.filter((g) => g.is_financial);
+  const urgentSignals = lifeOs?.signals?.filter((s) => s.severity === 'high' || s.severity === 'critical') ?? [];
+  const atRiskGoals = activeGoals.filter((g) => (g.feasibility_score ?? 100) < 50);
 
   return (
     <div className="executive-shell container-scroll">
@@ -136,6 +143,70 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
           );
         })}
       </div>
+
+      {/* Life OS Summary */}
+      {(activeGoals.length > 0 || urgentSignals.length > 0) && (
+        <motion.section
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0.1 : 0.3 }}
+          className="glass-card rounded-2xl p-5 md:p-6 mb-4"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <p className="executive-eyebrow">Life OS</p>
+            <button
+              type="button"
+              onClick={() => onNavigate('goals')}
+              className="text-[11px] uppercase tracking-[0.14em] text-primary hover:text-primary/80"
+            >
+              View All Goals →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-xl bg-black/20 border border-border/40 p-3 text-center">
+              <p className="text-2xl font-semibold">{activeGoals.length}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Active Goals</p>
+            </div>
+            <div className="rounded-xl bg-black/20 border border-border/40 p-3 text-center">
+              <p className="text-2xl font-semibold">{financialGoals.length}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Financial Goals</p>
+            </div>
+            <div className="rounded-xl bg-black/20 border border-border/40 p-3 text-center">
+              <p className={`text-2xl font-semibold ${urgentSignals.length > 0 ? 'text-amber-400' : ''}`}>
+                {urgentSignals.length}
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Urgent Signals</p>
+            </div>
+            <div className="rounded-xl bg-black/20 border border-border/40 p-3 text-center">
+              <p className={`text-2xl font-semibold ${atRiskGoals.length > 0 ? 'text-red-400' : ''}`}>
+                {atRiskGoals.length}
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">At Risk</p>
+            </div>
+          </div>
+
+          {urgentSignals.length > 0 && (
+            <div className="space-y-2">
+              {urgentSignals.slice(0, 3).map((sig) => (
+                <div
+                  key={sig.id}
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    sig.severity === 'critical'
+                      ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                      : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                  }`}
+                >
+                  <span className="font-medium">{sig.title}</span>
+                  {sig.action_hint && (
+                    <span className="text-muted-foreground ml-2">— {sig.action_hint}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-4">
         <motion.section
