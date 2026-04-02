@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react"
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase, supabaseConfigured } from "@/lib/supabase-client"
+import { isSuperAdmin } from "@/lib/super-admin"
 import type { UserRole, EntitlementPlan, AuthState } from "@/types"
 
 interface AuthContextType {
@@ -56,7 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sessionRef.current?.access_token ?? null
   }, [])
 
-  const fetchRoleAndPlan = async (userId: string) => {
+  const fetchRoleAndPlan = async (userId: string, email?: string) => {
+    // Super-admin override: skip database and force highest privileges
+    if (isSuperAdmin(email)) {
+      setRole('admin')
+      setPlan('admin_override')
+      return
+    }
+
     if (!supabaseConfigured) return
     try {
       const [{ data: roleData }, { data: planData }] = await Promise.all([
@@ -70,15 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const scheduleRoleAndPlanLoad = useCallback((userId: string) => {
+  const scheduleRoleAndPlanLoad = useCallback((userId: string, email?: string) => {
     pendingRoleLoadCleanupRef.current?.()
     pendingRoleLoadCleanupRef.current = scheduleIdleTask(() => {
-      fetchRoleAndPlan(userId)
+      fetchRoleAndPlan(userId, email)
     })
   }, [])
 
   const refreshRole = async () => {
-    if (user) await fetchRoleAndPlan(user.id)
+    if (user) await fetchRoleAndPlan(user.id, user.email ?? undefined)
   }
 
   useEffect(() => {
@@ -90,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(restored?.user ?? null)
       if (restored?.user) {
         setAuthState({ status: 'authenticated', userId: restored.user.id, email: restored.user.email ?? '' })
-        scheduleRoleAndPlanLoad(restored.user.id)
+        scheduleRoleAndPlanLoad(restored.user.id, restored.user.email ?? undefined)
       } else {
         pendingRoleLoadCleanupRef.current?.()
         setAuthState({ status: 'unauthenticated' })
@@ -103,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updated?.user ?? null)
       if (updated?.user) {
         setAuthState({ status: 'authenticated', userId: updated.user.id, email: updated.user.email ?? '' })
-        scheduleRoleAndPlanLoad(updated.user.id)
+        scheduleRoleAndPlanLoad(updated.user.id, updated.user.email ?? undefined)
       } else {
         pendingRoleLoadCleanupRef.current?.()
         setRole('user')

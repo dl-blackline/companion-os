@@ -5,6 +5,7 @@
  */
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 async function resolveUser(supabase, token) {
   if (!token) return null;
@@ -17,6 +18,11 @@ async function isAdmin(supabase, userId) {
   return data?.role === "admin";
 }
 
+async function isAdminOrSuperAdmin(supabase, user) {
+  if (isSuperAdminUser(user)) return true;
+  return isAdmin(supabase, user.id);
+}
+
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return preflight();
 
@@ -26,7 +32,7 @@ export async function handler(event) {
   const token = authHeader?.replace("Bearer ", "");
   const user = await resolveUser(supabase, token);
 
-  const userIsAdmin = user ? await isAdmin(supabase, user.id) : false;
+  const userIsAdmin = user ? await isAdminOrSuperAdmin(supabase, user) : false;
 
   try {
     if (event.httpMethod === "GET") {

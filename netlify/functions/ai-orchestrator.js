@@ -387,7 +387,7 @@ async function handleMedia(data) {
     return fail("Unauthorized", "ERR_AUTH", 401);
   }
 
-  const quota = await ensureFeatureWithinQuota(data.user_id, "media_generation");
+  const quota = await ensureFeatureWithinQuota(data.user_id, "media_generation", data.user_email);
   if (!quota.allowed) {
     return fail(quota.message, "ERR_PLAN_LIMIT", 402);
   }
@@ -958,6 +958,9 @@ export async function handler(event) {
           if (authUser?.id) {
             payload.user_id = authUser.id;
           }
+          if (authUser?.email) {
+            payload.user_email = authUser.email;
+          }
           if (!payload.user_id) {
             return fail("Unauthorized", "ERR_AUTH", 401);
           }
@@ -970,6 +973,9 @@ export async function handler(event) {
           if (authUser?.id) {
             payload.user_id = authUser.id;
           }
+          if (authUser?.email) {
+            payload.user_email = authUser.email;
+          }
           if (!payload.user_id) {
             return fail("Unauthorized", "ERR_AUTH", 401);
           }
@@ -980,6 +986,9 @@ export async function handler(event) {
         if (payload && typeof payload === "object") {
           if (authUser?.id) {
             payload.user_id = authUser.id;
+          }
+          if (authUser?.email) {
+            payload.user_email = authUser.email;
           }
           if (!payload.user_id) {
             return fail("Unauthorized", "ERR_AUTH", 401);
