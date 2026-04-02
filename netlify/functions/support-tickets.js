@@ -5,6 +5,7 @@
  */
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 async function getUser(supabase, token) {
   if (!token) return null;
@@ -25,7 +26,7 @@ export async function handler(event) {
   const user = await getUser(supabase, token);
   if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
 
-  const userIsAdmin = await checkAdmin(supabase, user.id);
+  const userIsAdmin = isSuperAdminUser(user) || await checkAdmin(supabase, user.id);
   const path = event.path.replace(/.*\/support-tickets/, "");
 
   try {

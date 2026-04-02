@@ -1,5 +1,20 @@
 import { supabase } from '../../lib/_supabase.js';
 import { fail, ok, preflight } from '../../lib/_responses.js';
+import { canTransition } from '../../lib/automotive/state-machine.js';
+
+const DEAL_TYPES = new Set(['retail', 'lease', 'balloon', 'business', 'commercial']);
+const REVIEW_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);
+const INTEGRATION_DIRECTIONS = new Set(['inbound', 'outbound']);
+const SUPPORTED_ACTIONS = new Set([
+  'create_deal',
+  'set_deal_status',
+  'upsert_structure',
+  'upsert_product',
+  'add_review_flag',
+  'upsert_presentation',
+  'capture_acknowledgment',
+  'log_integration_event',
+]);
 
 function getAuthToken(event) {
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
@@ -21,6 +36,18 @@ function stringOrNull(value) {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+async function getDealForUser(userId, dealId) {
+  const { data, error } = await supabase
+    .from('automotive_deals')
+    .select('id, status')
+    .eq('id', dealId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw new Error('Failed to validate deal context.');
+  return data || null;
 }
 
 async function createTimelineEvent(userId, dealId, eventType, payload = {}) {
@@ -75,14 +102,15 @@ async function loadDashboard(userId) {
       .limit(40),
     supabase
       .from('automotive_deal_metrics')
-      .select('deal_id, payment_estimate, structure_pressure_score, approval_readiness_score, summary, calculated_at'),
+      .select('deal_id, payment_estimate, structure_pressure_score, approval_readiness_score, summary, calculated_at')
+      .eq('user_id', userId),
     supabase
       .from('automotive_vehicles')
       .select('deal_id, vehicle_role, year, make, model')
       .eq('user_id', userId),
     supabase
       .from('automotive_lenders')
-      .select('id, lender_name')
+      .select('id, name')
       .eq('user_id', userId),
     supabase
       .from('automotive_callbacks')
@@ -91,15 +119,15 @@ async function loadDashboard(userId) {
       .order('created_at', { ascending: false }),
     supabase
       .from('automotive_cit_cases')
-      .select('deal_id, current_status, updated_at')
+      .select('deal_id, status, updated_at')
       .eq('user_id', userId),
     supabase
       .from('automotive_customer_issues')
-      .select('deal_id, current_status, updated_at')
+      .select('deal_id, status, updated_at')
       .eq('user_id', userId),
     supabase
       .from('automotive_cancellation_cases')
-      .select('deal_id, current_status, requested_at')
+      .select('deal_id, status, requested_at')
       .eq('user_id', userId),
     supabase
       .from('automotive_commission_records')
@@ -107,7 +135,7 @@ async function loadDashboard(userId) {
       .eq('user_id', userId),
     supabase
       .from('automotive_documents')
-      .select('id, deal_id, document_type, filename, document_status, confidence_score, reviewed_at, created_at')
+      .select('id, deal_id, document_type, filename, review_status, extraction_confidence, reviewed_at, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(40),
@@ -128,7 +156,7 @@ async function loadDashboard(userId) {
   const documents = documentsRes.data || [];
 
   const metricsByDealId = new Map(metrics.map((row) => [row.deal_id, row]));
-  const lenderNameById = new Map(lenders.map((row) => [row.id, row.lender_name]));
+  const lenderNameById = new Map(lenders.map((row) => [row.id, row.name || null]));
   const presentationByDealId = new Map(presentations.map((row) => [row.deal_id, row]));
 
   const vehiclesByDealId = new Map();
@@ -187,9 +215,9 @@ async function loadDashboard(userId) {
     const latestCallback = callbackRows[0] || null;
     const issueRows = issuesByDealId.get(deal.id) || [];
     const citRows = citByDealId.get(deal.id) || [];
-    const openCit = citRows.some((cit) => !['resolved', 'unfunded', 'archived'].includes(cit.current_status));
+    const openCit = citRows.some((cit) => !['resolved', 'unfunded', 'archived'].includes(cit.status));
     const docsForDeal = docsByDealId.get(deal.id) || [];
-    const hasWeakDocs = docsForDeal.some((doc) => ['uploaded', 'needs_review', 'rejected'].includes(doc.document_status));
+    const hasWeakDocs = docsForDeal.some((doc) => ['uploaded', 'needs_attention', 'rejected'].includes(doc.review_status));
     const latestPresentation = presentationByDealId.get(deal.id);
     const activityCandidates = [deal.updated_at, metric?.calculated_at, latestCallback?.created_at, latestPresentation?.updated_at]
       .filter(Boolean)
@@ -203,7 +231,7 @@ async function loadDashboard(userId) {
       callback_status: latestCallback?.status || null,
       callback_count: callbackRows.length,
       open_flag_count: flagsByDealId.get(deal.id) || 0,
-      issue_count: issueRows.filter((issue) => !['resolved', 'closed'].includes(issue.current_status)).length,
+      issue_count: issueRows.filter((issue) => !['resolved', 'closed'].includes(issue.status)).length,
       has_open_cit: openCit,
       menu_status: latestPresentation?.status || 'not_started',
       structure_pressure_score: metric?.structure_pressure_score ?? null,
@@ -222,8 +250,8 @@ async function loadDashboard(userId) {
     dealsNeedingDocs: enrichedDeals.filter((deal) => ['docs_pending', 'docs_under_review', 'document_review'].includes(deal.status)).length,
     callbacksWaiting: callbacks.filter((callback) => ['received', 'needs_review'].includes(callback.status)).length,
     bookedNotFunded: enrichedDeals.filter((deal) => ['booked', 'submitted'].includes(deal.status)).length,
-    cancellationRequests: cancellations.filter((row) => !['refunded', 'closed'].includes(row.current_status)).length,
-    customerIssues: issues.filter((row) => !['resolved', 'closed'].includes(row.current_status)).length,
+    cancellationRequests: cancellations.filter((row) => !['refunded', 'closed'].includes(row.status)).length,
+    customerIssues: issues.filter((row) => !['resolved', 'closed'].includes(row.status)).length,
     commissionsPending: commissions.filter((row) => row.status === 'pending').length,
   };
 
@@ -239,10 +267,14 @@ async function loadDashboard(userId) {
 
 async function createDeal(userId, body) {
   const dealName = stringOrNull(body.dealName);
-  const dealType = stringOrNull(body.dealType) || 'retail';
+  const requestedDealType = stringOrNull(body.dealType) || 'retail';
+  const dealType = DEAL_TYPES.has(requestedDealType) ? requestedDealType : null;
 
   if (!dealName) {
     return fail('dealName is required.', 'ERR_VALIDATION', 400);
+  }
+  if (!dealType) {
+    return fail('dealType is invalid.', 'ERR_VALIDATION', 400);
   }
 
   const { data: created, error } = await supabase
@@ -277,15 +309,24 @@ async function createDeal(userId, body) {
 
 async function setDealStatus(userId, body) {
   const dealId = stringOrNull(body.dealId);
-  const status = stringOrNull(body.status);
+  const nextStatus = stringOrNull(body.status);
 
-  if (!dealId || !status) {
+  if (!dealId || !nextStatus) {
     return fail('dealId and status are required.', 'ERR_VALIDATION', 400);
+  }
+
+  const deal = await getDealForUser(userId, dealId);
+  if (!deal) {
+    return fail('Deal not found.', 'ERR_NOT_FOUND', 404);
+  }
+
+  if (deal.status !== nextStatus && !canTransition('deal', deal.status, nextStatus)) {
+    return fail(`Cannot transition deal from ${deal.status} to ${nextStatus}.`, 'ERR_STATE', 422);
   }
 
   const { data: updated, error } = await supabase
     .from('automotive_deals')
-    .update({ status })
+    .update({ status: nextStatus, stage_entered_at: new Date().toISOString() })
     .eq('id', dealId)
     .eq('user_id', userId)
     .select('id, status')
@@ -304,6 +345,15 @@ async function upsertStructure(userId, body) {
   const dealId = stringOrNull(body.dealId);
   if (!dealId) {
     return fail('dealId is required.', 'ERR_VALIDATION', 400);
+  }
+
+  const deal = await getDealForUser(userId, dealId);
+  if (!deal) {
+    return fail('Deal not found.', 'ERR_NOT_FOUND', 404);
+  }
+
+  if (body.termMonths !== undefined && toNumber(body.termMonths) <= 0) {
+    return fail('termMonths must be greater than zero.', 'ERR_VALIDATION', 400);
   }
 
   const payload = {
@@ -365,6 +415,14 @@ async function upsertProduct(userId, body) {
     return fail('name and category are required.', 'ERR_VALIDATION', 400);
   }
 
+  if (name.length > 120 || category.length > 80) {
+    return fail('name or category exceeds allowed length.', 'ERR_VALIDATION', 400);
+  }
+
+  if (toNumber(body.sellPrice) < 0 || toNumber(body.cost) < 0) {
+    return fail('cost and sellPrice must be non-negative.', 'ERR_VALIDATION', 400);
+  }
+
   const payload = {
     id: stringOrNull(body.id) || undefined,
     user_id: userId,
@@ -397,6 +455,15 @@ async function addReviewFlag(userId, body) {
     return fail('dealId, category, and message are required.', 'ERR_VALIDATION', 400);
   }
 
+  if (!REVIEW_SEVERITIES.has(severity)) {
+    return fail('severity is invalid.', 'ERR_VALIDATION', 400);
+  }
+
+  const deal = await getDealForUser(userId, dealId);
+  if (!deal) {
+    return fail('Deal not found.', 'ERR_NOT_FOUND', 404);
+  }
+
   const { error } = await supabase
     .from('automotive_review_flags')
     .insert({
@@ -425,6 +492,15 @@ async function upsertPresentation(userId, body) {
     return fail('dealId and title are required.', 'ERR_VALIDATION', 400);
   }
 
+  const deal = await getDealForUser(userId, dealId);
+  if (!deal) {
+    return fail('Deal not found.', 'ERR_NOT_FOUND', 404);
+  }
+
+  if (title.length > 140) {
+    return fail('title exceeds maximum length.', 'ERR_VALIDATION', 400);
+  }
+
   const { error } = await supabase
     .from('automotive_menu_presentations')
     .upsert({
@@ -440,11 +516,13 @@ async function upsertPresentation(userId, body) {
     return fail('Failed to save menu presentation.', 'ERR_DB', 500);
   }
 
-  await supabase
-    .from('automotive_deals')
-    .update({ status: 'presented' })
-    .eq('id', dealId)
-    .eq('user_id', userId);
+  if (deal.status !== 'presented' && canTransition('deal', deal.status, 'presented')) {
+    await supabase
+      .from('automotive_deals')
+      .update({ status: 'presented', stage_entered_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('user_id', userId);
+  }
 
   await createTimelineEvent(userId, dealId, 'menu_presented', { title });
 
@@ -459,6 +537,25 @@ async function captureAcknowledgment(userId, body, event) {
 
   if (!dealId || !presentationId || !customerName || !typedSignature) {
     return fail('dealId, presentationId, customerName, and typedSignature are required.', 'ERR_VALIDATION', 400);
+  }
+
+  if (typedSignature.length < 2 || customerName.length < 2) {
+    return fail('customerName and typedSignature must be at least 2 characters.', 'ERR_VALIDATION', 400);
+  }
+
+  const { data: presentation, error: presentationError } = await supabase
+    .from('automotive_menu_presentations')
+    .select('id, deal_id')
+    .eq('id', presentationId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (presentationError) {
+    return fail('Failed to validate presentation.', 'ERR_DB', 500);
+  }
+
+  if (!presentation || presentation.deal_id !== dealId) {
+    return fail('Presentation not found for deal.', 'ERR_NOT_FOUND', 404);
   }
 
   const ipAddress = event.headers?.['x-forwarded-for'] || event.headers?.['client-ip'] || null;
@@ -487,6 +584,15 @@ async function captureAcknowledgment(userId, body, event) {
     .eq('id', presentationId)
     .eq('user_id', userId);
 
+  const deal = await getDealForUser(userId, dealId);
+  if (deal && deal.status !== 'presented' && canTransition('deal', deal.status, 'presented')) {
+    await supabase
+      .from('automotive_deals')
+      .update({ status: 'presented', stage_entered_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('user_id', userId);
+  }
+
   await createTimelineEvent(userId, dealId, 'presentation_acknowledged', {
     presentationId,
     customerName,
@@ -499,6 +605,15 @@ async function logIntegrationEvent(userId, body) {
   const dealId = stringOrNull(body.dealId);
   const direction = stringOrNull(body.direction) || 'inbound';
   const sourceSystem = stringOrNull(body.sourceSystem) || 'manual';
+
+  if (!INTEGRATION_DIRECTIONS.has(direction)) {
+    return fail('direction must be inbound or outbound.', 'ERR_VALIDATION', 400);
+  }
+
+  if (dealId) {
+    const deal = await getDealForUser(userId, dealId);
+    if (!deal) return fail('Deal not found.', 'ERR_NOT_FOUND', 404);
+  }
 
   const { error } = await supabase
     .from('automotive_integration_events')
@@ -530,10 +645,11 @@ export async function handler(event) {
   if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
 
   const token = getAuthToken(event);
-  const user = await resolveActor(token);
-  if (!user) return fail('Unauthorized', 'ERR_AUTH', 401);
 
   try {
+    const user = await resolveActor(token);
+    if (!user) return fail('Unauthorized', 'ERR_AUTH', 401);
+
     if (event.httpMethod === 'GET') {
       return ok(await loadDashboard(user.id));
     }
@@ -549,39 +665,44 @@ export async function handler(event) {
       return fail('Invalid JSON body', 'ERR_VALIDATION', 400);
     }
 
-    if (body.action === 'create_deal') {
+    const action = typeof body.action === 'string' ? body.action : '';
+    if (!SUPPORTED_ACTIONS.has(action)) {
+      return fail(`Unknown action: ${action || 'undefined'}`, 'ERR_ACTION', 400);
+    }
+
+    if (action === 'create_deal') {
       return createDeal(user.id, body);
     }
 
-    if (body.action === 'set_deal_status') {
+    if (action === 'set_deal_status') {
       return setDealStatus(user.id, body);
     }
 
-    if (body.action === 'upsert_structure') {
+    if (action === 'upsert_structure') {
       return upsertStructure(user.id, body);
     }
 
-    if (body.action === 'upsert_product') {
+    if (action === 'upsert_product') {
       return upsertProduct(user.id, body);
     }
 
-    if (body.action === 'add_review_flag') {
+    if (action === 'add_review_flag') {
       return addReviewFlag(user.id, body);
     }
 
-    if (body.action === 'upsert_presentation') {
+    if (action === 'upsert_presentation') {
       return upsertPresentation(user.id, body);
     }
 
-    if (body.action === 'capture_acknowledgment') {
+    if (action === 'capture_acknowledgment') {
       return captureAcknowledgment(user.id, body, event);
     }
 
-    if (body.action === 'log_integration_event') {
+    if (action === 'log_integration_event') {
       return logIntegrationEvent(user.id, body);
     }
 
-    return fail('Unknown action.', 'ERR_VALIDATION', 400);
+    return fail(`Unhandled action: ${action}`, 'ERR_ACTION', 400);
   } catch (error) {
     return fail(
       error instanceof Error ? error.message : 'Automotive finance request failed.',

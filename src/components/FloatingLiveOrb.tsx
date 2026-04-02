@@ -90,7 +90,7 @@ export function FloatingLiveOrb() {
   })();
 
   return (
-    <div className="fixed right-4 md:right-6 bottom-5 md:bottom-6 z-9999 flex flex-col items-end gap-2">
+    <div className="fixed right-4 md:right-6 bottom-5 md:bottom-6 z-[9999] flex flex-col items-end gap-2">
       {/* Expansion panel */}
       <AnimatePresence>
         {isPanelOpen && isActive && (

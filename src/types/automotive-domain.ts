@@ -2,19 +2,17 @@
 // Covers all tables added in migration 029.
 
 // ── Lenders ───────────────────────────────────────────────────────────────
-export type LenderType = 'bank' | 'credit_union' | 'captive' | 'bhph' | 'other';
-
 export interface AutomotiveLender {
   id: string;
   user_id: string;
-  lender_name: string;
-  lender_code: string | null;
-  lender_type: LenderType;
+  name: string;
+  short_code: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
   portal_url: string | null;
   notes: string | null;
+  tier_system: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -26,18 +24,23 @@ export interface AutomotiveLenderProgram {
   lender_id: string;
   program_name: string;
   deal_types: string[];
-  min_credit_score: number | null;
+  vehicle_conditions: string[];
+  min_fico: number | null;
   max_ltv_percent: number | null;
+  max_advance_percent: number | null;
+  max_term_months: number | null;
   max_pti_percent: number | null;
   max_dti_percent: number | null;
+  max_backend_amount: number | null;
   max_backend_percent: number | null;
-  max_term_months: number;
-  max_advance_percent: number | null;
+  reserve_flat: number | null;
+  reserve_percent: number | null;
   reserve_cap_percent: number | null;
-  vehicle_age_max_years: number | null;
-  max_mileage: number | null;
-  special_conditions: Record<string, unknown>;
+  stips_required: string[] | null;
+  program_notes: string | null;
   is_active: boolean;
+  effective_date: string | null;
+  expiration_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -45,23 +48,24 @@ export interface AutomotiveLenderProgram {
 export interface AutomotiveLenderGuideline {
   id: string;
   user_id: string;
-  lender_id: string;
+  lender_id: string | null;
   program_id: string | null;
-  document_id: string | null;
+  document_name: string;
+  document_type: 'general' | 'program_sheet' | 'rate_sheet' | 'callback_cheatsheet' | 'underwriting' | 'structure_criteria' | 'special';
+  content_text: string | null;
+  storage_path: string | null;
+  deal_types: string[] | null;
   effective_date: string | null;
   expiration_date: string | null;
-  version_label: string;
-  raw_text: string | null;
-  parsed_criteria: Record<string, unknown>;
-  notes: string | null;
-  is_current: boolean;
+  indexed_at: string | null;
+  source_confirmed: boolean;
   created_at: string;
   updated_at: string;
 }
 
 // ── Vehicles ──────────────────────────────────────────────────────────────
 export type VehicleRole = 'purchase' | 'trade';
-export type VehicleCondition = 'new' | 'used' | 'cpo' | 'as_is';
+export type VehicleCondition = 'new' | 'used' | 'certified';
 
 export interface AutomotiveVehicle {
   id: string;
@@ -94,12 +98,13 @@ export interface AutomotiveVehicle {
 
 // ── Obligations ───────────────────────────────────────────────────────────
 export type ObligationType =
-  | 'auto_loan'
   | 'mortgage'
+  | 'rent'
+  | 'auto_loan'
   | 'student_loan'
   | 'credit_card'
   | 'personal_loan'
-  | 'rent'
+  | 'child_support'
   | 'other';
 
 export interface AutomotiveObligation {
@@ -111,10 +116,10 @@ export interface AutomotiveObligation {
   creditor_name: string | null;
   monthly_payment: number;
   balance_remaining: number | null;
-  account_status: 'current' | 'delinquent' | 'charged_off' | 'collections';
+  account_status: 'current' | 'delinquent' | 'paid_off' | 'collection' | 'unknown';
   is_bureau_verified: boolean;
   is_paying_off: boolean;
-  source: 'manual' | 'credit_bureau' | 'integration';
+  source: 'manual' | 'bureau' | 'document';
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -135,12 +140,14 @@ export interface AutomotiveCallback {
   user_id: string;
   deal_id: string;
   lender_id: string | null;
-  raw_callback_text: string;
-  lender_name: string | null;
+  received_at: string;
+  raw_input: string;
+  normalized_data: Record<string, unknown>;
   callback_rep: string | null;
   lender_notes: string | null;
-  ai_raw_response: string | null;
-  parse_error: string | null;
+  interpreter_output: Record<string, unknown>;
+  resolution_notes: string | null;
+  resolved_at: string | null;
   status: CallbackStatus;
   created_at: string;
   updated_at: string;
@@ -153,18 +160,26 @@ export interface AutomotiveCallbackOption {
   user_id: string;
   deal_id: string;
   callback_id: string;
-  option_index: number;
-  tier_label: string | null;
-  approved_amount: number | null;
-  approved_term: number | null;
-  apr_offered: number | null;
-  conditions: string | null;
-  stips_list: string[];
-  is_counter_offer: boolean;
+  option_number: number;
+  label: string | null;
+  term_months: number | null;
+  rate_percent: number | null;
+  advance_percent: number | null;
+  max_amount_financed: number | null;
+  required_cash_down: number | null;
+  max_backend_amount: number | null;
+  max_backend_percent: number | null;
+  stips_required: unknown[];
+  pti_cap_percent: number | null;
+  dti_cap_percent: number | null;
+  customer_restrictions: Record<string, unknown>;
   estimated_payment: number | null;
   estimated_ltv: number | null;
-  ai_confidence: number;
+  plain_english_explanation: string | null;
+  comparison_notes: string | null;
+  is_recommended: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 // ── CIT Cases ─────────────────────────────────────────────────────────────
@@ -182,16 +197,15 @@ export interface AutomotiveCitCase {
   id: string;
   user_id: string;
   deal_id: string;
-  case_title: string;
-  opened_reason: string | null;
-  stips_required: string[];
-  stips_received: string[];
-  current_status: CitStatus;
-  assigned_to: string | null;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  days_open: number; // Computed column from DB
+  status: CitStatus;
   opened_at: string;
+  target_resolution_date: string | null;
   resolved_at: string | null;
+  funded_amount: number | null;
+  outstanding_stips: unknown[];
+  lender_contact: string | null;
+  escalation_reason: string | null;
+  days_open: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -212,15 +226,16 @@ export interface AutomotiveCancellationCase {
   user_id: string;
   deal_id: string;
   product_id: string | null;
-  cancellation_reason: string | null;
-  requested_by: 'customer' | 'dealer' | 'lender' | 'system';
+  status: CancellationStatus;
+  cancellation_reason: string;
+  cancellation_date: string | null;
   requested_at: string;
   submitted_at: string | null;
-  refunded_at: string | null;
-  estimated_refund: number | null;
-  actual_refund_amount: number | null;
+  confirmed_at: string | null;
+  refund_amount: number | null;
   chargeback_amount: number | null;
-  current_status: CancellationStatus;
+  chargeback_notes: string | null;
+  provider_confirmation: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -242,14 +257,13 @@ export interface AutomotiveCustomerIssue {
   user_id: string;
   deal_id: string;
   issue_type: string;
-  issue_description: string | null;
-  reported_by: 'customer' | 'dealer' | 'lender' | 'system';
-  current_status: IssueStatus;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  assigned_to: string | null;
-  resolution_note: string | null;
+  status: IssueStatus;
+  description: string;
+  reported_at: string;
+  target_resolution_date: string | null;
+  resolution_notes: string | null;
+  escalated_to: string | null;
   resolved_at: string | null;
-  notes: string | null;
   created_at: string;
   updated_at: string;
 }
