@@ -3,6 +3,7 @@
  */
 import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
+import { isSuperAdminUser } from '../../lib/_super-admin.js';
 
 async function resolveActor(token) {
   if (!token) return null;
@@ -13,6 +14,11 @@ async function resolveActor(token) {
 async function isAdmin(userId) {
   const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single();
   return data?.role === 'admin';
+}
+
+async function isAdminOrSuperAdmin(user) {
+  if (isSuperAdminUser(user)) return true;
+  return isAdmin(user.id);
 }
 
 export async function handler(event) {
@@ -27,7 +33,7 @@ export async function handler(event) {
   const actor = await resolveActor(token);
   if (!actor) return fail('Unauthorized', 'ERR_AUTH', 401);
 
-  const actorIsAdmin = await isAdmin(actor.id);
+  const actorIsAdmin = await isAdminOrSuperAdmin(actor);
   if (!actorIsAdmin) return fail('Admin access required', 'ERR_FORBIDDEN', 403);
 
   try {
