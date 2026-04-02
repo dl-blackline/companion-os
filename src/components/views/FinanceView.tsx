@@ -251,8 +251,11 @@ export function FinanceView() {
       }
 
       // Accounts linked successfully
-      await completeSession(sessionPayload.sessionId);
-      toast.success('Bank account linked via Stripe.');
+      const success = await completeSession(sessionPayload.sessionId);
+      if (success) {
+        toast.success('Bank account linked via Stripe. Syncing data…');
+        setActiveTab('accounts');
+      }
       void txRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to start Stripe account linking.');

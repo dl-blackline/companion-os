@@ -173,17 +173,23 @@ async function persistTransactions(userId, connectionId, stripeAccountId, instit
 async function handleCreateSession(user) {
   const stripe = requireStripe();
 
+  const permissions = ['balances', 'transactions', 'ownership'];
+  const prefetch = ['balances', 'transactions'];
+  console.log(`[stripe-fc] create_session: user=${user.id}, permissions=${permissions.join(',')}, prefetch=${prefetch.join(',')}`);
+
   const session = await stripe.financialConnections.sessions.create({
     account_holder: {
       type: 'customer',
       customer: await getOrCreateStripeCustomer(stripe, user),
     },
-    permissions: ['balances', 'transactions', 'ownership'],
-    prefetch: ['balances', 'transactions'],
+    permissions,
+    prefetch,
     filters: {
       account_subcategories: ['checking', 'savings', 'credit_card'],
     },
   });
+
+  console.log(`[stripe-fc] Session created: ${session.id}`);
 
   return ok({
     clientSecret: session.client_secret,
@@ -220,6 +226,8 @@ async function handleCompleteSession(user, body) {
   const sessionId = body?.sessionId;
   if (!sessionId) return fail('Missing sessionId', 'ERR_VALIDATION', 400);
 
+  console.log(`[stripe-fc] complete_session: user=${user.id}, sessionId=${sessionId}`);
+
   let session;
   try {
     session = await stripe.financialConnections.sessions.retrieve(sessionId);
@@ -229,24 +237,50 @@ async function handleCompleteSession(user, body) {
   }
 
   const accounts = session.accounts?.data || [];
+  console.log(`[stripe-fc] Session contains ${accounts.length} account(s)`);
 
   if (accounts.length === 0) {
     return ok({ linked: 0, message: 'No accounts were linked.' });
   }
 
   let linked = 0;
+  let balancesSynced = 0;
+  let transactionsSynced = 0;
   const errors = [];
+  const linkedAccountIds = [];
 
   for (const account of accounts) {
     try {
+      console.log(`[stripe-fc] Persisting account ${account.id} (${account.institution_name || 'unknown'}, ${account.display_name || account.last4 || 'n/a'})`);
       const connectionId = await persistAccount(user.id, account);
 
       // Persist prefetched balance if available
+      let balancePersisted = false;
       if (account.balance) {
         try {
           await persistBalanceSnapshot(user.id, connectionId, account.balance);
+          balancePersisted = true;
+          balancesSynced++;
+          console.log(`[stripe-fc] Prefetched balance persisted for ${account.id}`);
         } catch (err) {
           console.warn(`[stripe-fc] Balance snapshot for ${account.id}:`, err.message);
+        }
+      }
+
+      // If balance was not prefetched, explicitly refresh it from Stripe
+      if (!balancePersisted) {
+        try {
+          console.log(`[stripe-fc] No prefetched balance for ${account.id}, triggering explicit refresh`);
+          const refreshed = await stripe.financialConnections.accounts.refresh(account.id, {
+            features: ['balance'],
+          });
+          if (refreshed.balance) {
+            await persistBalanceSnapshot(user.id, connectionId, refreshed.balance);
+            balancesSynced++;
+            console.log(`[stripe-fc] Explicitly refreshed balance persisted for ${account.id}`);
+          }
+        } catch (err) {
+          console.warn(`[stripe-fc] Explicit balance refresh for ${account.id}:`, err.message);
         }
       }
 
@@ -268,30 +302,40 @@ async function handleCompleteSession(user, body) {
       }
 
       linked++;
+      linkedAccountIds.push(account.id);
     } catch (err) {
       console.error(`[stripe-fc] Failed to persist account ${account.id}:`, err.message);
       errors.push({ accountId: account.id, error: err.message });
     }
   }
 
-  // Fetch initial transactions for successfully linked accounts (non-critical)
-  for (const account of accounts) {
+  console.log(`[stripe-fc] ${linked}/${accounts.length} accounts persisted, ${balancesSynced} balances synced`);
+
+  // Fetch initial transactions only for successfully linked accounts (non-critical)
+  for (const stripeAccountId of linkedAccountIds) {
     try {
-      await fetchAndPersistTransactions(stripe, user.id, account.id);
+      const txCount = await fetchAndPersistTransactions(stripe, user.id, stripeAccountId);
+      transactionsSynced += txCount;
+      console.log(`[stripe-fc] ${txCount} transactions persisted for ${stripeAccountId}`);
     } catch (err) {
-      console.warn(`[stripe-fc] Initial tx fetch for ${account.id}:`, err.message);
+      console.warn(`[stripe-fc] Initial tx fetch for ${stripeAccountId}:`, err.message);
     }
   }
 
+  console.log(`[stripe-fc] complete_session done: linked=${linked}, balances=${balancesSynced}, transactions=${transactionsSynced}, errors=${errors.length}`);
+
   return ok({
     linked,
-    accounts: accounts.map((a) => a.id),
-    syncStatus: 'transactions_syncing',
+    accounts: linkedAccountIds,
+    balancesSynced,
+    transactionsSynced,
+    syncStatus: transactionsSynced > 0 ? 'complete' : 'transactions_syncing',
     ...(errors.length > 0 ? { partialErrors: errors } : {}),
   });
 }
 
 async function fetchAndPersistTransactions(stripe, userId, stripeAccountId) {
+  console.log(`[stripe-fc] Fetching transactions for stripe account ${stripeAccountId}`);
   // Get connection record
   const { data: conn } = await supabase
     .from('financial_connections')
@@ -315,6 +359,7 @@ async function fetchAndPersistTransactions(stripe, userId, stripeAccountId) {
 
     const txList = await stripe.financialConnections.transactions.list(stripeAccountId, params);
     const txData = txList.data || [];
+    console.log(`[stripe-fc] Fetched ${txData.length} transactions batch (hasMore=${txList.has_more})`);
 
     if (txData.length > 0) {
       const count = await persistTransactions(
@@ -421,6 +466,8 @@ async function handleDisconnectAccount(user, body) {
 }
 
 async function handleGetLinkedAccounts(userId) {
+  console.log(`[stripe-fc] GET linked accounts for user=${userId}`);
+
   const [connectionsRes, balancesRes, txCountRes] = await Promise.all([
     supabase
       .from('financial_connections')
@@ -439,8 +486,14 @@ async function handleGetLinkedAccounts(userId) {
       .eq('user_id', userId),
   ]);
 
+  if (connectionsRes.error) console.error('[stripe-fc] GET connections error:', connectionsRes.error.message);
+  if (balancesRes.error) console.error('[stripe-fc] GET balances error:', balancesRes.error.message);
+  if (txCountRes.error) console.error('[stripe-fc] GET tx count error:', txCountRes.error.message);
+
   const connections = connectionsRes.data || [];
   const balances = balancesRes.data || [];
+
+  console.log(`[stripe-fc] Found ${connections.length} connections, ${balances.length} balance snapshots, ${txCountRes.count ?? 0} transactions`);
 
   // Attach latest balance to each connection
   const enriched = connections.map((conn) => {
