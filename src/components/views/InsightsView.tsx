@@ -249,7 +249,7 @@ export function InsightsView() {
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 {showDismissed
                   ? 'Insights you dismiss will appear here so you can restore them later.'
-                  : 'Insights are generated automatically as you use Companion. They surface reminders, follow-ups, stalled goals, patterns, and opportunities based on your conversations and activity.'}
+                  : 'Insights are generated automatically as you use Vuk OS. They surface reminders, follow-ups, stalled goals, patterns, and opportunities based on your conversations and activity.'}
               </p>
             </div>
           )}

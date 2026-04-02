@@ -268,7 +268,7 @@ async function handleCreateLinkToken(user) {
   const client = getPlaidClient();
   const response = await client.linkTokenCreate({
     user: { client_user_id: user.id },
-    client_name: 'Companion OS',
+    client_name: 'Vuk OS',
     products: [Products.Transactions],
     country_codes: [CountryCode.Us],
     language: 'en',

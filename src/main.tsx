@@ -9,6 +9,7 @@ import { SettingsProvider } from './context/settings-context'
 import { VoiceProvider } from './context/voice-context'
 import { OrbAppearanceProvider } from './context/orb-appearance-context'
 import { AIControlProvider } from './context/ai-control-context'
+import { AccentLightingProvider } from './context/accent-lighting-context'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import "./main.css"
@@ -28,11 +29,13 @@ createRoot(document.getElementById('root')!).render(
       <ProtectedRoute>
         <AIControlProvider>
           <SettingsProvider>
-            <OrbAppearanceProvider>
-              <VoiceProvider>
-                <App />
-              </VoiceProvider>
-            </OrbAppearanceProvider>
+            <AccentLightingProvider>
+              <OrbAppearanceProvider>
+                <VoiceProvider>
+                  <App />
+                </VoiceProvider>
+              </OrbAppearanceProvider>
+            </AccentLightingProvider>
           </SettingsProvider>
         </AIControlProvider>
       </ProtectedRoute>

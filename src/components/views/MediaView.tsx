@@ -114,7 +114,7 @@ function GenerationCard({
     if (!item.resultUrl) return;
     setIsDownloading(true);
     const ext = item.type === 'video' ? 'mp4' : 'png';
-    const filename = `companion-${item.type}-${item.id.slice(0, 8)}.${ext}`;
+    const filename = `vuk-${item.type}-${item.id.slice(0, 8)}.${ext}`;
     try {
       await downloadMedia(item.resultUrl, filename);
       toast.success('Downloaded successfully');
@@ -605,7 +605,7 @@ Describe in 2-3 vivid, evocative sentences what this ${type === 'photo' ? 'photo
           user_id: authUser.id,
           public_url: mediaUrl,
           storage_path: mediaUrl,
-          filename: `companion-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'png' : 'mp4'}`,
+          filename: `vuk-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'png' : 'mp4'}`,
           media_type: mediaType,
           user_title: sourcePrompt,
           source: refinedUrl ? 'refinement' : 'generation',

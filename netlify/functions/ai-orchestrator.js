@@ -143,7 +143,7 @@ async function handleChat(data) {
         recentHistory = await resolveHistory(conversation_id);
 
         const visionSystemPrompt =
-          "You are an intelligent AI companion with the ability to analyze images and videos. " +
+          "You are an intelligent AI assistant with the ability to analyze images and videos. " +
           "Provide detailed, insightful analysis that connects to the ongoing conversation. " +
           "Your observations help you better understand the user — treat each piece of media " +
           "as an opportunity to learn and grow from what you see.";
@@ -314,7 +314,7 @@ async function handleChat(data) {
     try {
       const aiResponse = await orchestrateSimple({
         prompt: {
-          system: "You are a helpful, mature AI companion. Respond naturally and warmly.",
+          system: "You are a helpful, mature AI assistant. Respond naturally and warmly.",
           user: message,
         },
         model,
@@ -591,7 +591,7 @@ async function handleLiveTalk(data) {
     message,
     conversation_history = [],
     mode = "neutral",
-    ai_name = "Companion",
+    ai_name = "Vuk",
     roleplay_context,
     intent_override,
     task_type,

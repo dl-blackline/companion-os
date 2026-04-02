@@ -1560,7 +1560,7 @@ export function AdminConsoleView() {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1">Governance Surface</p>
             <h1 className="text-base font-semibold tracking-tight text-foreground leading-none">Admin Console</h1>
-            <p className="text-xs text-muted-foreground mt-1">Companion OS command center</p>
+            <p className="text-xs text-muted-foreground mt-1">Vuk OS command center</p>
           </div>
         </div>
       </div>
