@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs UI replaced with cockpit nav
 import { useFinancialHealth } from '@/hooks/use-financial-health';
 import { useFinancialIntelligence } from '@/hooks/use-financial-intelligence';
 import { useFinancialAnalysis } from '@/hooks/use-financial-analysis';
@@ -429,171 +429,179 @@ export function FinanceView() {
     return map[f] || f;
   };
 
-  return (
-    <div className="settings-panel p-4 md:p-8 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="executive-eyebrow">Money Intelligence</p>
-          <h1 className="text-3xl font-bold tracking-tight">Financial Intelligence Command</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload statements, structure obligations, plan bills and savings, and run a private executive-grade finance operating layer.
-          </p>
-        </div>
+  // Consolidated errors
+  const allErrors = [error, stripeError, txError, intelligenceError, analysisError, decoderError, scorecardError].filter(Boolean);
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => sync()} disabled={syncing || loading} className="gap-2">
-            <ArrowsClockwise size={14} />
+  // Navigation groups
+  const navGroups = [
+    { label: 'Core', items: [
+      { value: 'dashboard' as FinanceTab, icon: ChartLineUp, label: 'Command Center' },
+      { value: 'accounts' as FinanceTab, icon: CreditCard, label: 'Accounts' },
+      { value: 'transactions' as FinanceTab, icon: ListBullets, label: 'Transactions' },
+      { value: 'ledger' as FinanceTab, icon: Note, label: 'Ledger' },
+    ]},
+    { label: 'Analysis', items: [
+      { value: 'decoder' as FinanceTab, icon: FileArrowUp, label: 'Bill Decoder' },
+      { value: 'scorecard' as FinanceTab, icon: Heartbeat, label: 'Scorecard' },
+      { value: 'income' as FinanceTab, icon: TrendUp, label: 'Income' },
+      { value: 'cashflow' as FinanceTab, icon: Wallet, label: 'Cash Flow' },
+      { value: 'recurring' as FinanceTab, icon: ArrowsClockwise, label: 'Recurring' },
+    ]},
+    { label: 'Planning', items: [
+      { value: 'planner' as FinanceTab, icon: Wallet, label: 'Obligations' },
+      { value: 'goals' as FinanceTab, icon: PiggyBank, label: 'Savings' },
+      { value: 'calendar' as FinanceTab, icon: CalendarBlank, label: 'Calendar' },
+      { value: 'vehicles' as FinanceTab, icon: Bank, label: 'Vehicles' },
+    ]},
+    { label: 'Intelligence', items: [
+      { value: 'documents' as FinanceTab, icon: FileArrowUp, label: 'Documents' },
+      { value: 'insights' as FinanceTab, icon: Lightbulb, label: 'Insights' },
+    ]},
+  ];
+
+  const hasAccounts = linkedAccountsDashboard.aggregates.accountCount > 0;
+
+  return (
+    <div className="settings-panel p-4 md:p-6 max-w-7xl mx-auto space-y-0">
+
+      {/* ═══ COCKPIT HEADER ═══ */}
+      <div className="fi-cockpit-header">
+        <div className="fi-cockpit-identity">
+          <p className="executive-eyebrow">Financial Intelligence</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Command Cockpit</h1>
+        </div>
+        <div className="fi-cockpit-actions">
+          <Button variant="outline" size="sm" onClick={() => sync()} disabled={syncing || loading} className="fi-cockpit-btn gap-1.5">
+            <ArrowsClockwise size={13} className={syncing ? 'animate-spin' : ''} />
             Sync
           </Button>
-          <Button onClick={handleStripeConnect} disabled={stripeConnecting || loading} className="gap-2">
-            <CreditCard size={15} />
-            {stripeConnecting ? 'Connecting...' : 'Link Bank Account'}
+          <Button size="sm" onClick={handleStripeConnect} disabled={stripeConnecting || loading} className="fi-cockpit-btn fi-cockpit-btn-primary gap-1.5">
+            <CreditCard size={13} />
+            {stripeConnecting ? 'Linking…' : 'Link Account'}
           </Button>
-          <Button variant="outline" onClick={() => void runAnalysis()} disabled={analyzing || analysisLoading} className="gap-2">
-            <ChartLineUp size={14} />
-            {analyzing ? 'Analyzing...' : 'Run Analysis'}
+          <Button variant="outline" size="sm" onClick={() => void runAnalysis()} disabled={analyzing || analysisLoading} className="fi-cockpit-btn gap-1.5">
+            <ChartLineUp size={13} />
+            {analyzing ? 'Analyzing…' : 'Analyze'}
           </Button>
-          <Button variant="outline" onClick={() => void computeScorecard()} disabled={computing || scorecardLoading} className="gap-2">
-            <Heartbeat size={14} />
-            {computing ? 'Computing...' : 'Scorecard'}
+          <Button variant="outline" size="sm" onClick={() => void computeScorecard()} disabled={computing || scorecardLoading} className="fi-cockpit-btn gap-1.5">
+            <Heartbeat size={13} />
+            {computing ? 'Scoring…' : 'Score'}
           </Button>
-          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
-            <Lightbulb size={14} />
-            Refresh Insights
+          <Button variant="ghost" size="sm" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="fi-cockpit-btn gap-1.5">
+            <Lightbulb size={13} />
+            Insights
           </Button>
         </div>
       </div>
 
-      {error && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {error}
-        </Card>
-      )}
+      {/* ═══ COCKPIT KPI STRIP ═══ */}
+      <div className="fi-cockpit-kpi-strip">
+        {/* Pulse */}
+        <div className="fi-kpi-cell fi-kpi-pulse">
+          <div className="fi-kpi-label">
+            <Heartbeat size={12} className="text-primary" />
+            Pulse
+          </div>
+          <div className="fi-kpi-value">{pulse.score}</div>
+          <div className="fi-kpi-trend">
+            {pulse.trend === 'improving'
+              ? <TrendUp size={11} className="text-emerald-400" />
+              : <TrendDown size={11} className="text-rose-400" />}
+            <span>{pulse.trend}</span>
+          </div>
+        </div>
 
-      {stripeError && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {stripeError}
-        </Card>
-      )}
-
-      {txError && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {txError}
-        </Card>
-      )}
-
-      {intelligenceError && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {intelligenceError}
-        </Card>
-      )}
-
-      {analysisError && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {analysisError}
-        </Card>
-      )}
-
-      {decoderError && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {decoderError}
-        </Card>
-      )}
-
-      {scorecardError && (
-        <Card className="p-4 border-destructive/50 text-sm text-destructive">
-          {scorecardError}
-        </Card>
-      )}
-
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="dashboard" className="gap-1.5"><ChartLineUp size={14} /> Command Center</TabsTrigger>
-          <TabsTrigger value="accounts" className="gap-1.5"><CreditCard size={14} /> Accounts</TabsTrigger>
-          <TabsTrigger value="transactions" className="gap-1.5"><ListBullets size={14} /> Transactions</TabsTrigger>
-          <TabsTrigger value="ledger" className="gap-1.5"><Note size={14} /> Ledger</TabsTrigger>
-          <TabsTrigger value="decoder" className="gap-1.5"><FileArrowUp size={14} /> Bill Decoder</TabsTrigger>
-          <TabsTrigger value="scorecard" className="gap-1.5"><Heartbeat size={14} /> Scorecard</TabsTrigger>
-          <TabsTrigger value="vehicles" className="gap-1.5"><Bank size={14} /> Vehicles</TabsTrigger>
-          <TabsTrigger value="income" className="gap-1.5"><TrendUp size={14} /> Income</TabsTrigger>
-          <TabsTrigger value="cashflow" className="gap-1.5"><Wallet size={14} /> Cash Flow</TabsTrigger>
-          <TabsTrigger value="recurring" className="gap-1.5"><ArrowsClockwise size={14} /> Recurring</TabsTrigger>
-          <TabsTrigger value="planner" className="gap-1.5"><Wallet size={14} /> Obligations</TabsTrigger>
-          <TabsTrigger value="goals" className="gap-1.5"><PiggyBank size={14} /> Savings</TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-1.5"><CalendarBlank size={14} /> Calendar</TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1.5"><FileArrowUp size={14} /> Documents</TabsTrigger>
-          <TabsTrigger value="insights" className="gap-1.5"><Lightbulb size={14} /> Insights</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* ─── Aggregate Metrics Bar ─── */}
-      {linkedAccountsDashboard.aggregates.accountCount > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Total Balance</p>
-            <p className={`text-2xl font-bold tracking-tight ${linkedAccountsDashboard.aggregates.totalBalance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+        {/* Balance */}
+        {hasAccounts && (
+          <div className="fi-kpi-cell">
+            <div className="fi-kpi-label">Net Balance</div>
+            <div className={`fi-kpi-value ${linkedAccountsDashboard.aggregates.totalBalance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
               {currency(linkedAccountsDashboard.aggregates.totalBalance)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Across {linkedAccountsDashboard.aggregates.accountCount} connected account{linkedAccountsDashboard.aggregates.accountCount !== 1 ? 's' : ''}
-            </p>
-          </Card>
+            </div>
+            <div className="fi-kpi-sub">{linkedAccountsDashboard.aggregates.accountCount} account{linkedAccountsDashboard.aggregates.accountCount !== 1 ? 's' : ''}</div>
+          </div>
+        )}
 
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Cash on Hand</p>
-            <p className="text-2xl font-bold tracking-tight text-blue-300">
-              {currency(linkedAccountsDashboard.aggregates.totalCashOnHand)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">Checking &amp; Savings</p>
-          </Card>
+        {/* Cash on Hand */}
+        {hasAccounts && (
+          <div className="fi-kpi-cell">
+            <div className="fi-kpi-label">Cash on Hand</div>
+            <div className="fi-kpi-value text-blue-300">{currency(linkedAccountsDashboard.aggregates.totalCashOnHand)}</div>
+            <div className="fi-kpi-sub">Checking & Savings</div>
+          </div>
+        )}
 
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Available Credit</p>
-            <p className="text-2xl font-bold tracking-tight text-amber-300">
-              {currency(linkedAccountsDashboard.aggregates.totalAvailableCredit)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">Credit Card Accounts</p>
-          </Card>
+        {/* Available Credit */}
+        {hasAccounts && (
+          <div className="fi-kpi-cell">
+            <div className="fi-kpi-label">Avail. Credit</div>
+            <div className="fi-kpi-value text-amber-300">{currency(linkedAccountsDashboard.aggregates.totalAvailableCredit)}</div>
+            <div className="fi-kpi-sub">Credit Lines</div>
+          </div>
+        )}
+
+        {/* Cash Flow 30d */}
+        <div className="fi-kpi-cell">
+          <div className="fi-kpi-label">Cash Flow 30d</div>
+          <div className={`fi-kpi-value ${pulse.metrics.netCashFlow30d >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+            {currency(pulse.metrics.netCashFlow30d)}
+          </div>
+          <div className="fi-kpi-sub">In {currency(pulse.metrics.income30d)} · Out {currency(pulse.metrics.expenses30d)}</div>
+        </div>
+
+        {/* Runway */}
+        <div className="fi-kpi-cell">
+          <div className="fi-kpi-label">Runway</div>
+          <div className="fi-kpi-value">{pulse.metrics.liquidityDays.toFixed(0)}d</div>
+          <div className="fi-kpi-sub">Liquidity buffer</div>
+        </div>
+
+        {/* Savings Rate */}
+        <div className="fi-kpi-cell">
+          <div className="fi-kpi-label">Savings Rate</div>
+          <div className={`fi-kpi-value ${pulse.metrics.savingsRate >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+            {pulse.metrics.savingsRate.toFixed(1)}%
+          </div>
+          <div className="fi-kpi-sub">Last updated {new Date(pulse.lastEvaluatedAt).toLocaleDateString()}</div>
+        </div>
+      </div>
+
+      {/* ═══ COCKPIT NAV ═══ */}
+      <div className="fi-cockpit-nav">
+        {navGroups.map(group => (
+          <div key={group.label} className="fi-nav-group">
+            <span className="fi-nav-group-label">{group.label}</span>
+            <div className="fi-nav-group-items">
+              {group.items.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.value;
+                return (
+                  <button
+                    key={item.value}
+                    onClick={() => setActiveTab(item.value)}
+                    className={`fi-nav-item ${isActive ? 'fi-nav-item-active' : ''}`}
+                  >
+                    <Icon size={13} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══ ERROR STRIP ═══ */}
+      {allErrors.length > 0 && (
+        <div className="fi-cockpit-errors">
+          {allErrors.map((err, i) => (
+            <p key={i} className="text-xs text-rose-300">{err}</p>
+          ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Pulse Score</span>
-            <Heartbeat size={18} className="text-primary" />
-          </div>
-          <p className="text-4xl font-bold tracking-tight">{pulse.score}</p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            {pulse.trend === 'improving' ? <TrendUp size={13} className="text-emerald-400" /> : <TrendDown size={13} className="text-rose-400" />}
-            {pulse.trend}
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Net Cash Flow (30d)</p>
-          <p className={`text-2xl font-semibold ${pulse.metrics.netCashFlow30d >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-            {currency(pulse.metrics.netCashFlow30d)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Income {currency(pulse.metrics.income30d)} • Expenses {currency(pulse.metrics.expenses30d)}
-          </p>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Liquidity Runway</p>
-          <p className="text-2xl font-semibold">{pulse.metrics.liquidityDays.toFixed(1)} days</p>
-          <p className="text-xs text-muted-foreground mt-2">Total balance: {currency(pulse.metrics.totalBalance)}</p>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Savings Rate</p>
-          <p className={`text-2xl font-semibold ${pulse.metrics.savingsRate >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-            {pulse.metrics.savingsRate.toFixed(1)}%
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">Updated {new Date(pulse.lastEvaluatedAt).toLocaleString()}</p>
-        </Card>
-      </div>
+      {/* ═══ CONTENT AREA ═══ */}
+      <div className="space-y-6 mt-5">
 
       {activeTab === 'dashboard' && (
         <>
@@ -2527,6 +2535,8 @@ export function FinanceView() {
             </div>
           )}
         </Card>
+      </div>
+      {/* end content area */}
       </div>
     </div>
   );
