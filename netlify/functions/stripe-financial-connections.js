@@ -31,7 +31,10 @@ function getAuthToken(event) {
 
 async function resolveActor(token) {
   if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error) {
+    console.warn('[stripe-fc] Auth token validation failed:', error.message);
+  }
   return data?.user || null;
 }
 
@@ -461,8 +464,16 @@ export async function handler(event) {
   if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
 
   const token = getAuthToken(event);
+  if (!token) {
+    console.warn('[stripe-fc] No auth token in request headers');
+    return fail('Unauthorized — no token provided', 'ERR_AUTH', 401);
+  }
+
   const user = await resolveActor(token);
-  if (!user) return fail('Unauthorized', 'ERR_AUTH', 401);
+  if (!user) {
+    console.warn('[stripe-fc] Token present but user resolution failed (expired or invalid)');
+    return fail('Unauthorized — session expired or invalid', 'ERR_AUTH', 401);
+  }
 
   try {
     if (event.httpMethod === 'GET') {

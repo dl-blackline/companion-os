@@ -21,6 +21,9 @@ interface AuthContextType {
    *  the in-memory session cached by onAuthStateChange — avoids an extra
    *  async round-trip and the race-condition with getSession(). */
   getAccessToken: () => string | null
+  /** Returns a fresh access token, refreshing the session if expired.
+   *  Use this for critical auth-gated calls (e.g. after page redirects). */
+  getFreshAccessToken: () => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -54,6 +57,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAccessToken = useCallback((): string | null => {
     return sessionRef.current?.access_token ?? null
+  }, [])
+
+  /** Ensures the access token is fresh.  If the cached token expires within
+   *  60 seconds, it calls `getSession()` / `refreshSession()` so the caller
+   *  always gets a usable token.  Use for critical backend calls that happen
+   *  after page redirects (e.g. Stripe return). */
+  const getFreshAccessToken = useCallback(async (): Promise<string | null> => {
+    // Fast path — cached token still has > 60 s of life
+    const cached = sessionRef.current
+    if (cached?.access_token && cached.expires_at) {
+      const now = Math.floor(Date.now() / 1000)
+      if (cached.expires_at - now > 60) return cached.access_token
+    }
+
+    // Slow path — force session refresh from Supabase
+    const { data: { session: restored } } = await supabase.auth.getSession()
+    if (restored) {
+      // Check if the restored session is still expired / about to expire
+      const now = Math.floor(Date.now() / 1000)
+      if (restored.expires_at && restored.expires_at - now < 60) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+        if (refreshed) {
+          setSession(refreshed)
+          setUser(refreshed.user)
+          return refreshed.access_token
+        }
+        return null
+      }
+      setSession(restored)
+      setUser(restored.user)
+      return restored.access_token
+    }
+    return null
   }, [])
 
   const fetchRoleAndPlan = async (userId: string) => {
@@ -170,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, configured: supabaseConfigured, role, plan, isAdmin, authState, login, signup, logout, resetPassword, refreshRole, getAccessToken }}>
+    <AuthContext.Provider value={{ user, session, loading, configured: supabaseConfigured, role, plan, isAdmin, authState, login, signup, logout, resetPassword, refreshRole, getAccessToken, getFreshAccessToken }}>
       {children}
     </AuthContext.Provider>
   )

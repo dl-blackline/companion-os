@@ -13,7 +13,7 @@ const EMPTY_DASHBOARD: LinkedAccountsDashboard = {
 const FC_URL = '/.netlify/functions/stripe-financial-connections';
 
 export function useStripeFinancialConnections() {
-  const { getAccessToken, user } = useAuth();
+  const { getFreshAccessToken, user } = useAuth();
   const [dashboard, setDashboard] = useState<LinkedAccountsDashboard>(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -21,7 +21,7 @@ export function useStripeFinancialConnections() {
 
   const authedFetch = useCallback(
     async (input: string, init?: RequestInit) => {
-      const token = getAccessToken();
+      const token = await getFreshAccessToken();
       if (!token) throw new Error('You must be signed in.');
 
       const response = await fetch(input, {
@@ -46,7 +46,7 @@ export function useStripeFinancialConnections() {
       }
       return payload.data;
     },
-    [getAccessToken],
+    [getFreshAccessToken],
   );
 
   const refresh = useCallback(async () => {
