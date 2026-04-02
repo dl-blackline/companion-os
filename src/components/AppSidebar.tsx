@@ -43,6 +43,7 @@ export type NavSection =
   | 'careers'
   | 'finance'
   | 'automotive-finance'
+  | 'stripe-return'
   | 'agents'
   | 'control-center'
   | 'settings'

@@ -6,6 +6,14 @@ import {
   aggregateCommissions,
 } from '../../lib/automotive/reporting-engine.js';
 
+const SUPPORTED_ACTIONS = new Set([
+  'get_kpi_snapshot',
+  'get_pipeline_summary',
+  'get_commission_summary',
+  'list_snapshots',
+  'get_snapshot',
+]);
+
 function getAuthToken(event) {
   const h = event.headers?.authorization || event.headers?.Authorization;
   return h?.replace('Bearer ', '') || '';
@@ -50,33 +58,33 @@ async function getKpiSnapshot(userId, body) {
 
     supabase
       .from('automotive_menu_presentations')
-      .select('deal_id, fi_product_id, sell_price, product_cost, was_accepted, presented_at')
+      .select('deal_id, menu_payload, presented_at, status')
       .eq('user_id', userId)
       .gte('presented_at', dateFrom)
       .lte('presented_at', dateTo + 'T23:59:59Z'),
 
     supabase
       .from('automotive_cancellation_cases')
-      .select('id, deal_id, current_status, actual_refund_amount, chargeback_amount, requested_at')
+      .select('id, deal_id, status, refund_amount, chargeback_amount, product_id, requested_at')
       .eq('user_id', userId)
       .gte('requested_at', dateFrom)
       .lte('requested_at', dateTo + 'T23:59:59Z'),
 
     supabase
       .from('automotive_cit_cases')
-      .select('id, deal_id, current_status, days_open, opened_at, resolved_at')
+      .select('id, deal_id, status, days_open, opened_at, resolved_at')
       .eq('user_id', userId),
 
     supabase
       .from('automotive_commission_records')
-      .select('commission_type, commission_amount, chargeback_amount, status, pay_period')
+      .select('commission_type, amount, chargeback_amount, status, paid_at')
       .eq('user_id', userId)
       .gte('created_at', dateFrom)
       .lte('created_at', dateTo + 'T23:59:59Z'),
 
     supabase
       .from('automotive_fi_products')
-      .select('id, product_name, product_category')
+      .select('id, name, category')
       .eq('user_id', userId),
   ]);
 
@@ -89,7 +97,7 @@ async function getKpiSnapshot(userId, body) {
   const products = productsRes.data || [];
 
   // Build product map for enrichment
-  const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
+  const productMap = new Map(products.map((p) => [p.id, { name: p.name, category: p.category }]));
 
   // Fund-only metrics
   const dealIdSet = new Set(deals.map((d) => d.id));
@@ -103,6 +111,8 @@ async function getKpiSnapshot(userId, body) {
     cancellations,
     citCases,
     commissions,
+    periodStart: dateFrom,
+    periodEnd: dateTo,
     productMap,
   });
 
@@ -112,11 +122,27 @@ async function getKpiSnapshot(userId, body) {
       .from('automotive_report_snapshots')
       .insert({
         user_id: userId,
-        snapshot_label: label,
-        period_from: dateFrom,
-        period_to: dateTo,
-        snapshot_data: snapshot,
-        generated_at: new Date().toISOString(),
+        snapshot_date: new Date().toISOString().slice(0, 10),
+        period_type: 'custom',
+        period_start: dateFrom,
+        period_end: dateTo,
+        total_deals: snapshot?.volume?.totalDeals || 0,
+        funded_deals: snapshot?.volume?.fundedDeals || 0,
+        booked_deals: snapshot?.volume?.bookedDeals || 0,
+        cancelled_deals: snapshot?.volume?.cancelledDeals || 0,
+        total_front_gross: snapshot?.gross?.totalFrontGross || 0,
+        total_back_gross: snapshot?.gross?.totalBackGross || 0,
+        total_gross: snapshot?.gross?.totalGross || 0,
+        pvr: snapshot?.pvr || 0,
+        vpi: snapshot?.penetration?.vpi || 0,
+        avg_ltv_percent: snapshot?.averages?.avgLtv || 0,
+        avg_pti_percent: snapshot?.averages?.avgPti || 0,
+        penetration_by_category: snapshot?.penetration?.byCategory || {},
+        cancellation_by_category: snapshot?.cancellations?.byCategory || {},
+        cit_aging_summary: snapshot?.cit || {},
+        pipeline_by_status: snapshot?.pipeline?.byStatus || {},
+        filters_applied: { label },
+        computed_at: new Date().toISOString(),
       });
   }
 
@@ -142,10 +168,13 @@ async function getCommissionSummary(userId, body) {
 
   let query = supabase
     .from('automotive_commission_records')
-    .select('commission_type, commission_amount, chargeback_amount, status, pay_period')
+    .select('commission_type, amount, chargeback_amount, status, paid_at')
     .eq('user_id', userId);
 
-  if (payPeriod) query = query.eq('pay_period', payPeriod);
+  if (payPeriod) {
+    const start = `${payPeriod}-01`;
+    query = query.gte('created_at', start).lt('created_at', `${payPeriod}-32`);
+  }
 
   const { data, error } = await query;
   if (error) return fail('Failed to fetch commissions.', 'ERR_DB', 500);
@@ -157,9 +186,9 @@ async function getCommissionSummary(userId, body) {
 async function listSnapshots(userId) {
   const { data, error } = await supabase
     .from('automotive_report_snapshots')
-    .select('id, snapshot_label, period_from, period_to, generated_at')
+    .select('id, snapshot_date, period_type, period_start, period_end, computed_at')
     .eq('user_id', userId)
-    .order('generated_at', { ascending: false })
+    .order('computed_at', { ascending: false })
     .limit(50);
 
   if (error) return fail('Failed to fetch snapshots.', 'ERR_DB', 500);
@@ -207,7 +236,11 @@ export async function handler(event) {
     return fail('Invalid JSON body', 'ERR_PARSE', 400);
   }
 
-  const action = body.action;
+  const action = typeof body.action === 'string' ? body.action : '';
+  if (!SUPPORTED_ACTIONS.has(action)) {
+    return fail(`Unknown action: ${action || 'undefined'}`, 'ERR_ACTION', 400);
+  }
+
   switch (action) {
     case 'get_kpi_snapshot':       return getKpiSnapshot(userId, body);
     case 'get_pipeline_summary':   return getPipelineSummary(userId);

@@ -2,6 +2,20 @@ import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
 import { canTransition } from '../../lib/automotive/state-machine.js';
 
+const SUPPORTED_ACTIONS = new Set([
+  'open_cit_case',
+  'update_cit_status',
+  'list_cit_cases',
+  'open_cancellation',
+  'update_cancellation_status',
+  'list_cancellations',
+  'open_customer_issue',
+  'update_issue_status',
+  'list_customer_issues',
+  'add_commission',
+  'update_commission',
+]);
+
 function getAuthToken(event) {
   const h = event.headers?.authorization || event.headers?.Authorization;
   return h?.replace('Bearer ', '') || '';
@@ -45,13 +59,10 @@ async function openCitCase(userId, body) {
     .insert({
       user_id: userId,
       deal_id: dealId,
-      case_title: toStr(body.caseTitle) || 'CIT Case',
-      opened_reason: toStr(body.openedReason),
-      stips_required: Array.isArray(body.stipsRequired) ? body.stipsRequired : [],
-      stips_received: [],
-      current_status: 'open',
-      assigned_to: toStr(body.assignedTo),
-      priority: toStr(body.priority) || 'normal',
+      status: 'open',
+      outstanding_stips: Array.isArray(body.stipsRequired) ? body.stipsRequired : [],
+      lender_contact: toStr(body.lenderContact),
+      escalation_reason: toStr(body.openedReason),
       notes: toStr(body.notes),
     })
     .select('id')
@@ -80,22 +91,22 @@ async function updateCitStatus(userId, body) {
 
   const { data: citCase } = await supabase
     .from('automotive_cit_cases')
-    .select('id, deal_id, current_status')
+    .select('id, deal_id, status')
     .eq('id', citCaseId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!citCase) return fail('CIT case not found.', 'ERR_NOT_FOUND', 404);
-  if (!canTransition('cit', citCase.current_status, newStatus)) {
-    return fail(`Cannot transition CIT case from ${citCase.current_status} to ${newStatus}.`, 'ERR_STATE', 422);
+  if (!canTransition('cit', citCase.status, newStatus)) {
+    return fail(`Cannot transition CIT case from ${citCase.status} to ${newStatus}.`, 'ERR_STATE', 422);
   }
 
   const updatePayload = {
-    current_status: newStatus,
+    status: newStatus,
     notes: toStr(body.notes) || undefined,
   };
 
-  if (Array.isArray(body.stipsReceived)) updatePayload.stips_received = body.stipsReceived;
+  if (Array.isArray(body.stipsReceived)) updatePayload.outstanding_stips = body.stipsReceived;
 
   const isResolved = newStatus === 'resolved' || newStatus === 'unfunded' || newStatus === 'archived';
   if (isResolved) updatePayload.resolved_at = new Date().toISOString();
@@ -108,7 +119,7 @@ async function updateCitStatus(userId, body) {
 
   if (error) return fail('Failed to update CIT case.', 'ERR_DB', 500);
 
-  await createTimelineEvent(userId, citCase.deal_id, 'cit_status_updated', { citCaseId, fromStatus: citCase.current_status, toStatus: newStatus });
+  await createTimelineEvent(userId, citCase.deal_id, 'cit_status_updated', { citCaseId, fromStatus: citCase.status, toStatus: newStatus });
 
   // Advance deal to funded if CIT resolved
   if (newStatus === 'resolved' && body.advanceDealToFunded) {
@@ -133,7 +144,7 @@ async function listCitCases(userId, body) {
     .order('opened_at', { ascending: false });
 
   if (dealId) query = query.eq('deal_id', dealId);
-  if (status) query = query.eq('current_status', status);
+  if (status) query = query.eq('status', status);
 
   const { data, error } = await query;
   if (error) return fail('Failed to fetch CIT cases.', 'ERR_DB', 500);
@@ -146,6 +157,14 @@ async function openCancellation(userId, body) {
   const productId = toStr(body.productId);
   if (!dealId) return fail('dealId is required.', 'ERR_VALIDATION', 400);
 
+  const { data: deal } = await supabase
+    .from('automotive_deals')
+    .select('id')
+    .eq('id', dealId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!deal) return fail('Deal not found.', 'ERR_NOT_FOUND', 404);
+
   const { data: cancelRow, error } = await supabase
     .from('automotive_cancellation_cases')
     .insert({
@@ -153,10 +172,9 @@ async function openCancellation(userId, body) {
       deal_id: dealId,
       product_id: productId,
       cancellation_reason: toStr(body.cancellationReason),
-      requested_by: toStr(body.requestedBy) || 'customer',
       requested_at: new Date().toISOString(),
-      estimated_refund: toNum(body.estimatedRefund) || null,
-      current_status: 'requested',
+      refund_amount: toNum(body.estimatedRefund) || null,
+      status: 'requested',
       notes: toStr(body.notes),
     })
     .select('id')
@@ -180,25 +198,28 @@ async function updateCancellationStatus(userId, body) {
 
   const { data: record } = await supabase
     .from('automotive_cancellation_cases')
-    .select('id, deal_id, current_status')
+    .select('id, deal_id, status')
     .eq('id', cancellationId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!record) return fail('Cancellation not found.', 'ERR_NOT_FOUND', 404);
-  if (!canTransition('cancellation', record.current_status, newStatus)) {
-    return fail(`Cannot transition cancellation from ${record.current_status} to ${newStatus}.`, 'ERR_STATE', 422);
+  if (!canTransition('cancellation', record.status, newStatus)) {
+    return fail(`Cannot transition cancellation from ${record.status} to ${newStatus}.`, 'ERR_STATE', 422);
   }
 
   const updatePayload = {
-    current_status: newStatus,
+    status: newStatus,
     notes: toStr(body.notes) || undefined,
   };
 
-  if (body.actualRefundAmount !== undefined) updatePayload.actual_refund_amount = toNum(body.actualRefundAmount);
+  if (body.actualRefundAmount !== undefined) updatePayload.refund_amount = toNum(body.actualRefundAmount);
   if (body.chargebackAmount !== undefined) updatePayload.chargeback_amount = toNum(body.chargebackAmount);
+  if (toStr(body.chargebackNotes)) updatePayload.chargeback_notes = toStr(body.chargebackNotes);
+  if (toStr(body.providerConfirmation)) updatePayload.provider_confirmation = toStr(body.providerConfirmation);
   if (body.refundedAt) updatePayload.refunded_at = body.refundedAt;
   if (body.submittedAt) updatePayload.submitted_at = body.submittedAt;
+  if (body.confirmedAt) updatePayload.confirmed_at = body.confirmedAt;
 
   const { error } = await supabase
     .from('automotive_cancellation_cases')
@@ -210,7 +231,7 @@ async function updateCancellationStatus(userId, body) {
 
   await createTimelineEvent(userId, record.deal_id, 'cancellation_updated', {
     cancellationId,
-    fromStatus: record.current_status,
+    fromStatus: record.status,
     toStatus: newStatus,
   });
 
@@ -228,7 +249,7 @@ async function listCancellations(userId, body) {
     .order('requested_at', { ascending: false });
 
   if (dealId) query = query.eq('deal_id', dealId);
-  if (status) query = query.eq('current_status', status);
+  if (status) query = query.eq('status', status);
 
   const { data, error } = await query;
   if (error) return fail('Failed to fetch cancellations.', 'ERR_DB', 500);
@@ -256,11 +277,10 @@ async function openCustomerIssue(userId, body) {
       user_id: userId,
       deal_id: dealId,
       issue_type: issueType,
-      issue_description: toStr(body.issueDescription),
-      reported_by: toStr(body.reportedBy) || 'customer',
-      current_status: 'open',
-      priority: toStr(body.priority) || 'normal',
-      assigned_to: toStr(body.assignedTo),
+      description: toStr(body.issueDescription) || 'Customer issue reported',
+      status: 'open',
+      target_resolution_date: toStr(body.targetResolutionDate),
+      escalated_to: toStr(body.assignedTo),
       notes: toStr(body.notes),
     })
     .select('id')
@@ -289,18 +309,18 @@ async function updateIssueStatus(userId, body) {
 
   const { data: record } = await supabase
     .from('automotive_customer_issues')
-    .select('id, deal_id, current_status')
+    .select('id, deal_id, status')
     .eq('id', issueId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!record) return fail('Issue not found.', 'ERR_NOT_FOUND', 404);
-  if (!canTransition('issue', record.current_status, newStatus)) {
-    return fail(`Cannot transition issue from ${record.current_status} to ${newStatus}.`, 'ERR_STATE', 422);
+  if (!canTransition('issue', record.status, newStatus)) {
+    return fail(`Cannot transition issue from ${record.status} to ${newStatus}.`, 'ERR_STATE', 422);
   }
 
-  const updatePayload = { current_status: newStatus };
-  if (toStr(body.resolutionNote)) updatePayload.resolution_note = body.resolutionNote;
+  const updatePayload = { status: newStatus };
+  if (toStr(body.resolutionNote)) updatePayload.resolution_notes = body.resolutionNote;
   if (newStatus === 'resolved' || newStatus === 'closed') updatePayload.resolved_at = new Date().toISOString();
 
   const { error } = await supabase
@@ -311,7 +331,7 @@ async function updateIssueStatus(userId, body) {
 
   if (error) return fail('Failed to update issue.', 'ERR_DB', 500);
 
-  await createTimelineEvent(userId, record.deal_id, 'customer_issue_updated', { issueId, fromStatus: record.current_status, toStatus: newStatus });
+  await createTimelineEvent(userId, record.deal_id, 'customer_issue_updated', { issueId, fromStatus: record.status, toStatus: newStatus });
 
   return ok({ updated: true });
 }
@@ -327,7 +347,7 @@ async function listCustomerIssues(userId, body) {
     .order('created_at', { ascending: false });
 
   if (dealId) query = query.eq('deal_id', dealId);
-  if (status) query = query.eq('current_status', status);
+  if (status) query = query.eq('status', status);
 
   const { data, error } = await query;
   if (error) return fail('Failed to fetch customer issues.', 'ERR_DB', 500);
@@ -411,7 +431,11 @@ export async function handler(event) {
     return fail('Invalid JSON body', 'ERR_PARSE', 400);
   }
 
-  const action = body.action;
+  const action = typeof body.action === 'string' ? body.action : '';
+  if (!SUPPORTED_ACTIONS.has(action)) {
+    return fail(`Unknown action: ${action || 'undefined'}`, 'ERR_ACTION', 400);
+  }
+
   switch (action) {
     case 'open_cit_case':             return openCitCase(userId, body);
     case 'update_cit_status':         return updateCitStatus(userId, body);

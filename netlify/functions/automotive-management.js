@@ -404,6 +404,11 @@ async function decideApprovalRequest(actor, body) {
     return fail('approvalRequestId and decision are required.', 'ERR_VALIDATION', 400);
   }
 
+  const allowedDecisions = new Set(['approve', 'reject', 'revise_required']);
+  if (!allowedDecisions.has(decision)) {
+    return fail('decision must be approve, reject, or revise_required.', 'ERR_VALIDATION', 400);
+  }
+
   const { data: request } = await supabase
     .from('automotive_approval_requests')
     .select('*')
@@ -419,9 +424,7 @@ async function decideApprovalRequest(actor, body) {
     ? 'approved'
     : decision === 'reject'
       ? 'rejected'
-      : decision === 'revise_required'
-        ? 'revise_required'
-        : request.status;
+      : 'revise_required';
 
   const { data: updated, error } = await supabase
     .from('automotive_approval_requests')
@@ -731,8 +734,8 @@ async function getTeamDashboard(actor, body) {
   const [dealsRes, metricsRes, cancellationsRes, citRes, usersRes, approvalsRes, auditRes] = await Promise.all([
     dealsQuery,
     supabase.from('automotive_deal_metrics').select('deal_id, structure_pressure_score, approval_readiness_score, back_gross').eq('user_id', context.ownerUserId),
-    supabase.from('automotive_cancellation_cases').select('id, deal_id, current_status, assigned_user_id').eq('user_id', context.ownerUserId),
-    supabase.from('automotive_cit_cases').select('id, deal_id, current_status, assigned_to').eq('user_id', context.ownerUserId),
+    supabase.from('automotive_cancellation_cases').select('id, deal_id, status').eq('user_id', context.ownerUserId),
+    supabase.from('automotive_cit_cases').select('id, deal_id, status').eq('user_id', context.ownerUserId),
     supabase.from('automotive_user_profiles').select('user_id, display_name, email, global_role').eq('owner_user_id', context.ownerUserId).eq('is_active', true),
     supabase.from('automotive_approval_requests').select('id, status, request_type, created_at, due_at').eq('owner_user_id', context.ownerUserId),
     supabase.from('automotive_audit_events').select('id, action, area, actor_user_id, created_at').eq('owner_user_id', context.ownerUserId).order('created_at', { ascending: false }).limit(200),
@@ -746,11 +749,25 @@ async function getTeamDashboard(actor, body) {
   const approvals = approvalsRes.data || [];
   const audits = auditRes.data || [];
 
+  const dealOwnerById = new Map(
+    deals.map((deal) => [deal.id, deal.assigned_user_id || deal.next_step_owner_user_id || 'unassigned'])
+  );
+
+  const cancellationsWithManager = cancellations.map((row) => ({
+    ...row,
+    assigned_user_id: dealOwnerById.get(row.deal_id) || 'unassigned',
+  }));
+
+  const citWithManager = citCases.map((row) => ({
+    ...row,
+    assigned_to: dealOwnerById.get(row.deal_id) || 'unassigned',
+  }));
+
   const managerPerformance = summarizeManagerPerformance({
     deals,
     metrics,
-    cancellations,
-    citCases,
+    cancellations: cancellationsWithManager,
+    citCases: citWithManager,
     userProfiles: profiles,
   });
 
@@ -776,8 +793,8 @@ async function getExecutiveDashboard(actor, body) {
     supabase.from('automotive_stores').select('id,store_name,group_id').eq('owner_user_id', context.ownerUserId).eq('is_active', true),
     supabase.from('automotive_deals').select('id,store_id,status,created_at').eq('user_id', context.ownerUserId),
     supabase.from('automotive_deal_metrics').select('deal_id,back_gross').eq('user_id', context.ownerUserId),
-    supabase.from('automotive_cit_cases').select('store_id,current_status,days_open').eq('user_id', context.ownerUserId),
-    supabase.from('automotive_cancellation_cases').select('store_id,current_status').eq('user_id', context.ownerUserId),
+    supabase.from('automotive_cit_cases').select('deal_id,status,days_open').eq('user_id', context.ownerUserId),
+    supabase.from('automotive_cancellation_cases').select('deal_id,status').eq('user_id', context.ownerUserId),
     supabase.from('automotive_commission_records').select('store_id,status,projected_amount,finalized_amount,chargeback_amount').eq('user_id', context.ownerUserId),
   ]);
 
@@ -789,6 +806,7 @@ async function getExecutiveDashboard(actor, body) {
   const commissions = commissionRes.data || [];
 
   const metricByDeal = new Map(metrics.map((m) => [m.deal_id, m]));
+  const dealStoreById = new Map(deals.map((d) => [d.id, d.store_id]));
   const storeSummary = stores.map((store) => {
     const storeDeals = deals.filter((d) => d.store_id === store.id);
     const funded = storeDeals.filter((d) => d.status === 'funded').length;
@@ -798,13 +816,13 @@ async function getExecutiveDashboard(actor, body) {
     const totalBackGross = storeDeals.reduce((sum, d) => sum + Number(metricByDeal.get(d.id)?.back_gross || 0), 0);
     const pvr = funded > 0 ? totalBackGross / funded : 0;
 
-    const storeCit = citCases.filter((c) => c.store_id === store.id);
-    const openCit = storeCit.filter((c) => !['resolved', 'unfunded', 'archived'].includes(c.current_status));
+    const storeCit = citCases.filter((c) => dealStoreById.get(c.deal_id) === store.id);
+    const openCit = storeCit.filter((c) => !['resolved', 'unfunded', 'archived'].includes(c.status));
     const avgCitDays = openCit.length > 0
       ? openCit.reduce((s, c) => s + Number(c.days_open || 0), 0) / openCit.length
       : 0;
 
-    const storeCancellations = cancellations.filter((c) => c.store_id === store.id);
+    const storeCancellations = cancellations.filter((c) => dealStoreById.get(c.deal_id) === store.id);
     const storeCommissions = commissions.filter((c) => c.store_id === store.id);
 
     return {
