@@ -71,8 +71,8 @@ export const COMMANDS: PaletteCommand[] = [
   { id: 'fin-due', label: 'View Due Soon Bills', group: 'finance', icon: 'warning', keywords: ['due', 'bills', 'upcoming', 'due soon', 'obligations', 'overdue'], section: 'finance' },
   { id: 'fin-scorecard', label: 'Open Financial Scorecard', group: 'finance', icon: 'chart', keywords: ['scorecard', 'score', 'financial health', 'rating', 'pulse'], section: 'finance' },
   { id: 'fin-transactions', label: 'Open Transactions', group: 'finance', icon: 'list', keywords: ['transactions', 'spending', 'purchases', 'history', 'unified'], section: 'finance' },
-  { id: 'fin-accounts', label: 'View Linked Accounts', group: 'finance', icon: 'bank', keywords: ['accounts', 'bank', 'linked', 'plaid', 'stripe', 'connections'], section: 'finance' },
-  { id: 'fin-link', label: 'Link Bank Account', group: 'finance', icon: 'link', keywords: ['link', 'connect', 'bank', 'plaid', 'stripe', 'financial connections'], section: 'finance' },
+  { id: 'fin-accounts', label: 'View Linked Accounts', group: 'finance', icon: 'bank', keywords: ['accounts', 'bank', 'linked', 'stripe', 'connections'], section: 'finance' },
+  { id: 'fin-link', label: 'Link Bank Account', group: 'finance', icon: 'link', keywords: ['link', 'connect', 'bank', 'stripe', 'financial connections'], section: 'finance' },
   { id: 'fin-obligation', label: 'Add Recurring Obligation', group: 'finance', icon: 'repeat', keywords: ['recurring', 'obligation', 'subscription', 'monthly', 'auto-pay'], section: 'finance' },
   { id: 'fin-vehicle', label: 'Add Vehicle', group: 'finance', icon: 'car', keywords: ['vehicle', 'car', 'auto', 'equity', 'payoff', 'trade'], section: 'finance' },
 

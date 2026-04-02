@@ -2,13 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { FinancialSummary } from '@/types/financial';
 
-interface LinkTokenResult {
-  configured: boolean;
-  mode: 'live' | 'demo';
-  linkToken?: string;
-  message?: string;
-}
-
 const EMPTY_SUMMARY: FinancialSummary = {
   configured: false,
   connected: false,
@@ -80,32 +73,6 @@ export function useFinancialHealth() {
     }
   }, [authedFetch, user]);
 
-  const createLinkToken = useCallback(async (): Promise<LinkTokenResult> => {
-    const data = await authedFetch('/.netlify/functions/financial-management', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'create_link_token' }),
-    });
-
-    return data as LinkTokenResult;
-  }, [authedFetch]);
-
-  const exchangePublicToken = useCallback(async (publicToken: string) => {
-    setSyncing(true);
-    setError(null);
-    try {
-      const data = await authedFetch('/.netlify/functions/financial-management', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'exchange_public_token', publicToken }),
-      });
-      setSummary(data as FinancialSummary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect financial account.');
-      throw err;
-    } finally {
-      setSyncing(false);
-    }
-  }, [authedFetch]);
-
   const sync = useCallback(async () => {
     setSyncing(true);
     setError(null);
@@ -133,7 +100,5 @@ export function useFinancialHealth() {
     error,
     refresh,
     sync,
-    createLinkToken,
-    exchangePublicToken,
   };
 }
