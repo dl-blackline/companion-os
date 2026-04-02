@@ -8,7 +8,7 @@ describe('super-admin', () => {
     });
 
     it('is a frozen / read-only array', () => {
-      expect(Object.isFrozen(SUPER_ADMIN_EMAILS) || Array.isArray(SUPER_ADMIN_EMAILS)).toBe(true);
+      expect(Object.isFrozen(SUPER_ADMIN_EMAILS)).toBe(true);
     });
   });
 

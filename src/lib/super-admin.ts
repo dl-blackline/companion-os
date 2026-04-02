@@ -9,9 +9,9 @@
  */
 
 /** Canonical list of emails that are permanently treated as super-admins. */
-export const SUPER_ADMIN_EMAILS: ReadonlyArray<string> = [
+export const SUPER_ADMIN_EMAILS: ReadonlyArray<string> = Object.freeze([
   'dlsvmconsulting@gmail.com',
-];
+]);
 
 const normalised = new Set(SUPER_ADMIN_EMAILS.map((e) => e.toLowerCase()));
 
