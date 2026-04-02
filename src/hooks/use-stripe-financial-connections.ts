@@ -35,7 +35,14 @@ export function useStripeFinancialConnections() {
 
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || 'Request failed.');
+        const serverMsg = payload?.error;
+        const fallback =
+          response.status === 502
+            ? 'The server encountered an error. Please try again in a moment.'
+            : response.status === 401
+              ? 'Your session has expired. Please sign in again.'
+              : 'Request failed.';
+        throw new Error(serverMsg || fallback);
       }
       return payload.data;
     },

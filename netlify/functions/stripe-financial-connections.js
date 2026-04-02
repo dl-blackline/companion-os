@@ -194,7 +194,7 @@ async function getOrCreateStripeCustomer(stripe, user) {
     .from('billing_customers')
     .select('stripe_customer_id')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (existing?.stripe_customer_id) return existing.stripe_customer_id;
 
@@ -217,7 +217,14 @@ async function handleCompleteSession(user, body) {
   const sessionId = body?.sessionId;
   if (!sessionId) return fail('Missing sessionId', 'ERR_VALIDATION', 400);
 
-  const session = await stripe.financialConnections.sessions.retrieve(sessionId);
+  let session;
+  try {
+    session = await stripe.financialConnections.sessions.retrieve(sessionId);
+  } catch (err) {
+    console.error('[stripe-fc] Session retrieve failed:', err.message);
+    return fail('Failed to retrieve Stripe session. It may have expired.', 'ERR_STRIPE_SESSION', 400);
+  }
+
   const accounts = session.accounts?.data || [];
 
   if (accounts.length === 0) {
@@ -225,35 +232,46 @@ async function handleCompleteSession(user, body) {
   }
 
   let linked = 0;
+  const errors = [];
+
   for (const account of accounts) {
-    const connectionId = await persistAccount(user.id, account);
-
-    // Persist prefetched balance if available
-    if (account.balance) {
-      await persistBalanceSnapshot(user.id, connectionId, account.balance);
-    }
-
-    // Subscribe to automatic refreshes
     try {
-      await stripe.financialConnections.accounts.subscribe(account.id, {
-        features: ['transactions'],
-      });
-    } catch (err) {
-      console.warn(`[stripe-fc] Could not subscribe ${account.id} to transactions:`, err.message);
-    }
+      const connectionId = await persistAccount(user.id, account);
 
-    try {
-      await stripe.financialConnections.accounts.subscribe(account.id, {
-        features: ['balances'],
-      });
-    } catch (err) {
-      console.warn(`[stripe-fc] Could not subscribe ${account.id} to balances:`, err.message);
-    }
+      // Persist prefetched balance if available
+      if (account.balance) {
+        try {
+          await persistBalanceSnapshot(user.id, connectionId, account.balance);
+        } catch (err) {
+          console.warn(`[stripe-fc] Balance snapshot for ${account.id}:`, err.message);
+        }
+      }
 
-    linked++;
+      // Subscribe to automatic refreshes (non-critical)
+      try {
+        await stripe.financialConnections.accounts.subscribe(account.id, {
+          features: ['transactions'],
+        });
+      } catch (err) {
+        console.warn(`[stripe-fc] Could not subscribe ${account.id} to transactions:`, err.message);
+      }
+
+      try {
+        await stripe.financialConnections.accounts.subscribe(account.id, {
+          features: ['balances'],
+        });
+      } catch (err) {
+        console.warn(`[stripe-fc] Could not subscribe ${account.id} to balances:`, err.message);
+      }
+
+      linked++;
+    } catch (err) {
+      console.error(`[stripe-fc] Failed to persist account ${account.id}:`, err.message);
+      errors.push({ accountId: account.id, error: err.message });
+    }
   }
 
-  // Fetch initial transactions for all newly linked accounts
+  // Fetch initial transactions for successfully linked accounts (non-critical)
   for (const account of accounts) {
     try {
       await fetchAndPersistTransactions(stripe, user.id, account.id);
@@ -262,7 +280,12 @@ async function handleCompleteSession(user, body) {
     }
   }
 
-  return ok({ linked, accounts: accounts.map((a) => a.id) });
+  return ok({
+    linked,
+    accounts: accounts.map((a) => a.id),
+    syncStatus: 'transactions_syncing',
+    ...(errors.length > 0 ? { partialErrors: errors } : {}),
+  });
 }
 
 async function fetchAndPersistTransactions(stripe, userId, stripeAccountId) {
@@ -272,9 +295,12 @@ async function fetchAndPersistTransactions(stripe, userId, stripeAccountId) {
     .select('id, institution_name, account_display_name, account_last4, account_subtype')
     .eq('user_id', userId)
     .eq('stripe_account_id', stripeAccountId)
-    .single();
+    .maybeSingle();
 
-  if (!conn) return;
+  if (!conn) {
+    console.warn(`[stripe-fc] No connection record for stripe account ${stripeAccountId}`);
+    return 0;
+  }
 
   let hasMore = true;
   let startingAfter = undefined;
@@ -318,7 +344,7 @@ async function handleRefreshAccount(user, body) {
     .select('id, stripe_account_id, status')
     .eq('id', connectionId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!conn) return fail('Account not found', 'ERR_NOT_FOUND', 404);
   if (!conn.stripe_account_id) return fail('Not a Stripe FC account', 'ERR_VALIDATION', 400);
@@ -364,7 +390,7 @@ async function handleDisconnectAccount(user, body) {
     .select('id, stripe_account_id')
     .eq('id', connectionId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!conn) return fail('Account not found', 'ERR_NOT_FOUND', 404);
 
@@ -464,7 +490,12 @@ export async function handler(event) {
     return fail('Unknown action', 'ERR_VALIDATION', 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Stripe FC request failed.';
-    console.error('[stripe-fc] Error:', message);
-    return fail(message, 'ERR_STRIPE_FC', 500);
+    const isStripeError = error?.type?.startsWith?.('Stripe') || error?.raw?.type;
+    console.error('[stripe-fc] Error:', message, isStripeError ? `(Stripe type: ${error.type})` : '');
+    return fail(
+      isStripeError ? 'A payment provider error occurred. Please try again.' : message,
+      'ERR_STRIPE_FC',
+      isStripeError ? 502 : 500,
+    );
   }
 }

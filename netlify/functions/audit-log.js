@@ -17,7 +17,7 @@ export async function handler(event) {
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
 
-  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (roleData?.role !== "admin") return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
   try {

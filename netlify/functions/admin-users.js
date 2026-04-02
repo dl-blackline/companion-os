@@ -22,7 +22,7 @@ async function isAdmin(supabase, userId) {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   return data?.role === "admin";
 }
 
@@ -188,7 +188,7 @@ export async function handler(event) {
           .from("user_entitlements")
           .select("plan, status, trial_ends_at, expires_at")
           .eq("user_id", targetUserId)
-          .single();
+          .maybeSingle();
 
         updates.push(
           supabase.from("user_entitlements").upsert(

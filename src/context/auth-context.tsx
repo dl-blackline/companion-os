@@ -60,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) return
     try {
       const [{ data: roleData }, { data: planData }] = await Promise.all([
-        supabase.from('user_roles').select('role').eq('user_id', userId).single(),
-        supabase.from('user_entitlements').select('plan').eq('user_id', userId).single(),
+        supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+        supabase.from('user_entitlements').select('plan').eq('user_id', userId).maybeSingle(),
       ])
       if (roleData?.role) setRole(roleData.role as UserRole)
       if (planData?.plan) setPlan(planData.plan as EntitlementPlan)
