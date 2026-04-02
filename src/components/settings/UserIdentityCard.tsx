@@ -162,7 +162,7 @@ export function UserIdentityCard() {
           active_identity_id: updated.id,
         });
       }
-      setSavedMessage('Identity saved and now active across Companion.');
+      setSavedMessage('Identity saved and now active across Vuk OS.');
     } catch (err) {
       setError((err as Error).message || 'Failed to save active identity.');
     } finally {

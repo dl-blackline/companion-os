@@ -78,16 +78,16 @@ export default function Signup({ onNavigateToLogin }: SignupProps) {
         <div className="auth-brand">
           <p className="executive-eyebrow mb-0">Identity Enrollment</p>
           <div className="auth-mark">
-            <span className="text-2xl font-bold text-primary">C</span>
+            <span className="text-2xl font-bold" style={{ color: 'var(--vuk-accent)' }}>V</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Companion OS</h1>
-          <p className="text-sm text-muted-foreground">Create your secured executive workspace</p>
+          <h1 className="text-2xl font-bold tracking-tight">Vuk OS</h1>
+          <p className="text-sm text-muted-foreground">Private Intelligent Operating System</p>
         </div>
 
         <Card className="auth-card">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl tracking-tight">Create account</CardTitle>
-            <CardDescription>Sign up to start using Companion OS</CardDescription>
+            <CardDescription>Sign up to start using Vuk OS</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -133,7 +133,12 @@ export default function Signup({ onNavigateToLogin }: SignupProps) {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full mt-1">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-1"
+                style={{ background: 'var(--vuk-accent)', color: '#000', fontWeight: 600 }}
+              >
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

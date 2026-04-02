@@ -784,7 +784,7 @@ export function MemoryView() {
                 </h3>
                 <p className="text-sm text-muted-foreground mb-6">
                   {allMemories.length === 0
-                    ? 'Upload photos and videos so your companion can learn from them, or create memories manually.'
+                    ? 'Upload photos and videos so your AI can learn from them, or create memories manually.'
                     : 'Select a memory from the list or create a new one.'}
                 </p>
                 <div className="flex items-center gap-3 justify-center">

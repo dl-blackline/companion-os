@@ -17,7 +17,14 @@ interface CompanionStatusIconProps {
   className?: string;
 }
 
-function getStateStyle(state: CompanionState) {
+function getStateStyle(state: CompanionState): {
+  icon: typeof Sparkle;
+  iconClass: string;
+  frameClass: string;
+  neonClass: string;
+  glowClass: string;
+  useAccent?: boolean;
+} {
   switch (state) {
     case 'listening':
       return {
@@ -78,10 +85,11 @@ function getStateStyle(state: CompanionState) {
     default:
       return {
         icon: Sparkle,
-        iconClass: 'text-zinc-100',
-        frameClass: 'border-zinc-300/40 bg-slate-950/85',
-        neonClass: 'from-zinc-200/80 via-zinc-100/50 to-zinc-300/75',
-        glowClass: 'bg-zinc-300/30',
+        iconClass: '',
+        frameClass: 'border-[var(--vuk-border-accent)] bg-slate-950/85',
+        neonClass: '',
+        glowClass: '',
+        useAccent: true,
       };
   }
 }
@@ -108,14 +116,19 @@ export function CompanionStatusIcon({ state, size = 'md', onClick, className }: 
         style.frameClass,
         className
       )}
+      style={style.useAccent ? { boxShadow: `0 0 24px var(--vuk-glow-subtle)` } : undefined}
     >
-      <span className={cn('absolute -inset-3 blur-xl opacity-60 pointer-events-none', style.glowClass)} />
+      <span
+        className={cn('absolute -inset-3 blur-xl opacity-60 pointer-events-none', style.glowClass)}
+        style={style.useAccent ? { background: 'var(--vuk-glow-subtle)' } : undefined}
+      />
 
       <motion.span
         className={cn(
           'absolute -inset-[44%] pointer-events-none rounded-full bg-linear-to-r opacity-55',
           style.neonClass
         )}
+        style={style.useAccent ? { background: `linear-gradient(to right, var(--vuk-glow-medium), var(--vuk-accent-light), var(--vuk-glow-medium))` } : undefined}
         animate={active ? { rotate: [0, 360] } : { rotate: 0 }}
         transition={active ? { duration: 5.5, repeat: Infinity, ease: 'linear' } : { duration: 0.2 }}
       />
@@ -129,7 +142,12 @@ export function CompanionStatusIcon({ state, size = 'md', onClick, className }: 
         transition={active ? { duration: 2.8, repeat: Infinity, repeatDelay: 0.7, ease: 'easeInOut' } : { duration: 0.2 }}
       />
 
-      <Icon size={conf.icon} weight="fill" className={cn('relative z-10 drop-shadow-[0_0_12px_rgba(255,255,255,0.26)]', style.iconClass)} />
+      <Icon
+        size={conf.icon}
+        weight="fill"
+        className={cn('relative z-10 drop-shadow-[0_0_12px_rgba(255,255,255,0.26)]', style.iconClass)}
+        style={style.useAccent ? { color: 'var(--vuk-accent-light)' } : undefined}
+      />
       {active && <span className="absolute inset-0 rounded-[inherit] border border-white/25" />}
     </motion.div>
   );

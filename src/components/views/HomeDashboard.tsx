@@ -82,7 +82,7 @@ const quickActions = [
 
 const statCards = [
   {
-    label: 'Companion Status',
+    label: 'System Status',
     value: 'Operational',
     detail: 'Realtime, memory, and reasoning online',
     icon: ShieldCheck,
@@ -114,7 +114,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
     <div className="executive-shell container-scroll">
       <div className="executive-header">
         <div>
-          <p className="executive-eyebrow">Executive Command Center</p>
+          <p className="executive-eyebrow">Vuk OS Command Center</p>
           <h1 className="leading-tight">{aiName}</h1>
           <p className="executive-subtitle">
             Private operating environment for high-agency planning, decision support, and execution.
@@ -135,7 +135,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{card.label}</p>
-                <Icon size={18} className="text-primary" />
+                <Icon size={18} style={{ color: 'var(--vuk-accent-dim)' }} />
               </div>
               <p className="text-2xl font-semibold tracking-tight leading-none">{card.value}</p>
               <p className="text-xs text-muted-foreground mt-1">{card.detail}</p>
@@ -157,7 +157,8 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
             <button
               type="button"
               onClick={() => onNavigate('goals')}
-              className="text-[11px] uppercase tracking-[0.14em] text-primary hover:text-primary/80"
+              className="text-[11px] uppercase tracking-[0.14em] hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--vuk-accent-dim)' }}
             >
               View All Goals →
             </button>
@@ -215,7 +216,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
           transition={{ duration: reduceMotion ? 0.12 : 0.34 }}
           className="glass-card rounded-2xl p-5 md:p-6"
         >
-          <p className="executive-eyebrow">Core Companion</p>
+          <p className="executive-eyebrow">Intelligence Core</p>
           <div className="flex flex-col items-center text-center">
             <CompanionStatusIcon state={companionState} size="lg" onClick={() => onNavigate('live-talk')} />
             <p className="mt-4 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
@@ -223,7 +224,8 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
             <button
               type="button"
               onClick={() => onNavigate('live-talk')}
-              className="mt-5 rounded-full border border-border/70 bg-black/25 px-4 py-1.5 text-[11px] tracking-[0.16em] uppercase text-muted-foreground hover:text-foreground hover:border-border"
+              className="mt-5 rounded-full px-4 py-1.5 text-[11px] tracking-[0.16em] uppercase text-muted-foreground hover:text-foreground transition-all"
+              style={{ border: '1px solid var(--vuk-border-accent)', background: 'var(--vuk-active-bg)' }}
             >
               Open Live Session
             </button>
@@ -251,8 +253,11 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/45 inline-flex items-center justify-center">
-                        <Icon size={18} className="text-primary" />
+                      <span
+                        className="h-9 w-9 rounded-lg inline-flex items-center justify-center"
+                        style={{ background: 'var(--vuk-active-bg)', border: '1px solid var(--vuk-border-accent)' }}
+                      >
+                        <Icon size={18} style={{ color: 'var(--vuk-accent-light)' }} />
                       </span>
                       <div>
                         <p className="text-sm font-semibold tracking-tight">{action.label}</p>

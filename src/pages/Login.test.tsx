@@ -46,7 +46,7 @@ describe('Login page rendering', () => {
 
   it('renders branding and description', () => {
     renderLogin();
-    expect(screen.getByText('Companion OS')).toBeInTheDocument();
+    expect(screen.getByText('Vuk OS')).toBeInTheDocument();
     expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
   });
 

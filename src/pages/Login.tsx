@@ -62,10 +62,10 @@ export default function Login({ onNavigateToSignup, onNavigateToForgotPassword }
         <div className="auth-brand">
           <p className="executive-eyebrow mb-0">Secure Access</p>
           <div className="auth-mark">
-            <span className="text-2xl font-bold text-primary">C</span>
+            <span className="text-2xl font-bold" style={{ color: 'var(--vuk-accent)' }}>V</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Companion OS</h1>
-          <p className="text-sm text-muted-foreground">Private operating environment for executive users</p>
+          <h1 className="text-2xl font-bold tracking-tight">Vuk OS</h1>
+          <p className="text-sm text-muted-foreground">Private Intelligent Operating System</p>
         </div>
 
         <Card className="auth-card">
@@ -134,7 +134,12 @@ export default function Login({ onNavigateToSignup, onNavigateToForgotPassword }
                 </div>
               )}
 
-              <Button type="submit" disabled={isAuthenticating || !configured} className="w-full mt-1">
+              <Button
+                type="submit"
+                disabled={isAuthenticating || !configured}
+                className="w-full mt-1"
+                style={{ background: 'var(--vuk-accent)', color: '#000', fontWeight: 600 }}
+              >
                 {isAuthenticating ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

@@ -75,9 +75,9 @@ export default function ForgotPassword({ onNavigateToLogin }: ForgotPasswordProp
         <div className="auth-brand">
           <p className="executive-eyebrow mb-0">Credential Recovery</p>
           <div className="auth-mark">
-            <span className="text-2xl font-bold text-primary">C</span>
+            <span className="text-2xl font-bold" style={{ color: 'var(--vuk-accent)' }}>V</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Companion OS</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Vuk OS</h1>
           <p className="text-sm text-muted-foreground">Reset your password</p>
         </div>
 
@@ -115,7 +115,12 @@ export default function ForgotPassword({ onNavigateToLogin }: ForgotPasswordProp
                 </div>
               )}
 
-              <Button type="submit" disabled={loading || !configured} className="w-full mt-1">
+              <Button
+                type="submit"
+                disabled={loading || !configured}
+                className="w-full mt-1"
+                style={{ background: 'var(--vuk-accent)', color: '#000', fontWeight: 600 }}
+              >
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

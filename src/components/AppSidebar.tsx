@@ -125,36 +125,41 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
           onSectionChange(item.id);
         }}
         className={cn(
-          'focus-ring-lux interactive-press w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all relative min-h-[44px] border overflow-hidden',
+          'focus-ring-lux interactive-press w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all relative min-h-[44px] border overflow-hidden',
           isActive
-            ? 'bg-primary text-primary-foreground border-primary/70 shadow-[0_14px_28px_rgba(180,190,204,0.3)]'
-            : 'text-muted-foreground border-border/40 bg-black/10 hover:text-foreground hover:bg-muted/55 hover:border-border/80',
-          item.group === 'admin' && !isActive && 'text-zinc-300 hover:text-zinc-100',
+            ? 'text-foreground border-(--vuk-active-border) shadow-[0_0_18px_var(--vuk-shadow-glow)]'
+            : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-white/4 hover:border-border/40',
+          item.group === 'admin' && !isActive && 'text-zinc-400 hover:text-zinc-200',
         )}
+        style={isActive ? { background: 'var(--vuk-active-bg)' } : undefined}
       >
         {isActive && (
           <motion.div
             layoutId="activeNav"
-            className="absolute inset-0 bg-primary rounded-xl"
+            className="absolute inset-0 rounded-xl"
+            style={{ background: 'var(--vuk-active-bg)', borderColor: 'var(--vuk-active-border)' }}
             initial={false}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
         )}
-        <DynamicIcon icon={IconComp} isActive={isActive} size={19} className="relative z-10" />
+        {isActive && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full z-20" style={{ background: 'var(--vuk-accent)' }} />
+        )}
+        <DynamicIcon icon={IconComp} isActive={isActive} size={19} className="relative z-10" glowColor={isActive ? 'var(--vuk-accent)' : undefined} />
         <span className="relative z-10 tracking-tight">{item.label}</span>
       </button>
     );
   };
 
   return (
-    <aside className="w-72 sidebar-panel backdrop-blur-md flex flex-col h-full">
+    <aside className="w-72 sidebar-panel backdrop-blur-md flex flex-col h-full border-r border-border/50">
       <div className="px-5 py-5 border-b border-border/85">
         <div className="flex items-center gap-3">
           <CompanionStatusIcon state={companionState} size="sm" />
           <div className="flex flex-col min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">Companion OS</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1" style={{ color: 'var(--vuk-accent-dim)' }}>Vuk OS</p>
             <h1 className="text-base font-bold text-foreground tracking-tight leading-none truncate">{aiName}</h1>
-            <p className="text-[11px] text-muted-foreground mt-1 leading-none">Strategic AI Operating Layer</p>
+            <p className="text-[11px] text-muted-foreground mt-1 leading-none">Precision AI Operating Layer</p>
           </div>
         </div>
         <div className="mt-4 rounded-xl border border-border/75 bg-black/25 px-3 py-2.5 space-y-2">
