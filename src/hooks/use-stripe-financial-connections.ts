@@ -60,8 +60,11 @@ export function useStripeFinancialConnections() {
     setError(null);
     try {
       const data = await authedFetch(FC_URL);
-      setDashboard(data as LinkedAccountsDashboard);
+      const result = data as LinkedAccountsDashboard;
+      console.log(`[stripe-fc] refresh: ${result.accounts.length} accounts, ${result.totalTransactions} transactions`);
+      setDashboard(result);
     } catch (err) {
+      console.error('[stripe-fc] refresh failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to load linked accounts.');
     } finally {
       setLoading(false);
@@ -89,13 +92,15 @@ export function useStripeFinancialConnections() {
     async (sessionId: string): Promise<boolean> => {
       setError(null);
       try {
-        await authedFetch(FC_URL, {
+        const result = await authedFetch(FC_URL, {
           method: 'POST',
           body: JSON.stringify({ action: 'complete_session', sessionId }),
         });
+        console.log('[stripe-fc] completeSession result:', result);
         await refresh();
         return true;
       } catch (err) {
+        console.error('[stripe-fc] completeSession failed:', err);
         setError(err instanceof Error ? err.message : 'Failed to complete session.');
         return false;
       }
