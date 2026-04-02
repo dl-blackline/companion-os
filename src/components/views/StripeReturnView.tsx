@@ -35,12 +35,17 @@ export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps)
       return;
     }
 
-    // Clear the stored session
+    // Retrieve account IDs stored by the in-app flow (if available)
+    const storedAccountIds = sessionStorage.getItem('stripe_fc_account_ids');
+    const accountIds: string[] = storedAccountIds ? JSON.parse(storedAccountIds) : [];
+
+    // Clear stored session data
     sessionStorage.removeItem('stripe_fc_session_id');
+    sessionStorage.removeItem('stripe_fc_account_ids');
 
     (async () => {
       setMessage('Linking your account and syncing data...');
-      const success = await completeSession(sessionId);
+      const success = await completeSession(sessionId, accountIds);
       if (success) {
         setStatus('success');
         setMessage('Your bank account has been linked successfully. Transactions are syncing.');
