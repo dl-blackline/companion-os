@@ -26,6 +26,36 @@ export interface PaletteCommand {
   context?: string[];
 }
 
+// ── Entity search result ─────────────────────────────────────────────────
+export type EntityType =
+  | 'goal'
+  | 'savings_goal'
+  | 'obligation'
+  | 'event'
+  | 'signal'
+  | 'job_target';
+
+export interface EntityResult {
+  id: string;
+  label: string;
+  sublabel?: string;
+  type: EntityType;
+  icon: string;
+  /** Section to navigate to when selected */
+  section: string;
+}
+
+// ── AI smart suggestion ──────────────────────────────────────────────────
+export interface SmartSuggestion {
+  id: string;
+  label: string;
+  sublabel?: string;
+  icon: string;
+  section: string;
+  /** Visual severity hint */
+  severity?: 'info' | 'warning' | 'critical';
+}
+
 export const GROUP_META: Record<CommandGroup, { label: string; order: number }> = {
   navigation: { label: 'Navigate', order: 0 },
   create: { label: 'Quick Create', order: 1 },
@@ -126,3 +156,38 @@ export function getVisibleCommands(
     (cmd) => !cmd.context || cmd.context.length === 0 || cmd.context.includes(activeSection),
   );
 }
+
+// ── Pinned commands (localStorage) ───────────────────────────────────────
+const PINNED_KEY = 'companion-cmd-pinned';
+
+export function getPinnedIds(): string[] {
+  try {
+    const raw = localStorage.getItem(PINNED_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function togglePinned(id: string): string[] {
+  const current = getPinnedIds();
+  const next = current.includes(id) ? current.filter((p) => p !== id) : [...current, id];
+  try {
+    localStorage.setItem(PINNED_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+  return next;
+}
+
+// ── Entity type display metadata ─────────────────────────────────────────
+export const ENTITY_TYPE_META: Record<EntityType, { label: string; icon: string }> = {
+  goal: { label: 'Goal', icon: 'target' },
+  savings_goal: { label: 'Savings Goal', icon: 'piggy' },
+  obligation: { label: 'Obligation', icon: 'repeat' },
+  event: { label: 'Event', icon: 'calendar' },
+  signal: { label: 'Signal', icon: 'warning' },
+  job_target: { label: 'Job Target', icon: 'briefcase' },
+};
