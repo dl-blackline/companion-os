@@ -142,6 +142,94 @@ interface CoachingPayload {
   coachingNotes?: Array<{ title?: string; note_type?: string; is_reference_case?: boolean; created_at?: string }>;
 }
 
+type MenuColumnId = 'core' | 'balanced' | 'comprehensive';
+
+interface MenuBuilderColumn {
+  id: MenuColumnId;
+  title: string;
+  subtitle: string;
+  productIds: string[];
+}
+
+interface GenericMenuCard {
+  id: string;
+  name: string;
+  category: string;
+  sellPrice: number;
+  notes?: string;
+}
+
+interface MenuCardView {
+  id: string;
+  name: string;
+  category: string;
+  sellPrice: number;
+  isCustom: boolean;
+  notes?: string;
+}
+
+const STANDARD_FI_PRODUCTS: Array<{ name: string; category: string; sellPrice: number }> = [
+  { name: 'Vehicle Service Contract', category: 'Service Contract', sellPrice: 2895 },
+  { name: 'GAP Coverage', category: 'GAP', sellPrice: 995 },
+  { name: 'Prepaid Maintenance', category: 'Maintenance', sellPrice: 1195 },
+  { name: 'Tire and Wheel Protection', category: 'Tire and Wheel', sellPrice: 1295 },
+  { name: 'Paint and Fabric Protection', category: 'Appearance', sellPrice: 895 },
+  { name: 'Key Replacement Protection', category: 'Key Protection', sellPrice: 495 },
+  { name: 'Dent and Ding Protection', category: 'Appearance', sellPrice: 795 },
+  { name: 'Windshield Protection', category: 'Glass', sellPrice: 695 },
+  { name: 'Theft Deterrent System', category: 'Security', sellPrice: 995 },
+  { name: 'Credit Life Insurance', category: 'Insurance', sellPrice: 1495 },
+  { name: 'Credit Disability Insurance', category: 'Insurance', sellPrice: 1195 },
+  { name: 'Road Hazard Protection', category: 'Road Hazard', sellPrice: 595 },
+];
+
+const MENU_COLUMN_BLUEPRINT: Array<{ id: MenuColumnId; title: string; subtitle: string }> = [
+  { id: 'core', title: 'Core Protection', subtitle: 'Payment-first essentials' },
+  { id: 'balanced', title: 'Balanced Coverage', subtitle: 'Coverage and payment in balance' },
+  { id: 'comprehensive', title: 'Comprehensive Coverage', subtitle: 'Maximum risk transfer and ownership confidence' },
+];
+
+function createEmptyMenuColumns(): MenuBuilderColumn[] {
+  return MENU_COLUMN_BLUEPRINT.map((column) => ({ ...column, productIds: [] }));
+}
+
+function normalizeMenuColumns(
+  payload: unknown,
+  availableProductIds: Set<string>,
+): { columns: MenuBuilderColumn[]; selectedPackageId: MenuColumnId } {
+  const base = createEmptyMenuColumns();
+  if (!payload || typeof payload !== 'object') {
+    return { columns: base, selectedPackageId: 'balanced' };
+  }
+
+  const source = payload as {
+    columns?: Array<{ id?: string; productIds?: unknown }>;
+    selectedPackageId?: string;
+  };
+
+  const seen = new Set<string>();
+  for (const target of base) {
+    const match = source.columns?.find((col) => col?.id === target.id);
+    if (!Array.isArray(match?.productIds)) continue;
+    const nextIds = match.productIds
+      .filter((id): id is string => typeof id === 'string')
+      .filter((id) => availableProductIds.has(id) && !seen.has(id));
+    nextIds.forEach((id) => seen.add(id));
+    target.productIds = nextIds;
+  }
+
+  const selected = source.selectedPackageId;
+  const selectedPackageId: MenuColumnId = selected === 'core' || selected === 'balanced' || selected === 'comprehensive'
+    ? selected
+    : 'balanced';
+
+  return { columns: base, selectedPackageId };
+}
+
+function makeGenericCardId() {
+  return `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 const WORKSPACES: Array<{ key: WorkspaceKey; label: string; role: string }> = [
   { key: 'command_center', label: 'Command Center', role: 'Operations Lead' },
   { key: 'deal_workspace', label: 'Deal Jacket', role: 'Live Deal Strategist' },
@@ -219,6 +307,9 @@ export function AutomotiveFinanceView() {
     refresh,
     createDeal,
     setDealStatus,
+    upsertProduct,
+    upsertPresentation,
+    captureAcknowledgment,
     analyzeDealCopilot,
     getObjectionCoaching,
     listCallbacks,
@@ -245,6 +336,15 @@ export function AutomotiveFinanceView() {
   const [selectedDealId, setSelectedDealId] = useState<string>('');
   const [customerMode, setCustomerMode] = useState(false);
   const [presentationLock, setPresentationLock] = useState(false);
+  const [menuColumns, setMenuColumns] = useState<MenuBuilderColumn[]>(() => createEmptyMenuColumns());
+  const [selectedPackageId, setSelectedPackageId] = useState<MenuColumnId>('balanced');
+  const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
+  const [genericCards, setGenericCards] = useState<GenericMenuCard[]>([]);
+  const [newGenericName, setNewGenericName] = useState('Custom Protection Card');
+  const [newGenericCategory, setNewGenericCategory] = useState('Custom');
+  const [newGenericPrice, setNewGenericPrice] = useState('0');
+  const [customerName, setCustomerName] = useState('');
+  const [typedSignature, setTypedSignature] = useState('');
 
   const [newDealName, setNewDealName] = useState('');
   const [newDealType, setNewDealType] = useState('retail');
@@ -285,6 +385,64 @@ export function AutomotiveFinanceView() {
     return deals.find((deal) => deal.id === selectedDealId) || null;
   }, [deals, selectedDealId]);
 
+  const activeProducts = useMemo(() => {
+    return (dashboard.products || []).filter((product) => product.is_active !== false);
+  }, [dashboard.products]);
+
+  const allMenuCards = useMemo<MenuCardView[]>(() => {
+    const standard = activeProducts.map((product) => ({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      sellPrice: Number(product.sell_price || 0),
+      isCustom: false,
+      notes: product.provider || undefined,
+    }));
+
+    const custom = genericCards.map((card) => ({
+      id: card.id,
+      name: card.name,
+      category: card.category,
+      sellPrice: Number(card.sellPrice || 0),
+      isCustom: true,
+      notes: card.notes,
+    }));
+
+    return [...standard, ...custom];
+  }, [activeProducts, genericCards]);
+
+  const menuCardMap = useMemo(() => {
+    return new Map(allMenuCards.map((card) => [card.id, card]));
+  }, [allMenuCards]);
+
+  const currentPresentation = useMemo(() => {
+    if (!selectedDeal) return null;
+    const candidates = (dashboard.presentations || []).filter((presentation) => presentation.deal_id === selectedDeal.id);
+    if (candidates.length === 0) return null;
+    return [...candidates].sort((a, b) => {
+      const aTime = new Date(a.updated_at || a.created_at).getTime();
+      const bTime = new Date(b.updated_at || b.created_at).getTime();
+      return bTime - aTime;
+    })[0];
+  }, [dashboard.presentations, selectedDeal]);
+
+  const unassignedProducts = useMemo(() => {
+    const assigned = new Set(menuColumns.flatMap((column) => column.productIds));
+    return allMenuCards.filter((card) => !assigned.has(card.id));
+  }, [allMenuCards, menuColumns]);
+
+  const selectedPackage = useMemo(() => {
+    return menuColumns.find((column) => column.id === selectedPackageId) || menuColumns[1] || menuColumns[0] || null;
+  }, [menuColumns, selectedPackageId]);
+
+  const selectedPackageTotal = useMemo(() => {
+    if (!selectedPackage) return 0;
+    return selectedPackage.productIds.reduce((sum, productId) => {
+      const card = menuCardMap.get(productId);
+      return sum + Number(card?.sellPrice || 0);
+    }, 0);
+  }, [selectedPackage, menuCardMap]);
+
   const filteredDeals = useMemo(() => {
     const search = dealSearch.trim().toLowerCase();
     return deals.filter((deal) => {
@@ -324,6 +482,208 @@ export function AutomotiveFinanceView() {
     const row = WORKSPACES.find((w) => w.key === workspace);
     return row?.role || 'Finance Copilot';
   }, [workspace]);
+
+  useEffect(() => {
+    if (!selectedDeal) {
+      setGenericCards([]);
+      return;
+    }
+
+    const payload = currentPresentation?.menu_payload as { customCards?: unknown } | undefined;
+    if (Array.isArray(payload?.customCards)) {
+      const parsedCards = payload.customCards
+        .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+        .map((row) => ({
+          id: typeof row.id === 'string' ? row.id : makeGenericCardId(),
+          name: typeof row.name === 'string' ? row.name : 'Custom Protection Card',
+          category: typeof row.category === 'string' ? row.category : 'Custom',
+          sellPrice: Number(row.sellPrice || 0),
+          notes: typeof row.notes === 'string' ? row.notes : undefined,
+        }));
+      setGenericCards(parsedCards);
+    } else {
+      setGenericCards([]);
+    }
+  }, [selectedDeal?.id, currentPresentation?.id]);
+
+  useEffect(() => {
+    if (!selectedDeal) {
+      setMenuColumns(createEmptyMenuColumns());
+      setSelectedPackageId('balanced');
+      setPresentationLock(false);
+      return;
+    }
+
+    const availableIds = new Set(allMenuCards.map((card) => card.id));
+    const normalized = normalizeMenuColumns(currentPresentation?.menu_payload, availableIds);
+    const assignedCount = normalized.columns.reduce((sum, column) => sum + column.productIds.length, 0);
+
+    if (assignedCount === 0 && allMenuCards.length > 0) {
+      const seeded = createEmptyMenuColumns();
+      const orderedProducts = [...allMenuCards].sort((a, b) => Number(b.sellPrice || 0) - Number(a.sellPrice || 0));
+      orderedProducts.forEach((product, idx) => {
+        const target = seeded[idx % seeded.length];
+        target.productIds.push(product.id);
+      });
+      setMenuColumns(seeded);
+    } else {
+      setMenuColumns(normalized.columns);
+    }
+
+    setSelectedPackageId(normalized.selectedPackageId);
+    setPresentationLock(currentPresentation?.status === 'acknowledged');
+  }, [selectedDeal?.id, currentPresentation?.id, allMenuCards]);
+
+  const moveProductToColumn = useCallback((productId: string, targetColumnId: MenuColumnId) => {
+    if (presentationLock) return;
+    setMenuColumns((prev) => {
+      const next = prev.map((column) => ({ ...column, productIds: column.productIds.filter((id) => id !== productId) }));
+      const target = next.find((column) => column.id === targetColumnId);
+      if (!target) return prev;
+      target.productIds = [...target.productIds, productId];
+      return next;
+    });
+  }, [presentationLock]);
+
+  const removeProductFromColumn = useCallback((productId: string) => {
+    if (presentationLock) return;
+    setMenuColumns((prev) => prev.map((column) => ({
+      ...column,
+      productIds: column.productIds.filter((id) => id !== productId),
+    })));
+  }, [presentationLock]);
+
+  const serializeMenuPayload = useCallback((locked: boolean) => {
+    return {
+      columns: menuColumns.map((column) => ({ id: column.id, title: column.title, subtitle: column.subtitle, productIds: column.productIds })),
+      selectedPackageId,
+      isLocked: locked,
+      customCards: genericCards,
+    };
+  }, [menuColumns, selectedPackageId, genericCards]);
+
+  const loadStandardProducts = async () => {
+    if (presentationLock) return;
+    const existing = new Set(activeProducts.map((product) => `${product.name.toLowerCase()}::${product.category.toLowerCase()}`));
+    const missing = STANDARD_FI_PRODUCTS.filter((item) => !existing.has(`${item.name.toLowerCase()}::${item.category.toLowerCase()}`));
+
+    if (missing.length === 0) {
+      toast.success('Standard F&I products already loaded.');
+      return;
+    }
+
+    try {
+      for (const item of missing) {
+        await upsertProduct({
+          name: item.name,
+          category: item.category,
+          sellPrice: item.sellPrice,
+          isActive: true,
+        });
+      }
+      toast.success(`Added ${missing.length} standard F&I products.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load standard products.');
+    }
+  };
+
+  const addGenericCard = () => {
+    if (presentationLock) return;
+    const card: GenericMenuCard = {
+      id: makeGenericCardId(),
+      name: newGenericName.trim() || 'Custom Protection Card',
+      category: newGenericCategory.trim() || 'Custom',
+      sellPrice: Number(newGenericPrice || 0),
+    };
+    setGenericCards((prev) => [...prev, card]);
+    setNewGenericName('Custom Protection Card');
+    setNewGenericCategory('Custom');
+    setNewGenericPrice('0');
+  };
+
+  const duplicateGenericCard = (cardId: string) => {
+    if (presentationLock) return;
+    const source = genericCards.find((card) => card.id === cardId);
+    if (!source) return;
+    const copy: GenericMenuCard = {
+      ...source,
+      id: makeGenericCardId(),
+      name: `${source.name} (Copy)`,
+    };
+    setGenericCards((prev) => [...prev, copy]);
+  };
+
+  const updateGenericCard = (cardId: string, patch: Partial<GenericMenuCard>) => {
+    if (presentationLock) return;
+    setGenericCards((prev) => prev.map((card) => (card.id === cardId ? { ...card, ...patch } : card)));
+  };
+
+  const startCustomerPresentation = async () => {
+    if (!selectedDeal) {
+      toast.error('Select a deal first.');
+      return;
+    }
+
+    try {
+      await upsertPresentation(
+        selectedDeal.id,
+        `${selectedDeal.deal_name} F&I Menu`,
+        serializeMenuPayload(false),
+      );
+      setCustomerMode(true);
+      setPresentationLock(false);
+      toast.success('Customer menu screen is ready.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not start customer presentation.');
+    }
+  };
+
+  const lockSelectionWithCustomer = async () => {
+    if (!selectedDeal) {
+      toast.error('Select a deal first.');
+      return;
+    }
+    if (!customerName.trim() || !typedSignature.trim()) {
+      toast.error('Customer name and typed signature are required.');
+      return;
+    }
+
+    try {
+      let presentationId = currentPresentation?.id;
+
+      if (!presentationId) {
+        const result = await upsertPresentation(
+          selectedDeal.id,
+          `${selectedDeal.deal_name} F&I Menu`,
+          serializeMenuPayload(false),
+        ) as { presentations?: Array<{ id?: string; deal_id?: string }> };
+        presentationId = result?.presentations?.find((presentation) => presentation.deal_id === selectedDeal.id)?.id;
+      }
+
+      if (!presentationId) {
+        toast.error('Could not resolve the active menu presentation. Try again.');
+        return;
+      }
+
+      await upsertPresentation(
+        selectedDeal.id,
+        `${selectedDeal.deal_name} F&I Menu`,
+        serializeMenuPayload(true),
+      );
+
+      await captureAcknowledgment({
+        dealId: selectedDeal.id,
+        presentationId,
+        customerName: customerName.trim(),
+        typedSignature: typedSignature.trim(),
+      });
+
+      setPresentationLock(true);
+      toast.success('Customer selection locked and acknowledged.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not lock customer selection.');
+    }
+  };
 
   const handleCreateDeal = async () => {
     if (!newDealName.trim()) {
@@ -521,9 +881,9 @@ export function AutomotiveFinanceView() {
             </p>
           </div>
           <div className="flex gap-2 print:hidden">
-            <Button variant="outline" onClick={() => setPresentationLock((v) => !v)} className="gap-2">
+            <Button variant="outline" disabled className="gap-2">
               <Lock size={14} />
-              {presentationLock ? 'Unlock Screen' : 'Lock Screen'}
+              {presentationLock ? 'Selection Locked' : 'Awaiting Customer Lock'}
             </Button>
             <Button variant="outline" onClick={() => setCustomerMode(false)}>Back to Manager Mode</Button>
           </div>
@@ -542,7 +902,7 @@ export function AutomotiveFinanceView() {
           </Card>
           <Card className="p-5 bg-slate-900/70 border-slate-700/70">
             <p className="text-xs uppercase tracking-[0.15em] text-slate-400">Available Products</p>
-            <p className="text-3xl font-semibold mt-2">{dashboard.products.length}</p>
+            <p className="text-3xl font-semibold mt-2">{allMenuCards.length}</p>
             <p className="text-sm text-slate-300 mt-2">Presented transparently with clear opt-in choices.</p>
           </Card>
         </div>
@@ -550,35 +910,105 @@ export function AutomotiveFinanceView() {
         <Card className="p-6 bg-slate-950/80 border-slate-700/70">
           <h2 className="text-xl font-semibold mb-4">Package Comparison</h2>
           <div className="grid md:grid-cols-3 gap-3">
-            {['Core Protection', 'Balanced Coverage', 'Comprehensive Coverage'].map((name, index) => (
-              <div key={name} className="rounded-xl border border-slate-700/70 bg-slate-900/70 p-4 space-y-2">
-                <p className="text-sm uppercase tracking-[0.12em] text-slate-400">Option {index + 1}</p>
-                <p className="text-lg font-semibold">{name}</p>
-                <p className="text-sm text-slate-300">
-                  {index === 0 && 'Focused on essential coverage and payment comfort.'}
-                  {index === 1 && 'Balances payment and long-term ownership protection.'}
-                  {index === 2 && 'Highest coverage depth with strongest risk transfer.'}
-                </p>
-              </div>
-            ))}
+            {menuColumns.map((column, index) => {
+              const total = column.productIds.reduce((sum, productId) => sum + Number(menuCardMap.get(productId)?.sellPrice || 0), 0);
+              return (
+                <button
+                  key={column.id}
+                  onClick={() => !presentationLock && setSelectedPackageId(column.id)}
+                  className={`rounded-xl border p-4 space-y-2 text-left ${selectedPackageId === column.id ? 'border-cyan-300/60 bg-cyan-900/20' : 'border-slate-700/70 bg-slate-900/70'} ${presentationLock ? 'cursor-default' : 'hover:border-cyan-300/50'}`}
+                >
+                  <p className="text-sm uppercase tracking-[0.12em] text-slate-400">Option {index + 1}</p>
+                  <p className="text-lg font-semibold">{column.title}</p>
+                  <p className="text-sm text-slate-300">{column.subtitle}</p>
+                  <div className="space-y-1 pt-1">
+                    {column.productIds.length === 0 && <p className="text-xs text-slate-500">No products in this package.</p>}
+                    {column.productIds.map((productId) => {
+                      const product = menuCardMap.get(productId);
+                      if (!product) return null;
+                      return (
+                        <p key={productId} className="text-xs text-slate-200">• {product.name} ({money(product.sellPrice)})</p>
+                      );
+                    })}
+                  </div>
+                  <p className="text-sm font-semibold pt-2">Total: {money(total)}</p>
+                </button>
+              );
+            })}
           </div>
+        </Card>
+
+        <Card className="p-6 bg-slate-950/80 border-slate-700/70 space-y-3">
+          <h2 className="text-xl font-semibold">Final Selection</h2>
+          <p className="text-sm text-slate-300">Selected package: <span className="font-medium text-slate-100">{selectedPackage?.title || 'None selected'}</span> ({money(selectedPackageTotal)})</p>
+          <div className="grid md:grid-cols-2 gap-3">
+            <Input
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Customer name"
+              disabled={presentationLock}
+            />
+            <Input
+              value={typedSignature}
+              onChange={(e) => setTypedSignature(e.target.value)}
+              placeholder="Typed signature"
+              disabled={presentationLock}
+            />
+          </div>
+          <Button onClick={() => void lockSelectionWithCustomer()} disabled={presentationLock || !selectedDeal} className="gap-2">
+            <Lock size={14} />
+            {presentationLock ? 'Locked with Customer' : 'Lock Final Selection with Customer'}
+          </Button>
+          {presentationLock && (
+            <p className="text-xs text-emerald-300">Final package has been acknowledged and locked.</p>
+          )}
         </Card>
       </div>
     );
   }
 
+  const onColumnDrop = (event: React.DragEvent<HTMLDivElement>, columnId: MenuColumnId) => {
+    event.preventDefault();
+    const incomingId = event.dataTransfer.getData('text/plain') || draggedProductId;
+    if (!incomingId) return;
+    moveProductToColumn(incomingId, columnId);
+    setDraggedProductId(null);
+  };
+
+  const onPoolDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const incomingId = event.dataTransfer.getData('text/plain') || draggedProductId;
+    if (!incomingId) return;
+    removeProductFromColumn(incomingId);
+    setDraggedProductId(null);
+  };
+
+  const resetMenuColumns = () => {
+    if (presentationLock) return;
+    const seeded = createEmptyMenuColumns();
+    const orderedProducts = [...allMenuCards].sort((a, b) => Number(b.sellPrice || 0) - Number(a.sellPrice || 0));
+    orderedProducts.forEach((product, idx) => {
+      const target = seeded[idx % seeded.length];
+      target.productIds.push(product.id);
+    });
+    setMenuColumns(seeded);
+    setSelectedPackageId('balanced');
+  };
+
   return (
     <div className="settings-panel p-4 md:p-7 max-w-[1500px] mx-auto automotive-command-shell space-y-5">
       <div className="automotive-command-header">
         <div>
-          <p className="executive-eyebrow">Automotive Finance Manager • Phase 4</p>
+          <p className="executive-eyebrow">Automotive Finance Manager • Phase 5 Management Scale</p>
           <h1 className="text-3xl font-semibold tracking-tight">Live Finance Copilot Command Center</h1>
           <p className="text-sm text-slate-300/80 mt-2 max-w-4xl">
-            Context-aware intelligence for structure, callbacks, menu strategy, and funding execution. Built for live desk pressure, not generic assistant prompts.
+            Context-aware intelligence with management controls for structure, callbacks, menu strategy, funding execution, oversight, and cross-store leadership visibility.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void refresh()} disabled={loading || saving}>Refresh</Button>
+          <Button variant="outline" onClick={() => setWorkspace('management_workspace')}>Management Mode</Button>
+          <Button variant="outline" onClick={() => setWorkspace('executive_workspace')}>Executive Mode</Button>
           <Button variant="outline" onClick={() => setCustomerMode(true)} className="gap-2">
             <PresentationChart size={14} />
             Customer Mode
@@ -672,6 +1102,7 @@ export function AutomotiveFinanceView() {
 
         <div className="col-span-12 xl:col-span-6 space-y-4">
           <Card className="p-3 bg-slate-950/70 border-slate-700/70">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-400 mb-2">Workspace Modes</p>
             <div className="flex flex-wrap gap-2">
               {WORKSPACES.map((item) => (
                 <button
@@ -731,6 +1162,34 @@ export function AutomotiveFinanceView() {
                     <p className="text-xs text-slate-400 mt-2">Open issues requiring service-quality response.</p>
                   </Card>
                 </div>
+
+                <Card className="p-4 bg-slate-900/60 border-slate-700/70">
+                  <p className="text-sm font-semibold mb-3">Leadership Launchpad</p>
+                  <div className="grid md:grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setWorkspace('management_workspace')}
+                      className="rounded-md border border-slate-700/70 bg-slate-950/70 p-3 text-left hover:bg-slate-950"
+                    >
+                      <p className="text-sm font-medium">Management Workspace</p>
+                      <p className="text-xs text-slate-400 mt-1">Approvals, standards, accountability, coaching.</p>
+                    </button>
+                    <button
+                      onClick={() => setWorkspace('executive_workspace')}
+                      className="rounded-md border border-slate-700/70 bg-slate-950/70 p-3 text-left hover:bg-slate-950"
+                    >
+                      <p className="text-sm font-medium">Executive Workspace</p>
+                      <p className="text-xs text-slate-400 mt-1">Cross-store health, comparison, and risk lens.</p>
+                    </button>
+                    <button
+                      onClick={() => setWorkspace('lender_brain')}
+                      className="rounded-md border border-slate-700/70 bg-slate-950/70 p-3 text-left hover:bg-slate-950"
+                    >
+                      <p className="text-sm font-medium">Lender Brain</p>
+                      <p className="text-xs text-slate-400 mt-1">Guidelines, playbooks, and callback alignment.</p>
+                    </button>
+                  </div>
+                </Card>
+
                 <Card className="p-4 bg-slate-900/60 border-slate-700/70">
                   <p className="text-sm font-semibold mb-3">High Priority Queue</p>
                   <div className="space-y-2">
@@ -830,13 +1289,169 @@ export function AutomotiveFinanceView() {
                 <div className="grid md:grid-cols-2 gap-3">
                   <Card className="p-3 bg-slate-900/70 border-slate-700/70">
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Active Products</p>
-                    <p className="text-2xl font-semibold mt-2">{dashboard.products.length}</p>
+                    <p className="text-2xl font-semibold mt-2">{allMenuCards.length}</p>
                   </Card>
                   <Card className="p-3 bg-slate-900/70 border-slate-700/70">
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Presentation Status</p>
                     <p className="text-2xl font-semibold mt-2">{selectedDeal?.menu_status || 'not_started'}</p>
                   </Card>
                 </div>
+
+                <Card className="p-3 bg-slate-900/60 border-slate-700/70 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={() => void loadStandardProducts()} disabled={presentationLock || saving}>Load Standard F&I Products</Button>
+                    <Button variant="outline" onClick={resetMenuColumns} disabled={presentationLock}>Auto Arrange Packages</Button>
+                    <Button onClick={() => void startCustomerPresentation()} disabled={!selectedDeal || presentationLock}>Launch Customer Screen</Button>
+                    {presentationLock && <Badge variant="secondary" className="px-3">Locked With Customer</Badge>}
+                  </div>
+                  <p className="text-xs text-slate-400">Drag products between columns to customize package strategy. Select a package to mark the expected customer choice before launch.</p>
+                </Card>
+
+                <Card className="p-3 bg-slate-900/60 border-slate-700/70 space-y-3">
+                  <p className="text-sm font-semibold">Generic Editable Cards</p>
+                  <div className="grid md:grid-cols-3 gap-2">
+                    <Input value={newGenericName} onChange={(e) => setNewGenericName(e.target.value)} placeholder="Card title" />
+                    <Input value={newGenericCategory} onChange={(e) => setNewGenericCategory(e.target.value)} placeholder="Category" />
+                    <Input value={newGenericPrice} onChange={(e) => setNewGenericPrice(e.target.value)} placeholder="Price" type="number" />
+                  </div>
+                  <Button variant="outline" onClick={addGenericCard} disabled={presentationLock}>Add Generic Card</Button>
+                </Card>
+
+                <div className="grid lg:grid-cols-3 gap-3">
+                  {menuColumns.map((column) => {
+                    const total = column.productIds.reduce((sum, productId) => sum + Number(menuCardMap.get(productId)?.sellPrice || 0), 0);
+                    return (
+                      <Card
+                        key={column.id}
+                        className={`p-3 border-slate-700/70 space-y-3 ${selectedPackageId === column.id ? 'bg-cyan-950/30 border-cyan-400/50' : 'bg-slate-900/70'}`}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => onColumnDrop(event, column.id)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold">{column.title}</p>
+                            <p className="text-xs text-slate-400">{column.subtitle}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={selectedPackageId === column.id ? 'default' : 'outline'}
+                            onClick={() => setSelectedPackageId(column.id)}
+                            disabled={presentationLock}
+                          >
+                            {selectedPackageId === column.id ? 'Selected' : 'Select'}
+                          </Button>
+                        </div>
+                        <div className="space-y-2 min-h-[130px] rounded-md border border-dashed border-slate-700/80 p-2">
+                          {column.productIds.length === 0 && (
+                            <p className="text-xs text-slate-500">Drop products here.</p>
+                          )}
+                          {column.productIds.map((productId) => {
+                            const product = menuCardMap.get(productId);
+                            if (!product) return null;
+                            return (
+                              <div
+                                key={product.id}
+                                draggable={!presentationLock}
+                                onDragStart={(event) => {
+                                  event.dataTransfer.setData('text/plain', product.id);
+                                  setDraggedProductId(product.id);
+                                }}
+                                onDragEnd={() => setDraggedProductId(null)}
+                                className="rounded-md border border-slate-700 bg-slate-950/80 p-2 text-xs cursor-move"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-medium text-sm truncate">{product.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    {product.isCustom && (
+                                      <button
+                                        onClick={() => duplicateGenericCard(product.id)}
+                                        className="text-slate-400 hover:text-slate-200"
+                                        disabled={presentationLock}
+                                      >
+                                        Duplicate
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => removeProductFromColumn(product.id)}
+                                      className="text-slate-400 hover:text-slate-200"
+                                      disabled={presentationLock}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                                {product.isCustom ? (
+                                  <div className="mt-2 grid grid-cols-3 gap-2">
+                                    <Input
+                                      value={product.name}
+                                      onChange={(e) => updateGenericCard(product.id, { name: e.target.value })}
+                                      className="h-8 text-xs"
+                                      disabled={presentationLock}
+                                    />
+                                    <Input
+                                      value={product.category}
+                                      onChange={(e) => updateGenericCard(product.id, { category: e.target.value })}
+                                      className="h-8 text-xs"
+                                      disabled={presentationLock}
+                                    />
+                                    <Input
+                                      type="number"
+                                      value={product.sellPrice}
+                                      onChange={(e) => updateGenericCard(product.id, { sellPrice: Number(e.target.value || 0) })}
+                                      className="h-8 text-xs"
+                                      disabled={presentationLock}
+                                    />
+                                  </div>
+                                ) : (
+                                  <p className="text-slate-400 mt-1">{product.category} • {money(product.sellPrice)}</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-sm font-semibold">Package Total: {money(total)}</p>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                <Card
+                  className="p-3 bg-slate-950/70 border-slate-700/70"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={onPoolDrop}
+                >
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Unassigned Product Pool</p>
+                  <div className="mt-3 grid md:grid-cols-2 gap-2 min-h-[70px]">
+                    {unassignedProducts.length === 0 && <p className="text-xs text-slate-500">All active products are assigned to packages.</p>}
+                    {unassignedProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        draggable={!presentationLock}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData('text/plain', product.id);
+                          setDraggedProductId(product.id);
+                        }}
+                        onDragEnd={() => setDraggedProductId(null)}
+                        className="rounded-md border border-slate-700/70 bg-slate-900/70 p-2 text-xs cursor-move"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          {product.isCustom && (
+                            <button
+                              onClick={() => duplicateGenericCard(product.id)}
+                              className="text-slate-400 hover:text-slate-200"
+                              disabled={presentationLock}
+                            >
+                              Duplicate
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-slate-400 mt-1">{product.category} • {money(product.sellPrice)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
                 <div className="grid md:grid-cols-3 gap-2">
                   <select
                     aria-label="Objection type"

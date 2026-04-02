@@ -298,9 +298,7 @@ CREATE TABLE IF NOT EXISTS automotive_cit_cases (
   lender_contact          TEXT,
   notes                   TEXT,
   escalation_reason       TEXT,
-  days_open               INTEGER GENERATED ALWAYS AS (
-    EXTRACT(DAY FROM (COALESCE(resolved_at, now()) - opened_at))::INTEGER
-  ) STORED,
+  days_open               INTEGER NOT NULL DEFAULT 0,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -549,6 +547,28 @@ CREATE POLICY "automotive_store_preferences_self"
 -- ── Add lender_id FK to deals now that lenders table exists ───────────────
 ALTER TABLE automotive_deals
   ADD COLUMN IF NOT EXISTS lender_id UUID REFERENCES automotive_lenders(id) ON DELETE SET NULL;
+
+-- ── CIT aging maintenance (immutable-safe replacement for generated column) ─
+CREATE OR REPLACE FUNCTION automotive_set_cit_days_open()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.days_open := EXTRACT(DAY FROM (COALESCE(NEW.resolved_at, now()) - NEW.opened_at))::INTEGER;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_automotive_cit_days_open ON automotive_cit_cases;
+CREATE TRIGGER trg_automotive_cit_days_open
+  BEFORE INSERT OR UPDATE OF opened_at, resolved_at
+  ON automotive_cit_cases
+  FOR EACH ROW
+  EXECUTE FUNCTION automotive_set_cit_days_open();
+
+UPDATE automotive_cit_cases
+SET days_open = EXTRACT(DAY FROM (COALESCE(resolved_at, now()) - opened_at))::INTEGER
+WHERE true;
 
 -- ── Triggers: updated_at on all new tables ────────────────────────────────
 DROP TRIGGER IF EXISTS trg_automotive_lenders_updated_at ON automotive_lenders;
