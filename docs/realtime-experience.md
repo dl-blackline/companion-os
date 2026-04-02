@@ -1,9 +1,9 @@
-# Realtime Companion Experience Layer
+# Realtime Vuk Experience Layer
 
 ## Overview
 
-The Realtime Companion Experience Layer adds immersive, low-latency AI
-interaction to Companion OS.  It layers on top of the existing Companion Brain
+The Realtime Vuk Experience Layer adds immersive, low-latency AI
+interaction to Vuk OS.  It layers on top of the existing VUK BRAIN
 architecture without modifying existing endpoints.
 
 **Key capabilities:**
@@ -14,7 +14,7 @@ architecture without modifying existing endpoints.
 | Avatar state machine | `avatar-controller.js` (idle → listening → thinking → speaking) |
 | Voice integration | `realtime-voice-client.ts` + `voice-engine.js` (WebRTC + ElevenLabs) |
 | Image generation in conversation | `realtime-session-service.ts` → `generate-media` endpoint |
-| Companion state engine | `companion-state.js` (idle → listening → thinking → responding) |
+| VUK STATE engine | `companion-state.js` (idle → listening → thinking → responding) |
 | Interruption support | Abort signal in SSE stream + WebRTC `response.cancel` |
 
 ---
@@ -85,7 +85,7 @@ architecture without modifying existing endpoints.
                            │
                            ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                     COMPANION BRAIN  (lib/companion-brain.js)            │
+│                     VUK BRAIN  (lib/companion-brain.js)            │
 │                     AI CLIENT        (lib/ai-client.js)                  │
 │                     VOICE ENGINE     (lib/voice-engine.js)               │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -104,18 +104,18 @@ architecture without modifying existing endpoints.
 2. HTTP POST → /.netlify/functions/companion-stream
    └─▶ SSE response begins
 
-3. COMPANION STATE: idle → listening
+3. VUK STATE: idle → listening
    └─▶ event: state  { companionState: "listening", avatarState: "listening" }
    └─▶ Frontend: Avatar transitions to listening animation
 
-4. COMPANION STATE: listening → thinking
+4. VUK STATE: listening → thinking
    └─▶ event: state  { companionState: "thinking", avatarState: "thinking" }
    └─▶ Frontend: Avatar shows thinking animation
 
 5. AI PROCESSING (companion-brain.think())
    └─▶ Intent detection → Context assembly → Tool execution → Domain routing
 
-6. COMPANION STATE: thinking → responding
+6. VUK STATE: thinking → responding
    └─▶ event: state  { companionState: "responding", avatarState: "speaking" }
    └─▶ Frontend: Avatar begins speaking animation with lip-sync frames
 
@@ -130,7 +130,7 @@ architecture without modifying existing endpoints.
 
 9. STREAM COMPLETE
    └─▶ event: done   { fullText: "Hello world", intent: "chat" }
-   └─▶ COMPANION STATE: responding → idle
+   └─▶ VUK STATE: responding → idle
    └─▶ event: state  { companionState: "idle", avatarState: "idle" }
    └─▶ Frontend: Avatar returns to idle
 ```
@@ -153,7 +153,7 @@ generates TTS audio after the text stream completes.
     └─▶ Frontend: Plays audio via HTMLAudioElement
     └─▶ Avatar: speaking state synced with audio playback
 
-11. COMPANION STATE: responding → idle
+11. VUK STATE: responding → idle
     └─▶ event: state  { companionState: "idle", avatarState: "idle" }
     └─▶ Frontend: Avatar returns to idle after audio ends
 ```
@@ -469,7 +469,7 @@ async function handleSend(message: string) {
 | File | Purpose |
 |------|---------|
 | `src/types/realtime.ts` | TypeScript types for the realtime experience layer |
-| `lib/realtime/companion-state.js` | Companion state engine (validated transitions) |
+| `lib/realtime/companion-state.js` | VUK STATE engine (validated transitions) |
 | `lib/realtime/avatar-controller.js` | Avatar state machine with lip-sync support |
 | `lib/realtime/stream-handler.js` | SSE formatting and streaming pipeline |
 | `netlify/functions/companion-stream.js` | SSE endpoint for streaming AI responses |

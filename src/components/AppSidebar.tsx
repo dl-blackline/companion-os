@@ -129,7 +129,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
           isActive
             ? 'text-foreground border-(--vuk-active-border) shadow-[0_0_18px_var(--vuk-shadow-glow)]'
             : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-white/4 hover:border-border/40',
-          item.group === 'admin' && !isActive && 'text-zinc-400 hover:text-zinc-200',
+          item.group === 'admin' && !isActive && 'text-muted-foreground/70 hover:text-foreground',
         )}
         style={isActive ? { background: 'var(--vuk-active-bg)' } : undefined}
       >
@@ -162,7 +162,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
             <p className="text-[11px] text-muted-foreground mt-1 leading-none">Precision AI Operating Layer</p>
           </div>
         </div>
-        <div className="mt-4 rounded-xl border border-border/75 bg-black/25 px-3 py-2.5 space-y-2">
+        <div className="mt-4 rounded-xl border border-border/75 bg-muted/50 px-3 py-2.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] tracking-wide uppercase text-muted-foreground">System</span>
             <span className="status-chip">
@@ -198,16 +198,16 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
 
         {isAdmin && (
           <div className="space-y-1.5">
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300/70">Governance</p>
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">Governance</p>
             {adminItems.map(renderItem)}
           </div>
         )}
       </nav>
 
-      <div className="p-3 border-t border-border/80 space-y-1.5 bg-black/10">
+      <div className="p-3 border-t border-border/80 space-y-1.5 bg-muted/30">
         {sysItems.map(renderItem)}
 
-        <div className="px-3 py-2 text-xs text-muted-foreground rounded-xl border border-border/70 bg-black/20">
+        <div className="px-3 py-2 text-xs text-muted-foreground rounded-xl border border-border/70 bg-muted/40">
           <div className="flex items-center justify-between">
             <span>Runtime</span>
             <span className="text-foreground/80">v1.0.0</span>
@@ -215,7 +215,7 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
         </div>
 
         {user && (
-          <div className="border border-border/70 bg-black/25 rounded-xl p-2 mt-1">
+          <div className="border border-border/70 bg-muted/50 rounded-xl p-2 mt-1">
             <div className="flex items-center gap-2 px-1 py-1">
               <Avatar className="h-8 w-8 shrink-0 border border-border/80">
                 {prefs.avatar_url && <AvatarImage src={prefs.avatar_url} alt="User avatar" />}

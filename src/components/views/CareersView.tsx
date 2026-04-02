@@ -281,7 +281,7 @@ Make this practical and execution-focused.`;
       </div>
 
       <Tabs value={mode} onValueChange={(v) => setMode(v as CareerMode)}>
-        <TabsList className="bg-black/20 border border-border/70">
+        <TabsList>
           <TabsTrigger value="resume" className="gap-1.5"><FileText size={14} /> Resume Review</TabsTrigger>
           <TabsTrigger value="hunt" className="gap-1.5"><MagnifyingGlass size={14} /> Job Hunt</TabsTrigger>
           <TabsTrigger value="agent" className="gap-1.5"><Robot size={14} /> Agent Mode</TabsTrigger>

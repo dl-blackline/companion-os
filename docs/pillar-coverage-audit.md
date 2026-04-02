@@ -420,7 +420,7 @@ The following sequence addresses the top 5 gaps in dependency order — each ste
 - `lib/agent-manager.js` — agent task CRUD
 - `lib/agent-registry.js` — 4 system agents
 - `lib/workflow-engine.js` — multi-step workflow execution
-- `lib/realtime/companion-state.js` — companion state machine
+- `lib/realtime/companion-state.js` — VUK STATE machine
 - `lib/realtime/session-manager.js` — session management
 - `src/components/CompanionOrb.tsx` — avatar orb
 - `src/components/FloatingLiveOrb.tsx` — floating live orb

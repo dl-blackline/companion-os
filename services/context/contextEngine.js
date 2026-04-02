@@ -98,7 +98,7 @@ async function safeCompanionContext(user_id) {
     const ctx = await buildCompanionContext(user_id);
     return { context: ctx, formatted: formatCompanionContext(ctx) };
   } catch (err) {
-    console.error("Companion context error (non-fatal):", err.message);
+    console.error("Vuk context error (non-fatal):", err.message);
     return null;
   }
 }

@@ -1,4 +1,4 @@
-# Companion OS — Master Product & Design Specification
+# Vuk OS — Master Product & Design Specification
 
 > **Version**: 3.0 — World-Class Production Standard  
 > **Status**: Required Implementation — All items below are mandatory core capabilities, not optional enhancements.  
@@ -9,7 +9,7 @@
 
 ## 1. Product Vision
 
-Companion OS is a **real-time, visually immersive AI companion platform** — not a chatbot with media features layered on top. It is a live digital presence that listens, thinks, speaks, creates, and adapts moment-to-moment to serve the user.
+Vuk OS is a **real-time, visually immersive AI companion platform** — not a chatbot with media features layered on top. It is a live digital presence that listens, thinks, speaks, creates, and adapts moment-to-moment to serve the user.
 
 **This product must become one of the strongest, smoothest, most advanced AI user interfaces and user experiences in the world.** The standard cannot be average. The UI, responsiveness, motion, transitions, and conversation experience must feel elite, premium, effortless, and best-in-class. Every decision — from pixel-level design to voice response timing — must reflect that this product is competing at the highest level of AI UX globally.
 
@@ -31,7 +31,7 @@ This specification replaces prior under-scoped planning. Every requirement liste
 
 > **This section defines the single highest-priority product requirement.** Every team member, every feature, every design decision, and every implementation must be held to this standard. This is not aspirational — it is the minimum acceptable bar.
 
-Companion OS must deliver **one of the most advanced, polished, and human-like AI user experiences in the world**. The interface must feel extremely smooth, fast, fluid, and polished at all times. Every animation, transition, interaction, and response must feel intentional and premium. The product must feel frictionless, immersive, and technologically superior — not like a normal app or chatbot shell.
+Vuk OS must deliver **one of the most advanced, polished, and human-like AI user experiences in the world**. The interface must feel extremely smooth, fast, fluid, and polished at all times. Every animation, transition, interaction, and response must feel intentional and premium. The product must feel frictionless, immersive, and technologically superior — not like a normal app or chatbot shell.
 
 This world-class standard applies across seven core dimensions:
 
@@ -523,7 +523,7 @@ The following quality standards are required for production release. They are no
 ### 14.5 Navigation Quality
 - [ ] All 9 navigation sections are accessible and functional
 - [ ] Active state animates smoothly via `layoutId` spring transition
-- [ ] Mini orb in sidebar reflects companion state correctly
+- [ ] Mini orb in sidebar reflects VUK STATE correctly
 - [ ] Back navigation from Live Talk returns to Home cleanly
 
 ---
@@ -588,14 +588,14 @@ A feature is considered **Done** when all of the following are true **and** the 
 
 ### Sidebar
 - [ ] All 9 navigation sections render correctly with correct icons
-- [ ] Mini orb in sidebar header reflects current companion state
+- [ ] Mini orb in sidebar header reflects current VUK STATE
 - [ ] Active nav item highlights correctly with spring animation
 - [ ] "COMPANION" and "TOOLS" section group labels render
 - [ ] Settings and version footer render at bottom
 
 ---
 
-## Appendix A: Companion OS Companion State Reference
+## Appendix A: Vuk OS VUK STATE Reference
 
 ```typescript
 type CompanionState =
@@ -628,4 +628,4 @@ type CompanionState =
 
 ---
 
-*This specification supersedes all prior product plans and must be treated as the authoritative source for product, design, and engineering decisions on Companion OS. The world-class AI UX standard (Section 2) is the top-priority product requirement and the non-negotiable quality floor for every feature, interaction, and experience in the product.*
+*This specification supersedes all prior product plans and must be treated as the authoritative source for product, design, and engineering decisions on Vuk OS. The world-class AI UX standard (Section 2) is the top-priority product requirement and the non-negotiable quality floor for every feature, interaction, and experience in the product.*

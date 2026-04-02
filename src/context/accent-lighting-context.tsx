@@ -23,6 +23,7 @@ export type AccentThemeId =
   | 'ice-white'
   | 'crimson'
   | 'electric-blue'
+  | 'cockpit-cyan'
   | 'amber'
   | 'violet'
   | 'emerald'
@@ -70,6 +71,14 @@ export const ACCENT_THEMES: AccentTheme[] = [
     preview: 'oklch(0.65 0.18 230)',
   },
   {
+    id: 'cockpit-cyan',
+    label: 'Cockpit Cyan',
+    hue: 200,
+    chroma: 0.14,
+    lightness: 0.78,
+    preview: 'oklch(0.78 0.14 200)',
+  },
+  {
     id: 'amber',
     label: 'Amber',
     hue: 70,
@@ -111,7 +120,7 @@ export const ACCENT_THEMES: AccentTheme[] = [
   },
 ];
 
-const DEFAULT_ACCENT: AccentThemeId = 'ice-white';
+const DEFAULT_ACCENT: AccentThemeId = 'cockpit-cyan';
 const STORAGE_KEY = 'vuk-accent-theme';
 
 // ── Apply CSS custom properties ─────────────────────────────────────────────

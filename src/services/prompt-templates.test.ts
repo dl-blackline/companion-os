@@ -158,7 +158,7 @@ describe('roleplaySession', () => {
 describe('dailyPlan', () => {
   it('includes context block and message', () => {
     const result = dailyPlan({
-      contextBlock: 'COMPANION CONTEXT\nGoals: run 5K',
+      contextBlock: 'VUK CONTEXT\nGoals: run 5K',
       message: 'Plan my morning',
     });
     expect(result.system).toContain('run 5K');
@@ -264,7 +264,7 @@ describe('liveTalkSystem', () => {
 
   it('uses defaults when params are omitted', () => {
     const result = liveTalkSystem({});
-    expect(result).toContain('Companion');
+    expect(result).toContain('Vuk');
   });
 });
 

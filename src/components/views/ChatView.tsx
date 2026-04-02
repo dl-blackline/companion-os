@@ -417,7 +417,7 @@ export function ChatView() {
           'flex-1 flex flex-col',
           activeConversation ? 'flex' : 'hidden md:flex'
         )}>
-          <div className="p-4 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.74)] backdrop-blur-md">
+          <div className="p-4 border-b border-border/75 bg-[#080C14BD] backdrop-blur-md">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button

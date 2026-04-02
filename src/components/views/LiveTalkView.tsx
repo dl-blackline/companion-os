@@ -925,7 +925,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center gap-1"
               >
-                <AudioVisualizer active={true} color="oklch(0.65 0.20 230)" colorEnd="oklch(0.55 0.18 260)" height={48} />
+                <AudioVisualizer active={true} color="#00D4FF" colorEnd="#006E85" height={48} />
               </motion.div>
             )}
             {isSpeaking && (
@@ -936,7 +936,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center gap-1"
               >
-                <AudioVisualizer active={true} color="oklch(0.65 0.22 145)" colorEnd="oklch(0.75 0.18 65)" height={48} />
+                <AudioVisualizer active={true} color="#32D99A" colorEnd="#F6B84C" height={48} />
               </motion.div>
             )}
             {isThinking && (
@@ -1006,7 +1006,7 @@ Prefer using tools over just talking about doing something. If the user asks for
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <AudioVisualizer active={false} color="oklch(0.40 0.04 270)" height={48} />
+                <AudioVisualizer active={false} color="#7E889A" height={48} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -1023,11 +1023,11 @@ Prefer using tools over just talking about doing something. If the user asks for
               transition={{ duration: 0.2 }}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium tracking-wide uppercase',
-                isListening && 'bg-[oklch(0.65_0.20_230/0.15)] text-[oklch(0.65_0.20_230)]',
-                isSpeaking && 'bg-[oklch(0.65_0.22_145/0.15)] text-[oklch(0.65_0.22_145)]',
-                isThinking && 'bg-[oklch(0.60_0.22_310/0.15)] text-[oklch(0.60_0.22_310)]',
-                isGeneratingImage && 'bg-[oklch(0.65_0.22_60/0.15)] text-[oklch(0.65_0.22_60)]',
-                isGeneratingVideo && 'bg-[oklch(0.60_0.24_180/0.15)] text-[oklch(0.60_0.24_180)]',
+                isListening && 'bg-[#64B5FF26] text-[#64B5FF]',
+                isSpeaking && 'bg-[#32D99A26] text-[#32D99A]',
+                isThinking && 'bg-[#00D4FF26] text-[#00D4FF]',
+                isGeneratingImage && 'bg-[#F6B84C26] text-[#F6B84C]',
+                isGeneratingVideo && 'bg-[#00B4D826] text-[#00B4D8]',
               )}
             >
               {isListening && <><Microphone size={11} weight="fill" />Listening</>}
@@ -1208,8 +1208,8 @@ Prefer using tools over just talking about doing something. If the user asks for
             'relative flex items-center justify-center rounded-full transition-all duration-300',
             isSmallScreen ? 'w-[72px] h-[72px]' : 'w-20 h-20',
             isMicOn
-              ? 'bg-[oklch(0.65_0.20_230)] shadow-[0_0_32px_oklch(0.65_0.20_230/0.65),0_0_64px_oklch(0.65_0.20_230/0.30)]'
-              : 'bg-card border border-border hover:border-primary/50 hover:bg-card/80 hover:shadow-[0_0_20px_oklch(0.50_0.18_285/0.25)]'
+              ? 'bg-[#64B5FF] shadow-[0_0_32px_rgba(100,181,255,0.65),0_0_64px_rgba(100,181,255,0.30)]'
+              : 'bg-card border border-border hover:border-primary/50 hover:bg-card/80 hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]'
           )}
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.93 }}
@@ -1223,8 +1223,8 @@ Prefer using tools over just talking about doing something. If the user asks for
           {/* Active ring */}
           {isMicOn && (
             <>
-              <span className="absolute inset-0 rounded-full border-2 border-[oklch(0.65_0.20_230/0.60)] ripple-1" />
-              <span className="absolute inset-0 rounded-full border-2 border-[oklch(0.65_0.20_230/0.40)] ripple-2" />
+              <span className="absolute inset-0 rounded-full border-2 border-[#64B5FF99] ripple-1" />
+              <span className="absolute inset-0 rounded-full border-2 border-[#64B5FF66] ripple-2" />
             </>
           )}
         </motion.button>

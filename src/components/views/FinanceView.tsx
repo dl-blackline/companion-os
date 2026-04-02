@@ -507,7 +507,7 @@ export function FinanceView() {
       )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="bg-black/25 border border-border/70 flex-wrap">
+        <TabsList className="flex-wrap">
           <TabsTrigger value="dashboard" className="gap-1.5"><ChartLineUp size={14} /> Command Center</TabsTrigger>
           <TabsTrigger value="accounts" className="gap-1.5"><CreditCard size={14} /> Accounts</TabsTrigger>
           <TabsTrigger value="transactions" className="gap-1.5"><ListBullets size={14} /> Transactions</TabsTrigger>

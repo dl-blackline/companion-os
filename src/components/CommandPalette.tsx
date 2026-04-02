@@ -229,7 +229,7 @@ export function CommandPalette({ open, onOpenChange, activeSection, onNavigate }
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Command Palette</DialogTitle>
-          <DialogDescription>Search commands and navigate Companion</DialogDescription>
+          <DialogDescription>Search commands and navigate Vuk OS</DialogDescription>
         </DialogHeader>
         <Command
           shouldFilter

@@ -216,7 +216,7 @@ async function handleChat(data) {
     });
 
     if (!result || !result.response) {
-      throw new Error("Companion Brain returned empty response");
+      throw new Error("Vuk Brain returned empty response");
     }
 
     /* ---- Determine if this is a media response (image / video / music) ---- */
@@ -307,7 +307,7 @@ async function handleChat(data) {
       intent: result.intent || { intent: "chat", confidence: 1 },
     });
   } catch (brainError) {
-    log.warn("[ai]", "companion brain failed, falling back to direct AI:", brainError.message);
+    log.warn("[ai]", "vuk brain failed, falling back to direct AI:", brainError.message);
 
     /* --------------------------- ROUTER FALLBACK ---------------------------- */
 
