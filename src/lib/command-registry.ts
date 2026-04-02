@@ -26,6 +26,24 @@ export interface PaletteCommand {
   context?: string[];
 }
 
+export interface EntityResult {
+  id: string;
+  label: string;
+  sublabel?: string;
+  type: string;
+  icon: string;
+  section: string;
+}
+
+export interface SmartSuggestion {
+  id: string;
+  label: string;
+  sublabel: string;
+  icon: string;
+  section: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
 export const GROUP_META: Record<CommandGroup, { label: string; order: number }> = {
   navigation: { label: 'Navigate', order: 0 },
   create: { label: 'Quick Create', order: 1 },

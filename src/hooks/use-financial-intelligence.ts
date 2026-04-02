@@ -140,7 +140,7 @@ export function useFinancialIntelligence() {
         throw new Error(uploadError.message || 'Failed to upload financial document.');
       }
 
-      const data = await authedFetch('/.netlify/functions/financial-intelligence', {
+      await authedFetch('/.netlify/functions/financial-intelligence', {
         method: 'POST',
         body: JSON.stringify({
           action: 'ingest_document',
@@ -152,14 +152,15 @@ export function useFinancialIntelligence() {
         }),
       });
 
-      setDashboard(data);
+      // ingest_document returns extraction metadata, not a dashboard — refresh to get updated state
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to ingest financial document.');
       throw err;
     } finally {
       setSaving(false);
     }
-  }, [authedFetch, user]);
+  }, [authedFetch, refresh, user]);
 
   const saveObligation = useCallback(async (input: UpsertObligationInput) => {
     setSaving(true);
@@ -229,6 +230,79 @@ export function useFinancialIntelligence() {
     }
   }, [authedFetch]);
 
+  const deleteObligation = useCallback(async (id: string) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await authedFetch('/.netlify/functions/financial-intelligence', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_obligation', id }),
+      });
+      setDashboard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete obligation.');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [authedFetch]);
+
+  const deleteGoal = useCallback(async (id: string) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await authedFetch('/.netlify/functions/financial-intelligence', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_goal', id }),
+      });
+      setDashboard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete goal.');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [authedFetch]);
+
+  const deleteCalendarEvent = useCallback(async (id: string) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await authedFetch('/.netlify/functions/financial-intelligence', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_calendar_event', id }),
+      });
+      setDashboard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete calendar event.');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [authedFetch]);
+
+  const aiFinancialIntake = useCallback(async (message: string): Promise<{ response: string; savedItems: { obligations: number; goals: number; events: number } }> => {
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await authedFetch('/.netlify/functions/financial-intelligence', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'ai_financial_intake', message }),
+      });
+      // The response includes an updated dashboard
+      const result = data as unknown as { response: string; savedItems: { obligations: number; goals: number; events: number }; dashboard: FinancialIntelligenceDashboard };
+      if (result.dashboard) {
+        setDashboard(result.dashboard);
+      }
+      return { response: result.response, savedItems: result.savedItems };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI financial intake failed.');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, [authedFetch]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -240,9 +314,13 @@ export function useFinancialIntelligence() {
     error,
     refresh,
     uploadAndIngestDocument,
+    aiFinancialIntake,
     saveObligation,
+    deleteObligation,
     saveGoal,
+    deleteGoal,
     saveCalendarEvent,
+    deleteCalendarEvent,
     refreshInsights,
   };
 }

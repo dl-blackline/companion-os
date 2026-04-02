@@ -24,6 +24,9 @@ import { Heartbeat } from '@phosphor-icons/react/Heartbeat';
 import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
 import { ListBullets } from '@phosphor-icons/react/ListBullets';
 import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { PaperPlaneRight } from '@phosphor-icons/react/PaperPlaneRight';
+import { ChatCircleDots } from '@phosphor-icons/react/ChatCircleDots';
 import { Note } from '@phosphor-icons/react/Note';
 import { PiggyBank } from '@phosphor-icons/react/PiggyBank';
 import { TrendDown } from '@phosphor-icons/react/TrendDown';
@@ -89,6 +92,12 @@ export function FinanceView() {
   const [selectedDocumentType, setSelectedDocumentType] = useState<FinancialDocumentSourceType>('bank_statement');
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
+  // AI Financial Intake state
+  const [aiInput, setAiInput] = useState('');
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiListening, setAiListening] = useState(false);
+
   // Vehicle form state
   const [vYear, setVYear] = useState('');
   const [vMake, setVMake] = useState('');
@@ -109,6 +118,7 @@ export function FinanceView() {
   const [plannerAmount, setPlannerAmount] = useState('');
   const [plannerMinimum, setPlannerMinimum] = useState('');
   const [plannerPlanned, setPlannerPlanned] = useState('');
+  const [editingObligationId, setEditingObligationId] = useState<string | null>(null);
 
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
@@ -136,9 +146,13 @@ export function FinanceView() {
     saving: intelligenceSaving,
     error: intelligenceError,
     uploadAndIngestDocument,
+    aiFinancialIntake,
     saveObligation,
+    deleteObligation,
     saveGoal,
+    deleteGoal,
     saveCalendarEvent,
+    deleteCalendarEvent,
     refreshInsights,
   } = useFinancialIntelligence();
 
@@ -306,6 +320,7 @@ export function FinanceView() {
 
     try {
       await saveObligation({
+        id: editingObligationId || undefined,
         accountLabel: plannerLabel.trim(),
         category: plannerCategory,
         dueDate: plannerDueDate,
@@ -314,16 +329,17 @@ export function FinanceView() {
         plannedPayment: Number(plannerPlanned || 0),
         status: 'planned',
       });
-      toast.success('Bill saved to planner.');
+      toast.success(editingObligationId ? 'Obligation updated.' : 'Bill saved to planner.');
       setPlannerLabel('');
       setPlannerDueDate('');
       setPlannerAmount('');
       setPlannerMinimum('');
       setPlannerPlanned('');
+      setEditingObligationId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to save planner item.');
     }
-  }, [plannerAmount, plannerCategory, plannerDueDate, plannerLabel, plannerMinimum, plannerPlanned, saveObligation]);
+  }, [editingObligationId, plannerAmount, plannerCategory, plannerDueDate, plannerLabel, plannerMinimum, plannerPlanned, saveObligation]);
 
   const handleSaveGoal = useCallback(async () => {
     if (!goalName.trim() || Number(goalTarget) <= 0) {
@@ -402,13 +418,70 @@ export function FinanceView() {
     }
   }, [vYear, vMake, vModel, vTrim, vMileage, vCondition, vPayoff, vPayment, vLender, vTermRemaining, vValue, vValueSource, upsertVehicle]);
 
+  const handleAIIntake = useCallback(async () => {
+    if (!aiInput.trim() || aiProcessing) return;
+    setAiProcessing(true);
+    setAiResponse(null);
+    try {
+      const result = await aiFinancialIntake(aiInput.trim());
+      setAiResponse(result.response);
+      const items = result.savedItems;
+      const parts: string[] = [];
+      if (items.obligations > 0) parts.push(`${items.obligations} obligation${items.obligations > 1 ? 's' : ''}`);
+      if (items.goals > 0) parts.push(`${items.goals} goal${items.goals > 1 ? 's' : ''}`);
+      if (items.events > 0) parts.push(`${items.events} event${items.events > 1 ? 's' : ''}`);
+      if (parts.length > 0) {
+        toast.success(`Saved ${parts.join(', ')} from your input.`);
+      }
+      setAiInput('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'AI intake failed.');
+    } finally {
+      setAiProcessing(false);
+    }
+  }, [aiInput, aiProcessing, aiFinancialIntake]);
+
+  const handleVoiceInput = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error('Voice input is not supported in this browser.');
+      return;
+    }
+    const SpeechRecognition = (window as unknown as { SpeechRecognition?: new () => SpeechRecognition; webkitSpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition
+      || (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    setAiListening(true);
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      setAiInput(prev => prev ? `${prev} ${transcript}` : transcript);
+      setAiListening(false);
+    };
+
+    recognition.onerror = () => {
+      setAiListening(false);
+      toast.error('Voice recognition failed. Try again.');
+    };
+
+    recognition.onend = () => {
+      setAiListening(false);
+    };
+
+    recognition.start();
+  }, []);
+
   const sortedObligations = useMemo(
-    () => [...dashboard.obligations].sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
+    () => [...(dashboard.obligations ?? [])].sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
     [dashboard.obligations]
   );
 
   const sortedGoals = useMemo(
-    () => [...dashboard.goals].sort((a, b) => a.name.localeCompare(b.name)),
+    () => [...(dashboard.goals ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [dashboard.goals]
   );
 
@@ -952,9 +1025,9 @@ export function FinanceView() {
                           className="text-xs flex-1"
                           onClick={async () => {
                             await updateAccount(acct.id, {
-                              nickname: editNickname || null,
-                              user_notes: editAccountNotes || null,
-                              website_url: editWebsiteUrl || null,
+                              nickname: editNickname || undefined,
+                              user_notes: editAccountNotes || undefined,
+                              website_url: editWebsiteUrl || undefined,
                             });
                             setEditingAccountId(null);
                           }}
@@ -1471,8 +1544,8 @@ export function FinanceView() {
                     direction: ledgerDirection,
                     due_date: ledgerDueDate,
                     recurrence: ledgerRecurrence || 'once',
-                    notes: ledgerNotes || null,
-                    connection_id: ledgerAccount || null,
+                    notes: ledgerNotes || undefined,
+                    connection_id: ledgerAccount || undefined,
                   });
                   setShowLedgerForm(false);
                   setLedgerTitle('');
@@ -2273,7 +2346,18 @@ export function FinanceView() {
               <Input value={plannerMinimum} onChange={(e) => setPlannerMinimum(e.target.value)} placeholder="Minimum due" />
               <Input value={plannerPlanned} onChange={(e) => setPlannerPlanned(e.target.value)} placeholder="Planned payment" />
             </div>
-            <Button onClick={() => void handleSavePlanner()} disabled={intelligenceSaving}>Save to Bill Planner</Button>
+            <div className="flex gap-2">
+              <Button onClick={() => void handleSavePlanner()} disabled={intelligenceSaving}>
+                {editingObligationId ? 'Update Obligation' : 'Save to Bill Planner'}
+              </Button>
+              {editingObligationId && (
+                <Button variant="ghost" onClick={() => {
+                  setEditingObligationId(null);
+                  setPlannerLabel(''); setPlannerDueDate(''); setPlannerAmount('');
+                  setPlannerMinimum(''); setPlannerPlanned('');
+                }}>Cancel</Button>
+              )}
+            </div>
           </Card>
 
           <Card className="p-5 space-y-2">
@@ -2287,9 +2371,36 @@ export function FinanceView() {
                     <p className="text-sm font-medium">{item.account_label || item.institution_name || 'Obligation'}</p>
                     <p className="text-xs text-muted-foreground">Due {item.due_date || 'n/a'} • {item.category}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{currency(item.amount_due || item.minimum_due || 0)}</p>
-                    <Badge variant={item.status === 'overdue' ? 'destructive' : 'secondary'} className="capitalize">{item.status}</Badge>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{currency(item.amount_due || item.minimum_due || 0)}</p>
+                      <Badge variant={item.status === 'overdue' ? 'destructive' : 'secondary'} className="capitalize">{item.status}</Badge>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        title="Edit obligation"
+                        className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                        onClick={() => {
+                          setPlannerLabel(item.account_label || item.institution_name || '');
+                          setPlannerCategory(item.category || 'bill');
+                          setPlannerDueDate(item.due_date || '');
+                          setPlannerAmount(String(item.amount_due || ''));
+                          setPlannerMinimum(String(item.minimum_due || ''));
+                          setPlannerPlanned(String(item.planned_payment || ''));
+                          setEditingObligationId(item.id);
+                        }}
+                      >
+                        <PencilSimple size={13} />
+                      </button>
+                      <button
+                        title="Delete obligation"
+                        className="text-muted-foreground/60 hover:text-rose-400 transition-colors"
+                        onClick={() => void deleteObligation(item.id)}
+                        disabled={intelligenceSaving}
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -2501,11 +2612,34 @@ export function FinanceView() {
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold">Recent Transactions</p>
-            <Wallet size={18} className="text-muted-foreground" />
+            <div className="flex items-center gap-2">
+              {linkedAccountsDashboard.accounts.length > 0 && txFeed.length === 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 gap-1"
+                  disabled={stripeSyncing}
+                  onClick={async () => {
+                    await syncTransactions();
+                    txRefresh();
+                  }}
+                >
+                  <ArrowsClockwise size={11} className={stripeSyncing ? 'animate-spin' : ''} />
+                  {stripeSyncing ? 'Syncing…' : 'Sync'}
+                </Button>
+              )}
+              <Wallet size={18} className="text-muted-foreground" />
+            </div>
           </div>
 
           {summary.transactions.length === 0 && txFeed.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No transactions available yet.</p>
+            <p className="text-sm text-muted-foreground">
+              {linkedAccountsDashboard.accounts.length === 0
+                ? 'Link a bank account to see transactions.'
+                : stripeSyncing
+                  ? 'Syncing transactions from your bank…'
+                  : 'No transactions synced yet. Try clicking Sync above.'}
+            </p>
           ) : (
             <div className="space-y-2">
               {txFeed.slice(0, 5).map((tx) => (

@@ -3,9 +3,20 @@
  * always renders auth status (loading / signed-in / signed-out / error) and
  * that Sign Out / Sign In controls are visible.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
+
+// Stub fetch globally before any mocks to prevent Netlify function calls from hanging
+const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ success: false, error: 'test' }), { status: 200 })));
+vi.stubGlobal('fetch', fetchMock);
+
+// Polyfill ResizeObserver for Radix UI components (Tabs, Select, etc.)
+vi.stubGlobal('ResizeObserver', class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+});
 
 // ── Mutable mock state ──────────────────────────────────────────────────────
 let mockUser: { id: string; email: string } | null = null;
@@ -83,6 +94,39 @@ vi.mock('@/components/EmojiOrbCustomizer', () => ({
   EmojiOrbCustomizer: () => <div data-testid="emoji-customizer" />,
 }));
 
+vi.mock('@/hooks/use-subscription', () => ({
+  useSubscription: () => ({
+    loading: false,
+    error: null,
+    customerId: null,
+    stripeSubscriptionId: null,
+    currentPlan: 'free',
+    status: 'none',
+    trialEndsAt: null,
+    expiresAt: null,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    canManageBilling: false,
+    usage: {},
+    refresh: vi.fn(),
+    startCheckout: vi.fn(),
+    openBillingPortal: vi.fn(),
+  }),
+}));
+
+vi.mock('@/components/settings/UserIdentityCard', () => ({
+  UserIdentityCard: () => <div data-testid="user-identity-card" />,
+}));
+
+vi.mock('sonner', () => ({
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  }),
+}));
+
 // ── Reset mocks ─────────────────────────────────────────────────────────────
 beforeEach(() => {
   mockUser = null;
@@ -90,6 +134,12 @@ beforeEach(() => {
   mockAuthLoading = false;
   mockConfigured = true;
   mockLogout.mockReset();
+  fetchMock.mockClear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.stubGlobal('fetch', fetchMock);
 });
 
 // Lazy import so mocks are active at import time

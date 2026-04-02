@@ -71,7 +71,27 @@ async function extractDocumentText({ storagePath, mimeType }) {
 
   if ((mimeType || '').includes('pdf')) {
     const parsed = await pdfParse(bytes);
-    return parsed?.text || '';
+    const pdfText = parsed?.text || '';
+    // If PDF text extraction returned very little content, it's likely a scanned/image-based PDF
+    // Fall back to vision analysis for better extraction
+    if (pdfText.trim().length < 50) {
+      try {
+        const signed = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(storagePath, 600);
+        if (signed.data?.signedUrl) {
+          const analysis = await analyzeImage({
+            image_url: signed.data.signedUrl,
+            prompt: 'Extract every piece of financial text visible: provider name, account numbers, billing period, issue date, due date, total due, minimum due, current balance, statement balance, past due amount, late fees, credit limit, autopay indicators, and any recurring obligation hints. Include all dollar amounts.',
+            model: 'gpt-4.1',
+          });
+          if (analysis && analysis.trim().length > pdfText.trim().length) {
+            return analysis;
+          }
+        }
+      } catch { /* fall through to pdf text */ }
+    }
+    return pdfText;
   }
 
   if ((mimeType || '').startsWith('image/')) {

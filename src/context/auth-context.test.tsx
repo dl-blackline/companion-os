@@ -27,14 +27,14 @@ const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 vi.mock('@/lib/supabase-client', () => ({
   supabase: {
     auth: {
-      getSession: (...args: unknown[]) => mockGetSession(...args),
-      signInWithPassword: (...args: unknown[]) => mockSignIn(...args),
-      signUp: (...args: unknown[]) => mockSignUp(...args),
-      signOut: (...args: unknown[]) => mockSignOut(...args),
-      resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
-      onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
+      getSession: (...args: any[]) => mockGetSession(...args),
+      signInWithPassword: (...args: any[]) => mockSignIn(...args),
+      signUp: (...args: any[]) => mockSignUp(...args),
+      signOut: (...args: any[]) => mockSignOut(...args),
+      resetPasswordForEmail: (...args: any[]) => mockResetPasswordForEmail(...args),
+      onAuthStateChange: (...args: any[]) => mockOnAuthStateChange(args[0]),
     },
-    from: (...args: unknown[]) => mockFrom(...args),
+    from: (...args: any[]) => mockFrom(...args),
   },
   supabaseConfigured: true,
 }));
