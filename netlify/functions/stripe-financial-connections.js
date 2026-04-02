@@ -370,28 +370,27 @@ async function handleCompleteSession(user, body) {
 
   console.log(`[stripe-fc] ${linked}/${accounts.length} accounts persisted, ${balancesSynced} balances synced`);
 
-  // Fetch initial transactions — trigger explicit refresh and wait for it
+  // Trigger transaction refresh for each account (non-blocking).
+  // Stripe processes this asynchronously — the frontend will call
+  // sync_transactions after a short delay to pick up the results.
   for (const stripeAccountId of linkedAccountIds) {
     try {
-      // Trigger transaction refresh (prefetch may not have completed yet)
-      try {
-        await stripe.financialConnections.accounts.refresh(stripeAccountId, {
-          features: ['transactions'],
-        });
-        console.log(`[stripe-fc] Transaction refresh triggered for ${stripeAccountId}`);
-      } catch (refreshErr) {
-        console.warn(`[stripe-fc] Transaction refresh trigger for ${stripeAccountId}:`, refreshErr.message);
-      }
-      const ready = await waitForTransactionRefresh(stripe, stripeAccountId);
-      if (ready) {
-        const txCount = await fetchAndPersistTransactions(stripe, user.id, stripeAccountId);
-        transactionsSynced += txCount;
-        console.log(`[stripe-fc] ${txCount} transactions persisted for ${stripeAccountId}`);
-      } else {
-        console.warn(`[stripe-fc] Transaction refresh not ready for ${stripeAccountId}, will sync later`);
-      }
+      await stripe.financialConnections.accounts.refresh(stripeAccountId, {
+        features: ['transactions'],
+      });
+      console.log(`[stripe-fc] Transaction refresh triggered for ${stripeAccountId}`);
+    } catch (refreshErr) {
+      // May fail if prefetch already started a refresh — that's fine
+      console.warn(`[stripe-fc] Transaction refresh trigger for ${stripeAccountId}:`, refreshErr.message);
+    }
+
+    // Quick non-blocking attempt: if prefetch already produced data, grab it now
+    try {
+      const txCount = await fetchAndPersistTransactions(stripe, user.id, stripeAccountId);
+      transactionsSynced += txCount;
+      if (txCount > 0) console.log(`[stripe-fc] ${txCount} prefetched transactions persisted for ${stripeAccountId}`);
     } catch (err) {
-      console.warn(`[stripe-fc] Initial tx fetch for ${stripeAccountId}:`, err.message);
+      console.warn(`[stripe-fc] Quick tx fetch for ${stripeAccountId}:`, err.message);
     }
   }
 
@@ -405,22 +404,6 @@ async function handleCompleteSession(user, body) {
     syncStatus: transactionsSynced > 0 ? 'complete' : 'transactions_syncing',
     ...(errors.length > 0 ? { partialErrors: errors } : {}),
   });
-}
-
-async function waitForTransactionRefresh(stripe, stripeAccountId, maxWaitMs = 30000) {
-  const start = Date.now();
-  const interval = 2000;
-  while (Date.now() - start < maxWaitMs) {
-    const acct = await stripe.financialConnections.accounts.retrieve(stripeAccountId);
-    const status = acct.transaction_refresh?.status;
-    console.log(`[stripe-fc] transaction_refresh status for ${stripeAccountId}: ${status}`);
-    if (status === 'succeeded') return true;
-    if (status === 'failed') return false;
-    // Still pending — wait and retry
-    await new Promise((r) => setTimeout(r, interval));
-  }
-  console.warn(`[stripe-fc] Transaction refresh timed out for ${stripeAccountId}`);
-  return false;
 }
 
 async function fetchAndPersistTransactions(stripe, userId, stripeAccountId) {
@@ -498,17 +481,26 @@ async function handleRefreshAccount(user, body) {
     console.warn(`[stripe-fc] Balance refresh for ${conn.stripe_account_id}:`, err.message);
   }
 
-  // Refresh transactions
+  // Refresh transactions — trigger and attempt a quick fetch
+  let txSynced = 0;
   try {
-    await stripe.financialConnections.accounts.refresh(conn.stripe_account_id, {
-      features: ['transactions'],
-    });
-    const ready = await waitForTransactionRefresh(stripe, conn.stripe_account_id);
-    if (ready) {
-      await fetchAndPersistTransactions(stripe, user.id, conn.stripe_account_id);
+    // Check if a previous refresh already completed
+    const acctCheck = await stripe.financialConnections.accounts.retrieve(conn.stripe_account_id);
+    const existingStatus = acctCheck.transaction_refresh?.status;
+
+    if (existingStatus !== 'succeeded') {
+      // Trigger a new refresh
+      await stripe.financialConnections.accounts.refresh(conn.stripe_account_id, {
+        features: ['transactions'],
+      });
+      console.log(`[stripe-fc] Transaction refresh triggered for ${conn.stripe_account_id} (was: ${existingStatus})`);
     } else {
-      console.warn(`[stripe-fc] Transaction refresh not ready for ${conn.stripe_account_id}, skipping fetch`);
+      console.log(`[stripe-fc] Transaction refresh already succeeded for ${conn.stripe_account_id}`);
     }
+
+    // Fetch whatever is available now
+    txSynced = await fetchAndPersistTransactions(stripe, user.id, conn.stripe_account_id);
+    console.log(`[stripe-fc] ${txSynced} transactions fetched for ${conn.stripe_account_id}`);
   } catch (err) {
     console.warn(`[stripe-fc] Transaction refresh for ${conn.stripe_account_id}:`, err.message);
   }
@@ -520,7 +512,67 @@ async function handleRefreshAccount(user, body) {
     .eq('id', conn.id)
     .eq('user_id', user.id);
 
-  return ok({ refreshed: true });
+  return ok({ refreshed: true, transactionsSynced: txSynced });
+}
+
+async function handleSyncTransactions(user) {
+  const stripe = requireStripe();
+
+  // Get all connected Stripe accounts for this user
+  const { data: connections } = await supabase
+    .from('financial_connections')
+    .select('id, stripe_account_id, institution_name')
+    .eq('user_id', user.id)
+    .eq('provider', 'stripe')
+    .eq('status', 'connected');
+
+  if (!connections || connections.length === 0) {
+    return ok({ synced: 0, accounts: [], message: 'No connected accounts.' });
+  }
+
+  let totalSynced = 0;
+  const accountResults = [];
+
+  for (const conn of connections) {
+    if (!conn.stripe_account_id) continue;
+
+    try {
+      // Check the transaction_refresh status on Stripe
+      const acct = await stripe.financialConnections.accounts.retrieve(conn.stripe_account_id);
+      const refreshStatus = acct.transaction_refresh?.status || 'none';
+      console.log(`[stripe-fc] sync_transactions: ${conn.stripe_account_id} (${conn.institution_name}) refresh_status=${refreshStatus}`);
+
+      if (refreshStatus === 'succeeded') {
+        const count = await fetchAndPersistTransactions(stripe, user.id, conn.stripe_account_id);
+        totalSynced += count;
+        accountResults.push({ id: conn.id, institution: conn.institution_name, status: 'synced', count });
+      } else if (refreshStatus === 'pending') {
+        accountResults.push({ id: conn.id, institution: conn.institution_name, status: 'pending', count: 0 });
+      } else {
+        // No refresh or failed — trigger a new one
+        try {
+          await stripe.financialConnections.accounts.refresh(conn.stripe_account_id, {
+            features: ['transactions'],
+          });
+          accountResults.push({ id: conn.id, institution: conn.institution_name, status: 'refresh_triggered', count: 0 });
+        } catch (refreshErr) {
+          console.warn(`[stripe-fc] Could not trigger refresh for ${conn.stripe_account_id}:`, refreshErr.message);
+          accountResults.push({ id: conn.id, institution: conn.institution_name, status: 'error', count: 0 });
+        }
+      }
+    } catch (err) {
+      console.warn(`[stripe-fc] sync_transactions error for ${conn.stripe_account_id}:`, err.message);
+      accountResults.push({ id: conn.id, institution: conn.institution_name, status: 'error', count: 0 });
+    }
+  }
+
+  const allDone = accountResults.every((a) => a.status === 'synced' || a.status === 'error');
+
+  return ok({
+    synced: totalSynced,
+    accounts: accountResults,
+    complete: allDone,
+  });
 }
 
 async function handleDisconnectAccount(user, body) {
@@ -676,6 +728,7 @@ export async function handler(event) {
     if (action === 'create_session') return handleCreateSession(user);
     if (action === 'complete_session') return handleCompleteSession(user, body);
     if (action === 'refresh_account') return handleRefreshAccount(user, body);
+    if (action === 'sync_transactions') return handleSyncTransactions(user);
     if (action === 'disconnect_account') return handleDisconnectAccount(user, body);
     if (action === 'remove_account') return handleRemoveAccount(user, body);
 

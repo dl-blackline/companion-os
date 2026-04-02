@@ -173,10 +173,12 @@ export function FinanceView() {
     dashboard: linkedAccountsDashboard,
     loading: linkedAccountsLoading,
     connecting: stripeConnecting,
+    syncing: stripeSyncing,
     error: stripeError,
     createSession,
     completeSession,
     refreshAccount,
+    syncTransactions,
     disconnectAccount,
     removeAccount,
   } = useStripeFinancialConnections();
@@ -908,6 +910,7 @@ export function FinanceView() {
             <p className="text-xs text-muted-foreground text-center">
               {linkedAccountsDashboard.accounts.length} account{linkedAccountsDashboard.accounts.length !== 1 ? 's' : ''} linked
               {linkedAccountsDashboard.totalTransactions > 0 && ` • ${linkedAccountsDashboard.totalTransactions} total transactions`}
+              {stripeSyncing && ' • Syncing transactions…'}
             </p>
           )}
         </>
@@ -1004,8 +1007,30 @@ export function FinanceView() {
               <p className="text-xs text-muted-foreground">
                 {linkedAccountsDashboard.accounts.length === 0
                   ? 'Link a bank account to see transactions here.'
-                  : 'Transactions will appear once your bank syncs data.'}
+                  : stripeSyncing
+                    ? 'Syncing transactions from your bank… This can take up to 2 minutes.'
+                    : 'Transactions will appear once your bank syncs data.'}
               </p>
+              {linkedAccountsDashboard.accounts.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  disabled={stripeSyncing}
+                  onClick={async () => {
+                    const complete = await syncTransactions();
+                    if (complete) {
+                      txRefresh();
+                      toast.success('Transactions synced.');
+                    } else {
+                      toast.info('Transactions are still syncing. Try again in a moment.');
+                    }
+                  }}
+                >
+                  <ArrowsClockwise size={14} className={stripeSyncing ? 'animate-spin mr-1.5' : 'mr-1.5'} />
+                  {stripeSyncing ? 'Syncing…' : 'Sync Transactions'}
+                </Button>
+              )}
             </Card>
           )}
 
