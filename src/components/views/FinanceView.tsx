@@ -29,10 +29,15 @@ import { PiggyBank } from '@phosphor-icons/react/PiggyBank';
 import { TrendDown } from '@phosphor-icons/react/TrendDown';
 import { TrendUp } from '@phosphor-icons/react/TrendUp';
 import { Wallet } from '@phosphor-icons/react/Wallet';
+import { Plus } from '@phosphor-icons/react/Plus';
+import { Check } from '@phosphor-icons/react/Check';
+import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
+import { Trash } from '@phosphor-icons/react/Trash';
+import { GlobeSimple } from '@phosphor-icons/react/GlobeSimple';
 import type { FinancialDocumentSourceType } from '@/types/financial-intelligence';
 import type { RecurringIncomeSignal, RecurringExpenseSignal } from '@/types/financial-analysis';
 import type { DecodedBill, ScorecardLabel } from '@/types/premium-finance';
-import type { NormalizedTransaction, TransactionFilters } from '@/types/stripe-financial';
+import type { NormalizedTransaction, TransactionFilters, LedgerEntry } from '@/types/stripe-financial';
 
 function currency(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -58,7 +63,7 @@ function estimateMonthly(amount: number, frequency: string): number {
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
-type FinanceTab = 'dashboard' | 'accounts' | 'transactions' | 'decoder' | 'scorecard' | 'vehicles' | 'income' | 'cashflow' | 'recurring' | 'documents' | 'planner' | 'goals' | 'calendar' | 'insights';
+type FinanceTab = 'dashboard' | 'accounts' | 'transactions' | 'ledger' | 'decoder' | 'scorecard' | 'vehicles' | 'income' | 'cashflow' | 'recurring' | 'documents' | 'planner' | 'goals' | 'calendar' | 'insights';
 
 function scoreLabelVariant(label: ScorecardLabel | string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (label === 'strong' || label === 'stable') return 'default';
@@ -179,8 +184,12 @@ export function FinanceView() {
     completeSession,
     refreshAccount,
     syncTransactions,
+    updateAccount,
     disconnectAccount,
     removeAccount,
+    createLedgerEntry,
+    updateLedgerEntry,
+    deleteLedgerEntry,
   } = useStripeFinancialConnections();
 
   const {
@@ -205,6 +214,22 @@ export function FinanceView() {
   const [txFilterCategory, setTxFilterCategory] = useState('');
   const [txFilterDirection, setTxFilterDirection] = useState<'' | 'inflow' | 'outflow'>('');
   const [txFilterAccount, setTxFilterAccount] = useState('');
+
+  // Account nickname/notes editing state
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [editNickname, setEditNickname] = useState('');
+  const [editAccountNotes, setEditAccountNotes] = useState('');
+  const [editWebsiteUrl, setEditWebsiteUrl] = useState('');
+
+  // Ledger entry form state
+  const [showLedgerForm, setShowLedgerForm] = useState(false);
+  const [ledgerTitle, setLedgerTitle] = useState('');
+  const [ledgerAmount, setLedgerAmount] = useState('');
+  const [ledgerDirection, setLedgerDirection] = useState<'inflow' | 'outflow'>('outflow');
+  const [ledgerDueDate, setLedgerDueDate] = useState('');
+  const [ledgerRecurrence, setLedgerRecurrence] = useState('once');
+  const [ledgerNotes, setLedgerNotes] = useState('');
+  const [ledgerAccount, setLedgerAccount] = useState('');
 
   const handleStripeConnect = useCallback(async () => {
     try {
@@ -486,6 +511,7 @@ export function FinanceView() {
           <TabsTrigger value="dashboard" className="gap-1.5"><ChartLineUp size={14} /> Command Center</TabsTrigger>
           <TabsTrigger value="accounts" className="gap-1.5"><CreditCard size={14} /> Accounts</TabsTrigger>
           <TabsTrigger value="transactions" className="gap-1.5"><ListBullets size={14} /> Transactions</TabsTrigger>
+          <TabsTrigger value="ledger" className="gap-1.5"><Note size={14} /> Ledger</TabsTrigger>
           <TabsTrigger value="decoder" className="gap-1.5"><FileArrowUp size={14} /> Bill Decoder</TabsTrigger>
           <TabsTrigger value="scorecard" className="gap-1.5"><Heartbeat size={14} /> Scorecard</TabsTrigger>
           <TabsTrigger value="vehicles" className="gap-1.5"><Bank size={14} /> Vehicles</TabsTrigger>
@@ -499,6 +525,37 @@ export function FinanceView() {
           <TabsTrigger value="insights" className="gap-1.5"><Lightbulb size={14} /> Insights</TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {/* ─── Aggregate Metrics Bar ─── */}
+      {linkedAccountsDashboard.aggregates.accountCount > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Total Balance</p>
+            <p className={`text-2xl font-bold tracking-tight ${linkedAccountsDashboard.aggregates.totalBalance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {currency(linkedAccountsDashboard.aggregates.totalBalance)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Across {linkedAccountsDashboard.aggregates.accountCount} connected account{linkedAccountsDashboard.aggregates.accountCount !== 1 ? 's' : ''}
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Cash on Hand</p>
+            <p className="text-2xl font-bold tracking-tight text-blue-300">
+              {currency(linkedAccountsDashboard.aggregates.totalCashOnHand)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">Checking &amp; Savings</p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Available Credit</p>
+            <p className="text-2xl font-bold tracking-tight text-amber-300">
+              {currency(linkedAccountsDashboard.aggregates.totalAvailableCredit)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">Credit Card Accounts</p>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card className="p-5">
@@ -821,11 +878,37 @@ export function FinanceView() {
 
           {linkedAccountsDashboard.accounts.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {linkedAccountsDashboard.accounts.map(acct => (
+              {linkedAccountsDashboard.accounts.map(acct => {
+                const isEditing = editingAccountId === acct.id;
+                return (
                 <Card key={acct.id} className="p-5 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{acct.institution_name || 'Unknown Institution'}</p>
+                    <div className="min-w-0 flex-1">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          placeholder={acct.institution_name || 'Nickname'}
+                          className="w-full text-sm font-semibold bg-black/20 border border-border/70 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                          value={editNickname}
+                          onChange={e => setEditNickname(e.target.value)}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold truncate">{acct.nickname || acct.institution_name || 'Unknown Institution'}</p>
+                          <button
+                            onClick={() => {
+                              setEditingAccountId(acct.id);
+                              setEditNickname(acct.nickname || '');
+                              setEditAccountNotes(acct.user_notes || '');
+                              setEditWebsiteUrl(acct.website_url || '');
+                            }}
+                            className="text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
+                            title="Edit nickname & notes"
+                          >
+                            <PencilSimple size={12} />
+                          </button>
+                        </div>
+                      )}
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {acct.account_display_name || acct.account_subtype || 'Account'} {acct.account_last4 ? `••${acct.account_last4}` : ''}
                       </p>
@@ -838,30 +921,126 @@ export function FinanceView() {
                     </Badge>
                   </div>
 
-                  {acct.latest_balance && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Current Balance</span>
-                        <span className="font-medium">{currency(acct.latest_balance.current_balance ?? 0)}</span>
+                  {isEditing && (
+                    <div className="space-y-2">
+                      <textarea
+                        placeholder="Quick notes about this account…"
+                        className="w-full text-xs bg-black/20 border border-border/70 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                        rows={2}
+                        value={editAccountNotes}
+                        onChange={e => setEditAccountNotes(e.target.value)}
+                      />
+                      <input
+                        type="url"
+                        placeholder="Bank website URL (e.g. https://chase.com)"
+                        className="w-full text-xs bg-black/20 border border-border/70 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                        value={editWebsiteUrl}
+                        onChange={e => setEditWebsiteUrl(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs flex-1"
+                          onClick={async () => {
+                            await updateAccount(acct.id, {
+                              nickname: editNickname || null,
+                              user_notes: editAccountNotes || null,
+                              website_url: editWebsiteUrl || null,
+                            });
+                            setEditingAccountId(null);
+                          }}
+                        >
+                          <Check size={12} className="mr-1" /> Save
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setEditingAccountId(null)}>
+                          Cancel
+                        </Button>
                       </div>
-                      {acct.latest_balance.available_balance != null && acct.latest_balance.available_balance !== acct.latest_balance.current_balance && (
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Available</span>
-                          <span className="font-medium">{currency(acct.latest_balance.available_balance)}</span>
-                        </div>
-                      )}
-                      <p className="text-[10px] text-muted-foreground/60">
-                        As of {new Date(acct.latest_balance.as_of).toLocaleString()}
-                      </p>
                     </div>
                   )}
 
-                  {!acct.latest_balance && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic">
-                      <ArrowsClockwise size={12} className="animate-spin" />
-                      <span>Balance syncing…</span>
-                    </div>
+                  {!isEditing && acct.user_notes && (
+                    <p className="text-xs text-muted-foreground/80 italic border-l-2 border-border/50 pl-2">{acct.user_notes}</p>
                   )}
+
+                  {(() => {
+                    const subtype = (acct.account_subtype || '').toLowerCase();
+                    const isCreditCard = subtype === 'credit_card' || subtype === 'credit';
+                    const bal = acct.latest_balance;
+
+                    if (!bal) return (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic">
+                        <ArrowsClockwise size={12} className="animate-spin" />
+                        <span>Balance syncing…</span>
+                      </div>
+                    );
+
+                    if (isCreditCard) {
+                      const debt = Math.abs(bal.current_balance ?? 0);
+                      const availableCredit = bal.available_balance ?? 0;
+                      const creditLimit = debt + availableCredit;
+                      const utilization = creditLimit > 0 ? (debt / creditLimit) * 100 : 0;
+                      const utilizationColor = utilization > 75 ? 'text-rose-400' : utilization > 30 ? 'text-amber-400' : 'text-emerald-400';
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Balance Owed</span>
+                              <span className="font-medium text-rose-300">{currency(debt)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Available Credit</span>
+                              <span className="font-medium text-emerald-400">{currency(availableCredit)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Credit Limit</span>
+                              <span className="font-medium">{currency(creditLimit)}</span>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Utilization</span>
+                              <span className={`font-semibold ${utilizationColor}`}>{utilization.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${utilization > 75 ? 'bg-rose-500' : utilization > 30 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                style={{ width: `${Math.min(utilization, 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground/50">
+                              {utilization <= 30 ? 'Excellent' : utilization <= 50 ? 'Good' : utilization <= 75 ? 'Fair — consider paying down' : 'High — impacts credit score'}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="text-[9px]">Revolving Credit</Badge>
+                          <p className="text-[10px] text-muted-foreground/60">
+                            As of {new Date(bal.as_of).toLocaleString()}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    // Non-credit-card accounts
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Current Balance</span>
+                          <span className="font-medium">{currency(bal.current_balance ?? 0)}</span>
+                        </div>
+                        {bal.available_balance != null && bal.available_balance !== bal.current_balance && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Available</span>
+                            <span className="font-medium">{currency(bal.available_balance)}</span>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-muted-foreground/60">
+                          As of {new Date(bal.as_of).toLocaleString()}
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   {acct.last_sync_at && (
                     <p className="text-[10px] text-muted-foreground/60">
@@ -870,6 +1049,17 @@ export function FinanceView() {
                   )}
 
                   <div className="flex gap-2 pt-1">
+                    {acct.website_url && (
+                      <a
+                        href={acct.website_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-border/70 text-muted-foreground/60 hover:text-foreground hover:border-primary/40 transition-colors"
+                        title="Open bank website"
+                      >
+                        <GlobeSimple size={14} />
+                      </a>
+                    )}
                     {acct.status === 'connected' && (
                       <>
                         <Button
@@ -902,7 +1092,8 @@ export function FinanceView() {
                     )}
                   </div>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -1159,6 +1350,227 @@ export function FinanceView() {
             <p className="text-xs text-muted-foreground text-center">
               Showing {txFeed.length} of {txPagination.total} transactions
             </p>
+          )}
+        </>
+      )}
+
+      {/* ─── Ledger Tab ─── */}
+      {activeTab === 'ledger' && (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Future Ledger</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Track upcoming money in and out.</p>
+            </div>
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowLedgerForm(!showLedgerForm)}>
+              <Plus size={14} className="mr-1" /> {showLedgerForm ? 'Cancel' : 'New Entry'}
+            </Button>
+          </div>
+
+          {showLedgerForm && (
+            <Card className="p-4 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Title *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rent, Paycheck, Insurance"
+                    className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={ledgerTitle}
+                    onChange={e => setLedgerTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Amount *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={ledgerAmount}
+                    onChange={e => setLedgerAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Direction *</label>
+                  <select
+                    className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={ledgerDirection}
+                    onChange={e => setLedgerDirection(e.target.value as 'inflow' | 'outflow')}
+                  >
+                    <option value="outflow">Outflow (expense)</option>
+                    <option value="inflow">Inflow (income)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Due Date *</label>
+                  <input
+                    type="date"
+                    className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={ledgerDueDate}
+                    onChange={e => setLedgerDueDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Recurrence</label>
+                  <select
+                    className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={ledgerRecurrence}
+                    onChange={e => setLedgerRecurrence(e.target.value)}
+                  >
+                    <option value="once">One-time</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Biweekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annually">Annually</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Account (optional)</label>
+                  <select
+                    className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                    value={ledgerAccount}
+                    onChange={e => setLedgerAccount(e.target.value)}
+                  >
+                    <option value="">No linked account</option>
+                    {linkedAccountsDashboard.accounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.nickname || a.institution_name} {a.account_last4 ? `••${a.account_last4}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Notes</label>
+                <textarea
+                  className="w-full text-xs bg-black/20 border border-border/70 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  rows={2}
+                  placeholder="Optional notes…"
+                  value={ledgerNotes}
+                  onChange={e => setLedgerNotes(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                disabled={!ledgerTitle || !ledgerAmount || !ledgerDueDate}
+                onClick={async () => {
+                  await createLedgerEntry({
+                    title: ledgerTitle,
+                    amount: parseFloat(ledgerAmount),
+                    direction: ledgerDirection,
+                    due_date: ledgerDueDate,
+                    recurrence: ledgerRecurrence || 'once',
+                    notes: ledgerNotes || null,
+                    connection_id: ledgerAccount || null,
+                  });
+                  setShowLedgerForm(false);
+                  setLedgerTitle('');
+                  setLedgerAmount('');
+                  setLedgerDirection('outflow');
+                  setLedgerDueDate('');
+                  setLedgerRecurrence('once');
+                  setLedgerNotes('');
+                  setLedgerAccount('');
+                  toast.success('Ledger entry created.');
+                }}
+              >
+                <Plus size={12} className="mr-1" /> Create Entry
+              </Button>
+            </Card>
+          )}
+
+          {linkedAccountsDashboard.ledgerEntries.length === 0 && !showLedgerForm && (
+            <Card className="p-8 text-center">
+              <Note size={24} className="mx-auto mb-2 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">No ledger entries yet.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Create entries for upcoming income and expenses.</p>
+            </Card>
+          )}
+
+          {linkedAccountsDashboard.ledgerEntries.length > 0 && (
+            <div className="space-y-1.5">
+              {[...linkedAccountsDashboard.ledgerEntries]
+                .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+                .map((entry: LedgerEntry) => {
+                  const isPast = new Date(entry.due_date) < new Date() && entry.status === 'pending';
+                  const linkedAcct = entry.connection_id
+                    ? linkedAccountsDashboard.accounts.find(a => a.id === entry.connection_id)
+                    : null;
+                  return (
+                    <Card
+                      key={entry.id}
+                      className={`p-3 transition-colors ${entry.status === 'completed' ? 'opacity-60' : ''} ${isPast ? 'border-amber-500/30' : ''}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-sm font-medium truncate ${entry.status === 'completed' ? 'line-through' : ''}`}>
+                              {entry.title}
+                            </p>
+                            {entry.recurrence && entry.recurrence !== 'once' && (
+                              <Badge variant="secondary" className="text-[9px] capitalize">{entry.recurrence}</Badge>
+                            )}
+                            {isPast && <Badge variant="destructive" className="text-[9px]">Overdue</Badge>}
+                            {entry.status === 'completed' && <Badge variant="default" className="text-[9px]">Done</Badge>}
+                            {entry.status === 'skipped' && <Badge variant="secondary" className="text-[9px]">Skipped</Badge>}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-muted-foreground">
+                              Due {new Date(entry.due_date).toLocaleDateString()}
+                            </span>
+                            {linkedAcct && (
+                              <>
+                                <span className="text-[10px] text-muted-foreground/50">•</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {linkedAcct.nickname || linkedAcct.institution_name} {linkedAcct.account_last4 ? `••${linkedAcct.account_last4}` : ''}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {entry.notes && (
+                            <p className="text-[10px] text-muted-foreground/70 mt-1 italic">{entry.notes}</p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0 space-y-1">
+                          <p className={`text-sm font-semibold ${entry.direction === 'inflow' ? 'text-emerald-400' : 'text-rose-300'}`}>
+                            {entry.direction === 'inflow' ? '+' : '−'}{currency(entry.amount)}
+                          </p>
+                          <div className="flex gap-1 justify-end">
+                            {entry.status === 'pending' && (
+                              <>
+                                <button
+                                  className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                                  title="Mark completed"
+                                  onClick={() => updateLedgerEntry(entry.id, { status: 'completed' })}
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                                  title="Skip"
+                                  onClick={() => updateLedgerEntry(entry.id, { status: 'skipped' })}
+                                >
+                                  <ArrowsClockwise size={14} />
+                                </button>
+                              </>
+                            )}
+                            <button
+                              className="text-destructive/60 hover:text-destructive transition-colors"
+                              title="Delete"
+                              onClick={() => { if (confirm('Delete this ledger entry?')) deleteLedgerEntry(entry.id); }}
+                            >
+                              <Trash size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
           )}
         </>
       )}
