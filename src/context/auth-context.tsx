@@ -60,6 +60,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sessionRef.current?.access_token ?? null
   }, [])
 
+  /**
+   * Returns a fresh access token, refreshing the session if the current one
+   * is expired or about to expire.  Use this for critical auth-gated calls
+   * (e.g. after page redirects like the Stripe Financial Connections return).
+   */
+  const getFreshAccessToken = useCallback(async (): Promise<string | null> => {
+    if (!supabaseConfigured) return null
+
+    // If we already have a valid token with >60 s left, return it immediately
+    const current = sessionRef.current
+    if (current?.access_token && current.expires_at) {
+      const expiresInSec = current.expires_at - Math.floor(Date.now() / 1000)
+      if (expiresInSec > 60) {
+        return current.access_token
+      }
+    }
+
+    // Otherwise ask Supabase to refresh and give us a new session
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error || !data.session) {
+      console.warn('[auth] getFreshAccessToken: refresh failed', error?.message)
+      return null
+    }
+
+    // onAuthStateChange will update state, but we update the ref eagerly so
+    // callers in the same tick get the new token
+    sessionRef.current = data.session
+    return data.session.access_token
+  }, [])
+
   const fetchRoleAndPlan = async (userId: string, email?: string) => {
     // Super-admin override: skip database and force highest privileges
     if (isSuperAdmin(email)) {
