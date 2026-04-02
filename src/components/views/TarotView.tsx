@@ -16,7 +16,7 @@ export function TarotView() {
   const store = useReadingStore();
 
   return (
-    <div className="flex flex-col min-h-full bg-neutral-950">
+    <div className="flex flex-col min-h-full bg-background">
       {/* Hero / Landing */}
       <AnimatePresence mode="wait">
         {store.phase === 'idle' && (
@@ -54,7 +54,7 @@ export function TarotView() {
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white">
                 Tarot AI
               </h1>
-              <p className="text-lg text-neutral-400 leading-relaxed">
+              <p className="text-lg text-muted-foreground leading-relaxed">
                 A premium tarot reading experience — immersive, cinematic, and attuned to your
                 spirit.
               </p>
@@ -77,7 +77,7 @@ export function TarotView() {
                   <div className="w-8 h-8 rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-400 text-sm font-semibold flex items-center justify-center mx-auto">
                     {step}
                   </div>
-                  <p className="text-xs text-neutral-500 leading-snug">{label}</p>
+                  <p className="text-xs text-muted-foreground/70 leading-snug">{label}</p>
                 </div>
               ))}
             </motion.div>
@@ -87,7 +87,7 @@ export function TarotView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.9 }}
-              className="text-xs text-neutral-600 max-w-xs text-center leading-relaxed"
+              className="text-xs text-muted-foreground/50 max-w-xs text-center leading-relaxed"
             >
               {READING_PREAMBLE}
             </motion.p>
@@ -98,7 +98,7 @@ export function TarotView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}
               onClick={store.startIntake}
-              className="px-10 py-4 rounded-full bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-neutral-950"
+              className="px-10 py-4 rounded-full bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold tracking-wide text-base transition-all duration-200 shadow-xl shadow-amber-500/25 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-background"
               aria-label="Begin your tarot reading"
             >
               Begin Your Reading
@@ -121,7 +121,7 @@ export function TarotView() {
             <div className="w-full max-w-sm space-y-8">
               <button
                 onClick={store.reset}
-                className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 transition focus:outline-none focus:underline"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition focus:outline-none focus:underline"
                 aria-label="Go back to landing"
               >
                 <ArrowLeft size={14} />
@@ -131,7 +131,7 @@ export function TarotView() {
               <div className="text-center space-y-2">
                 <div className="text-3xl mb-3 select-none" aria-hidden="true">✦</div>
                 <h2 className="text-2xl font-bold text-white">Your Reading Awaits</h2>
-                <p className="text-sm text-neutral-400">
+                <p className="text-sm text-muted-foreground">
                   Enter your details to begin the reading chamber.
                 </p>
               </div>
@@ -163,7 +163,7 @@ export function TarotView() {
               <p className="text-lg font-semibold text-white animate-pulse">
                 The deck is being shuffled for you…
               </p>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-muted-foreground/70">
                 Breathe. The cards are finding their way to you.
               </p>
             </div>
@@ -181,7 +181,7 @@ export function TarotView() {
           >
             {/* User & zodiac header */}
             <div className="flex flex-col items-center text-center space-y-3">
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-muted-foreground">
                 A reading for{' '}
                 <span className="text-white font-semibold">{store.session.firstName}</span>
               </p>
@@ -196,7 +196,7 @@ export function TarotView() {
 
             {/* Spread */}
             <div className="space-y-4">
-              <p className="text-xs font-semibold tracking-widest uppercase text-center text-neutral-500">
+              <p className="text-xs font-semibold tracking-widest uppercase text-center text-muted-foreground/70">
                 Past · Present · Future
               </p>
               <div className="flex flex-col sm:flex-row items-start justify-center gap-6">
@@ -273,7 +273,7 @@ export function TarotView() {
               <div className="text-center pb-4">
                 <button
                   onClick={store.reset}
-                  className="text-xs text-neutral-600 hover:text-neutral-400 transition focus:outline-none focus:underline"
+                  className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition focus:outline-none focus:underline"
                 >
                   Begin a new reading
                 </button>

@@ -2,63 +2,100 @@
 @import 'tw-animate-css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   VUK OS — Premium Dark Luxury Operating Environment
-   Obsidian black / graphite / gunmetal foundations
-   Tasteful accent lighting via --vuk-accent-* custom properties
+   VUK OS — Digital Cockpit Command Center
+   Deep-black instrument aesthetic with vivid accent glow, edge-lit panels,
+   and instrument-grade precision typography
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Foundation: Obsidian/Graphite Palette ───────────────────────────── */
-  --background: oklch(0.07 0.003 260);
-  --foreground: oklch(0.94 0.006 250);
+  /* ── Foundation: Vuk OS Deep Black Cockpit Palette ──────────────────── */
+  /* L0 – Cockpit void (near-black)  #010204                             */
+  /* L1 – Shell / sidebar / toolbar  #080C14 → #0B1019 → #0F1520        */
+  /* L2 – Instrument panels          #0C1220 → #101828 → #141E30         */
+  /* Text                            #E8ECF4 / #8FA2B8 / #536378         */
+  /* ─────────────────────────────────────────────────────────────────── */
 
-  --card: oklch(0.11 0.004 260);
-  --card-foreground: oklch(0.93 0.005 250);
+  --background: #010204;
+  --foreground: #E8ECF4;
 
-  --popover: oklch(0.1 0.004 260);
-  --popover-foreground: oklch(0.93 0.005 250);
+  --card: #0C1220;
+  --card-foreground: #E8ECF4;
 
-  --primary: oklch(0.88 0.008 250);
-  --primary-foreground: oklch(0.07 0.003 260);
+  --popover: #101828;
+  --popover-foreground: #E8ECF4;
 
-  --secondary: oklch(0.16 0.005 260);
-  --secondary-foreground: oklch(0.91 0.005 250);
+  --primary: #E8ECF4;
+  --primary-foreground: #010204;
 
-  --muted: oklch(0.14 0.004 260);
-  --muted-foreground: oklch(0.58 0.01 250);
+  --secondary: #080C14;
+  --secondary-foreground: #8FA2B8;
 
-  --accent: oklch(0.82 0.008 250);
-  --accent-foreground: oklch(0.09 0.003 260);
+  --muted: #060A10;
+  --muted-foreground: #536378;
 
-  --destructive: oklch(0.55 0.22 22);
-  --destructive-foreground: oklch(0.96 0.005 250);
+  --accent: #00D4FF;
+  --accent-foreground: #010204;
 
-  --border: oklch(0.22 0.006 260);
-  --input: oklch(0.18 0.005 260);
-  --ring: oklch(0.85 0.008 250);
+  --destructive: #FF3D5A;
+  --destructive-foreground: #E8ECF4;
 
-  --radius: 0.625rem;
+  --border: rgba(0, 212, 255, 0.12);
+  --input: #080C14;
+  --ring: #00D4FF;
+
+  --radius: 0.5rem;
 
   --font-heading: 'Manrope', 'Inter', sans-serif;
   --font-body: 'IBM Plex Sans', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --font-space: var(--font-heading);
 
+  /* ── Vuk OS Surface Palette ────────────────────────────────────────── */
+  --vuk-bg-deep: #010204;
+  --vuk-bg-mid: #040710;
+  --vuk-bg-raised: #060A10;
+  --vuk-shell-1: #080C14;
+  --vuk-shell-2: #0B1019;
+  --vuk-shell-3: #0F1520;
+  --vuk-panel-1: #0C1220;
+  --vuk-panel-2: #101828;
+  --vuk-panel-3: #141E30;
+  --vuk-text-primary: #E8ECF4;
+  --vuk-text-secondary: #8FA2B8;
+  --vuk-text-muted: #536378;
+
+  /* ── Status Colors (cockpit vivid) ──────────────────────────────────── */
+  --vuk-success: #00FF9D;
+  --vuk-warning: #FFB627;
+  --vuk-danger: #FF3D5A;
+  --vuk-info: #00D4FF;
+
+  /* ── Accent System (Cyan-dominant cockpit glow) ────────────────────── */
+  --vuk-accent-primary: #00D4FF;
+  --vuk-accent-bright: #40E0FF;
+  --vuk-accent-deep: #006E85;
+
   /* ── Vuk OS Accent Defaults (overridden by AccentLightingProvider) ── */
-  --vuk-accent-h: 240;
-  --vuk-accent-c: 0.02;
-  --vuk-accent-l: 0.92;
-  --vuk-accent: oklch(0.92 0.02 240);
-  --vuk-accent-light: oklch(0.95 0.014 240);
-  --vuk-accent-dim: oklch(0.55 0.01 240);
-  --vuk-glow-strong: oklch(0.92 0.02 240 / 0.45);
-  --vuk-glow-medium: oklch(0.92 0.02 240 / 0.25);
-  --vuk-glow-subtle: oklch(0.92 0.02 240 / 0.12);
-  --vuk-glow-faint: oklch(0.92 0.02 240 / 0.06);
-  --vuk-border-accent: oklch(0.65 0.012 240 / 0.5);
-  --vuk-active-bg: oklch(0.23 0.006 240 / 0.6);
-  --vuk-active-border: oklch(0.74 0.014 240 / 0.6);
-  --vuk-shadow-glow: 0 0 20px oklch(0.92 0.02 240 / 0.2), 0 0 40px oklch(0.92 0.02 240 / 0.08);
+  --vuk-accent-h: 190;
+  --vuk-accent-c: 0.22;
+  --vuk-accent-l: 0.72;
+  --vuk-accent: #00D4FF;
+  --vuk-accent-light: #40E0FF;
+  --vuk-accent-dim: #006E85;
+  --vuk-glow-strong: rgba(0, 212, 255, 0.50);
+  --vuk-glow-medium: rgba(0, 212, 255, 0.28);
+  --vuk-glow-subtle: rgba(0, 212, 255, 0.14);
+  --vuk-glow-faint: rgba(0, 212, 255, 0.06);
+  --vuk-border-accent: rgba(0, 212, 255, 0.40);
+  --vuk-active-bg: rgba(0, 212, 255, 0.08);
+  --vuk-active-border: rgba(0, 212, 255, 0.50);
+  --vuk-shadow-glow: 0 0 20px rgba(0, 212, 255, 0.22), 0 0 48px rgba(0, 212, 255, 0.08);
+
+  /* ── Border Palette (cyan-tinted translucent) ──────────────────────── */
+  --vuk-border-subtle: rgba(0, 212, 255, 0.06);
+  --vuk-border-default: rgba(0, 212, 255, 0.10);
+  --vuk-border-medium: rgba(0, 212, 255, 0.15);
+  --vuk-border-strong: rgba(0, 212, 255, 0.22);
 }
 
 @theme {
@@ -106,27 +143,29 @@
     font-size: 14px;
     line-height: 1.55;
     letter-spacing: 0.01em;
-    /* Deep obsidian backdrop with subtle accent-aware atmospheric lighting */
+    /* Cockpit void — deep black with atmospheric instrument glow bleed */
     background-image:
-      radial-gradient(ellipse 60% 50% at 10% -5%, var(--vuk-glow-faint), transparent 55%),
-      radial-gradient(ellipse 50% 40% at 92% 105%, var(--vuk-glow-faint), transparent 50%),
-      linear-gradient(175deg, oklch(0.07 0.003 260), oklch(0.04 0.002 260));
+      radial-gradient(ellipse 70% 55% at 8% -8%, rgba(0, 212, 255, 0.06), transparent 55%),
+      radial-gradient(ellipse 55% 45% at 94% 108%, rgba(0, 212, 255, 0.04), transparent 50%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0, 60, 90, 0.04), transparent 70%),
+      linear-gradient(175deg, #040710, #010204);
     background-attachment: fixed;
   }
 
-  /* Subtle scanline texture for depth */
+  /* HUD grid overlay — tighter grid, higher opacity for cockpit feel */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: -1;
-    opacity: 0.04;
-    background-image: linear-gradient(rgba(200, 210, 230, 0.12) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(200, 210, 230, 0.12) 1px, transparent 1px);
-    background-size: 80px 80px;
-    -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 100%);
-    mask-image: radial-gradient(circle at center, black 30%, transparent 100%);
+    opacity: 0.045;
+    background-image:
+      linear-gradient(rgba(0, 212, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 255, 0.07) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at center, black 20%, transparent 80%);
+    mask-image: radial-gradient(ellipse 80% 70% at center, black 20%, transparent 80%);
   }
 
   h1,
@@ -141,14 +180,17 @@
 
   h1 {
     @apply text-3xl md:text-4xl font-bold;
+    color: var(--vuk-text-primary);
   }
 
   h2 {
     @apply text-2xl md:text-3xl font-semibold;
+    color: var(--vuk-text-primary);
   }
 
   h3 {
     @apply text-lg md:text-xl font-semibold;
+    color: var(--vuk-text-primary);
   }
 
   code,
@@ -158,18 +200,29 @@
 
   ::selection {
     background: var(--vuk-glow-medium);
-    color: oklch(0.96 0.005 250);
+    color: var(--vuk-text-primary);
   }
 
-  /* ── Premium Card System ─────────────────────────────────────────── */
+  /* ── Cockpit Instrument Panel — Edge-lit Card System ─────────────── */
   [data-slot='card'] {
-    background: linear-gradient(170deg, oklch(0.12 0.005 260 / 0.96), oklch(0.08 0.004 260 / 0.98));
-    border-color: oklch(0.22 0.008 260 / 0.7);
+    background: linear-gradient(170deg, var(--vuk-panel-2), var(--vuk-panel-1));
+    border-color: var(--vuk-border-medium);
     box-shadow:
-      0 1px 0 0 oklch(0.3 0.006 260 / 0.15) inset,
-      0 16px 40px oklch(0.02 0.002 260 / 0.5);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
+      0 1px 0 0 rgba(0, 212, 255, 0.06) inset,
+      0 -1px 0 0 rgba(0, 212, 255, 0.03) inset,
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 8px 24px rgba(0, 0, 0, 0.4),
+      0 0 1px rgba(0, 212, 255, 0.10);
+  }
+
+  [data-slot='card']:hover {
+    border-color: rgba(0, 212, 255, 0.25);
+    box-shadow:
+      0 1px 0 0 rgba(0, 212, 255, 0.10) inset,
+      0 -1px 0 0 rgba(0, 212, 255, 0.05) inset,
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 8px 24px rgba(0, 0, 0, 0.4),
+      0 0 12px rgba(0, 212, 255, 0.08);
   }
 
   [data-slot='button'] {
@@ -180,8 +233,47 @@
   [data-slot='input'],
   textarea,
   select {
-    background-color: oklch(0.09 0.004 260 / 0.9);
-    border-color: oklch(0.24 0.008 260 / 0.7);
+    background-color: var(--vuk-shell-1);
+    border-color: var(--vuk-border-medium);
+  }
+
+  [data-slot='input']:focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--vuk-accent-primary);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.15), 0 0 8px rgba(0, 212, 255, 0.08);
+  }
+
+  /* ── Tabs System — Upgraded Surface Treatment ────────────────────── */
+  [data-slot='tabs-list'] {
+    background: var(--vuk-shell-1);
+    border: 1px solid var(--vuk-border-default);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  [data-slot='tabs-trigger'] {
+    color: var(--vuk-text-muted);
+    transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  [data-slot='tabs-trigger'][data-state='active'] {
+    background: var(--vuk-panel-1);
+    color: var(--vuk-text-primary);
+    border-color: rgba(0, 212, 255, 0.20);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.3),
+      0 0 8px rgba(0, 212, 255, 0.10),
+      0 1px 0 rgba(0, 212, 255, 0.08) inset;
+  }
+
+  [data-slot='tabs-trigger']:hover:not([data-state='active']) {
+    color: var(--vuk-text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* ── Badge System — Enhanced Contrast ────────────────────────────── */
+  [data-slot='badge'] {
+    border-color: var(--vuk-border-default);
   }
 }
 
@@ -247,7 +339,7 @@
 .flag-rollout-segment {
   height: 0.375rem;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 212, 255, 0.08);
 }
 
 .flag-rollout-segment-active {
@@ -276,13 +368,13 @@
   letter-spacing: 0.2em;
   font-size: 10px;
   font-weight: 700;
-  color: var(--vuk-accent-dim);
+  color: var(--vuk-accent-primary);
   margin-bottom: 8px;
 }
 
 .executive-subtitle {
   font-size: 13px;
-  color: oklch(0.52 0.008 250);
+  color: var(--vuk-text-muted);
   max-width: 76ch;
 }
 
@@ -292,15 +384,27 @@
 }
 
 .executive-kpi {
-  background:
-    radial-gradient(circle at 90% -25%, var(--vuk-glow-faint), transparent 50%),
-    linear-gradient(160deg, oklch(0.1 0.005 260 / 0.98), oklch(0.065 0.004 260 / 0.98));
-  border: 1px solid oklch(0.2 0.008 260 / 0.65);
-  border-radius: 14px;
+  background: linear-gradient(160deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-medium);
+  border-radius: 10px;
   padding: 14px;
   box-shadow:
-    0 1px 0 0 oklch(0.28 0.005 260 / 0.2) inset,
-    0 14px 30px oklch(0.02 0.002 260 / 0.45);
+    0 1px 0 0 rgba(0, 212, 255, 0.06) inset,
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(0, 212, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.executive-kpi::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.04), transparent 70%);
+  pointer-events: none;
 }
 
 .auth-shell {
@@ -310,8 +414,8 @@
   justify-content: center;
   padding: 18px;
   background:
-    radial-gradient(circle at 50% 30%, var(--vuk-glow-faint), transparent 60%),
-    linear-gradient(175deg, oklch(0.06 0.003 260), oklch(0.03 0.002 260));
+    radial-gradient(circle at 50% 30%, rgba(0, 212, 255, 0.05), transparent 60%),
+    linear-gradient(175deg, #040710, #010204);
 }
 
 .auth-panel {
@@ -337,15 +441,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, var(--vuk-glow-subtle), oklch(0.1 0.005 260 / 0.5));
+  background: linear-gradient(160deg, var(--vuk-glow-subtle), var(--vuk-panel-1));
   border: 1px solid var(--vuk-border-accent);
-  box-shadow: var(--vuk-shadow-glow), 0 10px 24px oklch(0.02 0.003 260 / 0.5);
+  box-shadow: var(--vuk-shadow-glow), 0 10px 24px rgba(0, 0, 0, 0.5);
 }
 
 .auth-card {
-  border: 1px solid oklch(0.2 0.007 260 / 0.7);
-  background: linear-gradient(165deg, oklch(0.1 0.005 260 / 0.97), oklch(0.065 0.004 260 / 0.98));
-  box-shadow: 0 20px 44px oklch(0.02 0.002 260 / 0.55);
+  border: 1px solid var(--vuk-border-medium);
+  background: linear-gradient(165deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
 }
 
 .streaming-text {
@@ -377,7 +481,7 @@
 .container-scroll::-webkit-scrollbar-thumb,
 .settings-panel::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: oklch(0.3 0.008 260 / 0.45);
+  background: rgba(0, 212, 255, 0.14);
 }
 
 .container-scroll::-webkit-scrollbar-track,
@@ -392,13 +496,12 @@
 }
 
 .glass-card {
-  background:
-    radial-gradient(circle at 14% -12%, var(--vuk-glow-faint), transparent 45%),
-    linear-gradient(165deg, oklch(0.1 0.005 260 / 0.94), oklch(0.055 0.003 260 / 0.98));
-  border: 1px solid oklch(0.22 0.008 260 / 0.6);
+  background: linear-gradient(165deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-medium);
   box-shadow:
-    0 1px 0 0 oklch(0.28 0.006 260 / 0.15) inset,
-    0 18px 40px oklch(0.02 0.002 260 / 0.5);
+    0 1px 0 0 rgba(0, 212, 255, 0.05) inset,
+    0 8px 24px rgba(0, 0, 0, 0.40),
+    0 0 1px rgba(0, 212, 255, 0.08);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
@@ -434,56 +537,54 @@
 }
 
 .sidebar-panel {
-  background:
-    linear-gradient(180deg, oklch(0.08 0.004 260 / 0.96), oklch(0.055 0.003 260 / 0.96));
-  border-right: 1px solid oklch(0.18 0.006 260 / 0.6);
-  box-shadow: inset -1px 0 0 oklch(0.25 0.005 260 / 0.08);
+  background: linear-gradient(180deg, var(--vuk-shell-1), var(--vuk-bg-deep));
+  border-right: 1px solid rgba(0, 212, 255, 0.10);
+  box-shadow: inset -1px 0 0 rgba(0, 212, 255, 0.04), 4px 0 20px rgba(0, 0, 0, 0.3);
 }
 
-.executive-kpi {
-  background:
-    radial-gradient(circle at 90% -25%, var(--vuk-glow-faint), transparent 50%),
-    linear-gradient(160deg, oklch(0.1 0.005 260 / 0.98), oklch(0.065 0.004 260 / 0.98));
-  border: 1px solid oklch(0.2 0.008 260 / 0.65);
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow:
-    0 1px 0 0 oklch(0.28 0.005 260 / 0.2) inset,
-    0 14px 30px oklch(0.02 0.002 260 / 0.45);
-}
+/* duplicate consolidated above */
 
 .executive-action {
   width: 100%;
   text-align: left;
   border-radius: 12px;
-  border: 1px solid oklch(0.2 0.007 260 / 0.55);
-  background: linear-gradient(155deg, oklch(0.1 0.005 260 / 0.94), oklch(0.07 0.004 260 / 0.96));
+  border: 1px solid var(--vuk-border-default);
+  background: linear-gradient(155deg, var(--vuk-panel-1), var(--vuk-shell-2));
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .executive-action:hover {
   transform: translateY(-1px);
   border-color: var(--vuk-active-border);
-  box-shadow: var(--vuk-shadow-glow), 0 10px 28px oklch(0.02 0.002 260 / 0.45);
+  box-shadow: var(--vuk-shadow-glow), 0 10px 28px rgba(0, 0, 0, 0.4);
 }
 
 .settings-hero {
-  border: 1px solid oklch(0.2 0.007 260 / 0.55);
+  border: 1px solid var(--vuk-border-medium);
   border-radius: 16px;
   padding: 14px 16px;
-  background:
-    radial-gradient(circle at 86% -45%, var(--vuk-glow-faint), transparent 55%),
-    linear-gradient(160deg, oklch(0.1 0.005 260 / 0.88), oklch(0.06 0.003 260 / 0.94));
+  background: linear-gradient(160deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-hero::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -15%;
+  width: 40%;
+  height: 60%;
+  background: radial-gradient(circle, var(--vuk-glow-faint), transparent 70%);
+  pointer-events: none;
 }
 
 .settings-surface {
-  border: 1px solid oklch(0.2 0.007 260 / 0.55);
-  background:
-    radial-gradient(circle at 10% -35%, var(--vuk-glow-faint), transparent 50%),
-    linear-gradient(170deg, oklch(0.09 0.005 260 / 0.94), oklch(0.055 0.003 260 / 0.97));
+  border: 1px solid var(--vuk-border-medium);
+  background: linear-gradient(170deg, var(--vuk-panel-2), var(--vuk-panel-1));
   box-shadow:
-    0 1px 0 0 oklch(0.26 0.005 260 / 0.12) inset,
-    0 14px 30px oklch(0.02 0.002 260 / 0.45);
+    0 1px 0 0 rgba(0, 212, 255, 0.05) inset,
+    0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .chat-shell {
@@ -493,8 +594,8 @@
 }
 
 .chat-panel {
-  border: 1px solid oklch(0.2 0.007 260 / 0.55);
-  background: linear-gradient(170deg, oklch(0.1 0.005 260 / 0.92), oklch(0.065 0.004 260 / 0.96));
+  border: 1px solid var(--vuk-border-medium);
+  background: linear-gradient(170deg, var(--vuk-panel-2), var(--vuk-panel-1));
 }
 
 .chat-list-item {
@@ -508,9 +609,8 @@
 }
 
 .chat-composer {
-  border-top: 1px solid oklch(0.2 0.007 260 / 0.55);
-  background:
-    linear-gradient(180deg, oklch(0.09 0.004 260 / 0.88), oklch(0.065 0.003 260 / 0.96));
+  border-top: 1px solid var(--vuk-border-medium);
+  background: linear-gradient(180deg, var(--vuk-shell-2), var(--vuk-shell-1));
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
@@ -548,7 +648,7 @@
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 6, 10, 0.66);
+  background: rgba(1, 2, 4, 0.80);
   z-index: 40;
   opacity: 0;
   pointer-events: none;
@@ -589,7 +689,7 @@
 
 .focus-ring-lux:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px oklch(0.06 0.003 260), 0 0 0 4px var(--vuk-accent-dim);
+  box-shadow: 0 0 0 2px var(--vuk-bg-deep), 0 0 0 3px rgba(0, 212, 255, 0.45);
 }
 
 .interactive-press {
@@ -605,18 +705,18 @@
   align-items: center;
   gap: 0.375rem;
   border-radius: 9999px;
-  border: 1px solid oklch(0.2 0.007 260 / 0.5);
-  background: linear-gradient(180deg, oklch(0.1 0.005 260 / 0.88), oklch(0.07 0.003 260 / 0.94));
+  border: 1px solid var(--vuk-border-default);
+  background: linear-gradient(180deg, var(--vuk-panel-1), var(--vuk-shell-2));
   padding: 0.25rem 0.625rem;
   font-size: 10px;
   line-height: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: oklch(0.82 0.006 250);
+  color: var(--vuk-text-secondary);
 }
 
 .status-chip-muted {
-  color: oklch(0.58 0.008 250);
+  color: var(--vuk-text-muted);
 }
 
 .status-dot {
@@ -631,23 +731,23 @@
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.625rem;
-  border: 1px solid oklch(0.2 0.007 260 / 0.55);
-  background: oklch(0.09 0.004 260 / 0.7);
+  border: 1px solid var(--vuk-border-default);
+  background: var(--vuk-shell-1);
   padding: 0.45rem 0.6rem;
   font-size: 12px;
-  color: oklch(0.78 0.006 250);
+  color: var(--vuk-text-secondary);
   transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
 }
 
 .swatch-button:hover {
   border-color: var(--vuk-active-border);
-  background: oklch(0.14 0.006 260 / 0.78);
+  background: var(--vuk-panel-1);
   transform: translateY(-1px);
 }
 
 .swatch-button.active {
   border-color: var(--vuk-active-border);
-  background: oklch(0.16 0.006 260 / 0.9);
+  background: var(--vuk-panel-2);
   box-shadow: 0 0 0 1px var(--vuk-glow-subtle);
 }
 
@@ -913,6 +1013,182 @@
   outline: none;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   VUK OS — Reusable Surface System
+   Use these utility classes across all views for consistent layering
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Page-level scroll container with padding */
+.vuk-page {
+  min-height: 100%;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding: 16px;
+  padding-right: 8px;
+}
+
+.vuk-page::-webkit-scrollbar {
+  width: 7px;
+}
+
+.vuk-page::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.12);
+}
+
+.vuk-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Page header with separator */
+.vuk-page-header {
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--vuk-border-subtle);
+}
+
+/* Section header (within a page) */
+.vuk-section-header {
+  margin-bottom: 16px;
+}
+
+.vuk-section-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--vuk-text-primary);
+}
+
+.vuk-section-header .vuk-section-desc {
+  font-size: 0.8125rem;
+  color: var(--vuk-text-muted);
+  margin-top: 2px;
+}
+
+/* Sidebar panel in 2-column layouts */
+.vuk-sidebar {
+  background: linear-gradient(180deg, var(--vuk-shell-2), var(--vuk-shell-1));
+  border-right: 1px solid var(--vuk-border-default);
+}
+
+/* Toolbar / tab bar surface */
+.vuk-toolbar {
+  background: var(--vuk-shell-1);
+  border-bottom: 1px solid var(--vuk-border-default);
+  padding: 12px 16px;
+}
+
+/* Elevated panel surface (L2) — cockpit instrument panel */
+.vuk-panel {
+  background: linear-gradient(170deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-medium);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 0 0 rgba(0, 212, 255, 0.05) inset,
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 1px rgba(0, 212, 255, 0.06);
+}
+
+/* Metric / KPI card */
+.vuk-metric {
+  background: linear-gradient(160deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-medium);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  position: relative;
+  overflow: hidden;
+}
+
+.vuk-metric::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.04), transparent 70%);
+  pointer-events: none;
+}
+
+.vuk-metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--vuk-text-muted);
+}
+
+.vuk-metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--vuk-text-primary);
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* Data row (list items, table rows) */
+.vuk-data-row {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.vuk-data-row:hover {
+  background: rgba(0, 212, 255, 0.03);
+  border-color: var(--vuk-border-subtle);
+}
+
+.vuk-data-row.active {
+  background: var(--vuk-active-bg);
+  border-color: var(--vuk-active-border);
+}
+
+/* Empty state container */
+.vuk-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--vuk-text-muted);
+  text-align: center;
+}
+
+.vuk-empty-state-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+/* Section divider */
+.vuk-divider {
+  height: 1px;
+  background: var(--vuk-border-subtle);
+  margin: 16px 0;
+}
+
+/* Inset surface (used for search inputs, nested content) */
+.vuk-inset {
+  background: var(--vuk-bg-raised);
+  border: 1px solid var(--vuk-border-subtle);
+  border-radius: 10px;
+}
+
+/* Status badge colors */
+.vuk-status-success { color: var(--vuk-success); }
+.vuk-status-warning { color: var(--vuk-warning); }
+.vuk-status-danger { color: var(--vuk-danger); }
+.vuk-status-info { color: var(--vuk-info); }
+
+.vuk-bg-success { background: rgba(0, 255, 157, 0.10); }
+.vuk-bg-warning { background: rgba(255, 182, 39, 0.10); }
+.vuk-bg-danger { background: rgba(255, 61, 90, 0.10); }
+.vuk-bg-info { background: rgba(0, 212, 255, 0.10); }
+
 @media (max-width: 768px) {
   .responsive-container {
     padding: 12px;
@@ -936,12 +1212,14 @@
 
 .automotive-command-shell {
   background:
-    radial-gradient(900px 420px at 5% -8%, var(--vuk-glow-subtle), transparent 60%),
-    radial-gradient(800px 360px at 95% 6%, oklch(0.4 0.06 40 / 0.1), transparent 62%),
-    linear-gradient(180deg, oklch(0.065 0.004 260 / 0.98), oklch(0.04 0.003 260 / 0.98));
-  border-radius: 16px;
-  border: 1px solid oklch(0.18 0.006 260 / 0.5);
-  box-shadow: 0 26px 50px oklch(0.02 0.002 260 / 0.6);
+    radial-gradient(900px 420px at 5% -8%, rgba(0, 212, 255, 0.08), transparent 60%),
+    radial-gradient(800px 360px at 95% 6%, rgba(255, 182, 39, 0.04), transparent 62%),
+    linear-gradient(180deg, var(--vuk-panel-1), var(--vuk-shell-1));
+  border-radius: 12px;
+  border: 1px solid var(--vuk-border-medium);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(0, 212, 255, 0.10);
 }
 
 .automotive-command-header {
@@ -954,15 +1232,15 @@
 
 .automotive-kpi-tile {
   padding: 12px;
-  background: linear-gradient(160deg, rgba(16, 23, 34, 0.9), rgba(18, 22, 31, 0.92));
-  border: 1px solid rgba(82, 96, 116, 0.65);
+  background: linear-gradient(160deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-medium);
 }
 
 .automotive-kpi-tile p {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgba(177, 193, 213, 0.9);
+  color: var(--vuk-text-secondary);
 }
 
 .automotive-kpi-tile h3 {

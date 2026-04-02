@@ -166,13 +166,14 @@ export function AgentsView() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-6 border-b border-border bg-card">
+      <div className="p-6 border-b border-border/75 bg-[#080C14DB] backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Robot size={24} weight="fill" className="text-primary" />
             </div>
             <div>
+              <p className="executive-eyebrow">Autonomous Operations</p>
               <h1 className="text-2xl font-bold tracking-tight">Agents</h1>
               <p className="text-sm text-muted-foreground">
                 Autonomous AI agents running background tasks
@@ -190,7 +191,7 @@ export function AgentsView() {
           </div>
         </div>
 
-        <div className="mb-4 rounded-xl border border-border/70 bg-black/20 px-4 py-3">
+        <div className="mb-4 rounded-xl border border-border/50 bg-muted/50 px-4 py-3">
           <p className="text-sm font-medium text-foreground">
             {isPaidPlan(plan)
               ? 'Paid plan active: agent tasks are available without the free-tier cap.'

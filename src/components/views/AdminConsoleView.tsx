@@ -1552,7 +1552,7 @@ export function AdminConsoleView() {
   return (
     <div className="min-h-full bg-background text-foreground">
       {/* Header */}
-      <div className="border-b border-border/75 bg-[oklch(0.18_0.014_255/0.86)] backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-border/75 bg-[#080C14DB] backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/12 border border-primary/30">
             <Shield className="w-5 h-5 text-primary" weight="fill" />
@@ -1569,7 +1569,7 @@ export function AdminConsoleView() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <ScrollArea className="w-full">
-            <TabsList className="bg-black/20 border border-border/70 h-auto p-1 gap-0.5 flex w-max min-w-full">
+            <TabsList className="h-auto p-1 gap-0.5 flex w-max min-w-full">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}

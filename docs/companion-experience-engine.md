@@ -1,6 +1,6 @@
-# Companion Experience Engine
+# Vuk Experience Engine
 
-> The **Companion Experience Engine** unifies Companion OS into a single,
+> The **Vuk Experience Engine** unifies Vuk OS into a single,
 > real-time AI companion system. It sits at the intersection of the AI
 > orchestrator, context/memory layer, realtime streaming pipeline, avatar
 > system, voice integration, and image generation — all wired together
@@ -44,7 +44,7 @@
            │                      │
            ▼                      ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                    COMPANION BRAIN  (lib/companion-brain.js)                 │
+│                    VUK BRAIN  (lib/companion-brain.js)                 │
 │                                                                              │
 │  ┌───────────┐  ┌──────────────┐  ┌──────────┐  ┌───────────────────────┐  │
 │  │ 1. Intent │→ │ 2. Context   │→ │ 3. Plan  │→ │ 4. Execute Tools      │  │
@@ -118,7 +118,7 @@ assembleContext({ user_id, conversation_id, message, ... })
       • Relationship memory (preferences, instructions)
       • Memory summaries
       • Knowledge graph entities
-      • Companion engine context (goals, constraints)
+      • VUK ENGINE context (goals, constraints)
       • Personality profile
       • Recent conversation turns
       • Short-term session memory
@@ -184,7 +184,7 @@ The stream accepts an `AbortSignal`. When the user interrupts:
 **State engine:** `lib/realtime/companion-state.js`  
 **Avatar controller:** `lib/realtime/avatar-controller.js`
 
-### Companion state machine
+### VUK STATE machine
 
 ```
                   ┌─────────┐
@@ -226,9 +226,9 @@ Valid transitions:
 
 ### Avatar states
 
-The avatar mirrors the companion state with visual-specific mappings:
+The avatar mirrors the VUK STATE with visual-specific mappings:
 
-| Companion State | Avatar State | Expression | Idle Intensity |
+| VUK STATE | Avatar State | Expression | Idle Intensity |
 |---|---|---|---|
 | `idle` | `idle` | neutral | 0.5 |
 | `listening` | `listening` | curious | 0.8 |
@@ -413,6 +413,6 @@ yield formatSSE("state", { state: "idle", avatarState: "idle" });
 
 ## Related Documentation
 
-- [Companion Brain Architecture](./architecture.md) — orchestrator pipeline details
+- [VUK BRAIN Architecture](./architecture.md) — orchestrator pipeline details
 - [Realtime Experience Layer](./realtime-experience.md) — streaming, avatar, voice deep-dive
-- [Companion Engine Architecture](./companion-engine-architecture.md) — goals, constraints, initiatives
+- [VUK ENGINE Architecture](./companion-engine-architecture.md) — goals, constraints, initiatives

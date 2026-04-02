@@ -80,7 +80,7 @@ export function InsightsView() {
 
   return (
     <div className="flex flex-col h-full bg-transparent">
-      <div className="p-6 border-b border-border/75 bg-[oklch(0.18_0.014_255/0.86)] backdrop-blur-sm">
+      <div className="p-6 border-b border-border/75 bg-[#080C14DB] backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -112,7 +112,7 @@ export function InsightsView() {
 
         <div className="space-y-3">
           <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
-            <TabsList className="flex-wrap h-auto gap-1 bg-black/20 border border-border/70">
+            <TabsList className="flex-wrap h-auto gap-1">
               <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
               <TabsTrigger value="reminder" className="text-xs">Reminders</TabsTrigger>
               <TabsTrigger value="follow-up" className="text-xs">Follow-ups</TabsTrigger>

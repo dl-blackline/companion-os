@@ -1,4 +1,4 @@
-# Companion OS Financial Intelligence Architecture
+# Vuk OS Financial Intelligence Architecture
 
 ## 1) Architecture Audit
 

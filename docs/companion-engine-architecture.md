@@ -1,7 +1,7 @@
-# Core Companion Engine — Architecture
+# Core VUK ENGINE — Architecture
 
-> Companion OS is a general-purpose AI assistant and personal companion, not just
-> a CRM or sales tool. The **Core Companion Engine** sits above all existing
+> Vuk OS is a general-purpose AI assistant and personal companion, not just
+> a CRM or sales tool. The **Core VUK ENGINE** sits above all existing
 > modules and unifies them under a single user model, shared memory layer,
 > context engine, and proactive initiative system.
 
@@ -11,7 +11,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Companion OS Client                        │
+│                      Vuk OS Client                        │
 │  (React + TypeScript — src/services/companion-service.ts)       │
 └────────────────────────────┬────────────────────────────────────┘
                              │  POST /.netlify/functions/companion-engine
@@ -24,7 +24,7 @@
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Core Companion Engine (lib/)                        │
+│              Core VUK ENGINE (lib/)                        │
 │                                                                 │
 │  ┌──────────────────┐  ┌──────────────────┐                     │
 │  │ Unified User      │  │ Memory System    │                     │
@@ -145,7 +145,7 @@
 
 ## Example Prompts — Context Injection
 
-### Before (reactive — no companion context)
+### Before (reactive — no Vuk context)
 
 ```
 You are a companion assistant.
@@ -158,7 +158,7 @@ RECENT CONVERSATION
 [user]: How's my week looking?
 ```
 
-### After (companion engine injects full context)
+### After (VUK ENGINE injects full context)
 
 ```
 You are a companion assistant.
@@ -166,7 +166,7 @@ You are a companion assistant.
 USER PROFILE
 Name: Alex
 
-COMPANION ENGINE — USER MODEL
+VUK ENGINE — USER MODEL
 USER GOALS
 Business:
   - Launch MVP by March 30 [high] (65% done)

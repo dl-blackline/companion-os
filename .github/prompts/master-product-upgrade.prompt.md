@@ -1,13 +1,13 @@
 ---
 mode: ask
-description: "Run the full Companion OS product transformation audit and execution workflow"
+description: "Run the full Vuk OS product transformation audit and execution workflow"
 ---
 
 Use all prior product, domain, workflow, and strategy context already provided and upgrade this repository into its next-level form.
 
 Treat this as a serious product transformation.
 
-The target outcome is a premium Companion OS that includes:
+The target outcome is a premium Vuk OS that includes:
 - world-class AI companion foundations
 - premium financial intelligence
 - elite automotive finance manager workflows

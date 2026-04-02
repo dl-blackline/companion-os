@@ -455,7 +455,7 @@ export function SettingsView() {
 
         <Tabs defaultValue="account" className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="settings-tabs-list min-w-max bg-black/25 border border-border/70 rounded-xl p-1">
+            <TabsList className="settings-tabs-list min-w-max rounded-xl p-1">
               <TabsTrigger value="account" className="focus-ring-lux touch-target gap-1.5 px-3">
                 <User size={16} /> Account
               </TabsTrigger>

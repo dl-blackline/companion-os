@@ -265,7 +265,7 @@ function App() {
     <div className="visual-shell flex min-h-dvh w-screen overflow-hidden bg-background text-foreground">
       {/* Mobile header with hamburger */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-30 px-4 py-3 bg-[oklch(0.09_0.006_260/0.94)] border-b border-border/50 backdrop-blur-xl safe-area-top">
+        <div className="fixed top-0 left-0 right-0 z-30 px-4 py-3 bg-[#07090DF0] border-b border-border/50 backdrop-blur-xl safe-area-top">
           <div className="flex items-center justify-between">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

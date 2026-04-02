@@ -876,7 +876,7 @@ export function AutomotiveFinanceView() {
           <div>
             <p className="executive-eyebrow">Customer Presentation Mode</p>
             <h1 className="text-3xl font-semibold tracking-tight">Protection Options and Payment Paths</h1>
-            <p className="text-sm text-slate-300/80 mt-2 max-w-3xl">
+            <p className="text-sm text-muted-foreground mt-2 max-w-3xl">
               Clean presentation mode hides operational flags and manager-only signals. Keep the discussion clear, transparent, and pressure-free.
             </p>
           </div>
@@ -916,7 +916,7 @@ export function AutomotiveFinanceView() {
                 <button
                   key={column.id}
                   onClick={() => !presentationLock && setSelectedPackageId(column.id)}
-                  className={`rounded-xl border p-4 space-y-2 text-left ${selectedPackageId === column.id ? 'border-cyan-300/60 bg-cyan-900/20' : 'border-slate-700/70 bg-slate-900/70'} ${presentationLock ? 'cursor-default' : 'hover:border-cyan-300/50'}`}
+                  className={`rounded-xl border p-4 space-y-2 text-left ${selectedPackageId === column.id ? 'border-cyan-300/60 bg-cyan-900/20' : 'border-border bg-card'} ${presentationLock ? 'cursor-default' : 'hover:border-cyan-300/50'}`}
                 >
                   <p className="text-sm uppercase tracking-[0.12em] text-slate-400">Option {index + 1}</p>
                   <p className="text-lg font-semibold">{column.title}</p>
@@ -1001,7 +1001,7 @@ export function AutomotiveFinanceView() {
         <div>
           <p className="executive-eyebrow">Automotive Finance Manager • Phase 5 Management Scale</p>
           <h1 className="text-3xl font-semibold tracking-tight">Live Finance Copilot Command Center</h1>
-          <p className="text-sm text-slate-300/80 mt-2 max-w-4xl">
+          <p className="text-sm text-muted-foreground mt-2 max-w-4xl">
             Context-aware intelligence with management controls for structure, callbacks, menu strategy, funding execution, oversight, and cross-store leadership visibility.
           </p>
         </div>
@@ -1060,7 +1060,7 @@ export function AutomotiveFinanceView() {
               ].map(([value, label]) => (
                 <button
                   key={value}
-                  className={`rounded-md border px-2 py-1 ${statusFilter === value ? 'border-cyan-300/60 bg-cyan-900/30 text-cyan-200' : 'border-slate-700/70 bg-slate-900/70 text-slate-300'}`}
+                  className={`rounded-md border px-2 py-1 ${statusFilter === value ? 'border-cyan-300/60 bg-cyan-900/30 text-cyan-200' : 'border-border bg-card text-muted-foreground'}`}
                   onClick={() => setStatusFilter(value as DealStatusFilter)}
                 >
                   {label}
@@ -1072,14 +1072,14 @@ export function AutomotiveFinanceView() {
                 <button
                   key={deal.id}
                   onClick={() => setSelectedDealId(deal.id)}
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition ${selectedDeal?.id === deal.id ? 'border-cyan-300/60 bg-cyan-900/20' : 'border-slate-700/70 bg-slate-900/60 hover:bg-slate-900/90'}`}
+                  className={`w-full rounded-lg border px-3 py-2 text-left transition ${selectedDeal?.id === deal.id ? 'border-cyan-300/60 bg-cyan-900/20' : 'border-border bg-card/60 hover:bg-card/90'}`}
                 >
                   <div className="flex justify-between gap-2 items-center">
                     <p className="font-medium text-sm truncate">{deal.deal_name}</p>
                     <Badge variant="outline">{deal.deal_type}</Badge>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">{deal.vehicle_summary || 'Vehicle pending'} • {deal.status.replace(/_/g, ' ')}</p>
-                  <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-2">
+                  <p className="text-xs text-muted-foreground mt-1">{deal.vehicle_summary || 'Vehicle pending'} • {deal.status.replace(/_/g, ' ')}</p>
+                  <div className="text-[11px] text-muted-foreground mt-1 flex flex-wrap gap-2">
                     <span>Flags: {deal.open_flag_count || 0}</span>
                     <span>Callback: {deal.callback_status || 'none'}</span>
                     <span>Pressure: {Math.round(Number(deal.structure_pressure_score || 0))}</span>
@@ -1108,7 +1108,7 @@ export function AutomotiveFinanceView() {
                 <button
                   key={item.key}
                   onClick={() => setWorkspace(item.key)}
-                  className={`rounded-md border px-3 py-1.5 text-sm ${workspace === item.key ? 'border-cyan-300/60 bg-cyan-900/30 text-cyan-200' : 'border-slate-700/70 bg-slate-900/70 text-slate-300'}`}
+                  className={`rounded-md border px-3 py-1.5 text-sm ${workspace === item.key ? 'border-cyan-300/60 bg-cyan-900/30 text-cyan-200' : 'border-border bg-card text-muted-foreground'}`}
                 >
                   {item.label}
                 </button>
@@ -1130,7 +1130,7 @@ export function AutomotiveFinanceView() {
                   aria-label="Set deal status"
                   value={selectedDeal.status}
                   onChange={(e) => void setDealStatus(selectedDeal.id, asDealStatus(e.target.value))}
-                  className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+                  className="rounded-md border border-border bg-card px-3 py-2 text-sm"
                 >
                   {[
                     'lead_received', 'intake', 'docs_pending', 'docs_under_review', 'document_review', 'structure_in_progress',
@@ -1455,7 +1455,7 @@ export function AutomotiveFinanceView() {
                 <div className="grid md:grid-cols-3 gap-2">
                   <select
                     aria-label="Objection type"
-                    className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+                    className="rounded-md border border-border bg-card px-3 py-2 text-sm"
                     value={objectionType}
                     onChange={(e) => setObjectionType(e.target.value)}
                   >

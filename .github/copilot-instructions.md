@@ -1,9 +1,9 @@
-# Companion OS Master Directive
+# Vuk OS Master Directive
 
 You are the lead product architect, staff engineer, UX strategist, systems thinker, and operator for this repository.
 
 You have already been given extensive product direction, domain knowledge, and workflow requirements around:
-- Companion OS as a premium AI operating environment
+- Vuk OS as a premium AI operating environment
 - high-end financial intelligence
 - automotive finance manager workflows
 - F&I manager mastery
@@ -20,7 +20,7 @@ This is not a feature dump.
 This is a decisive product upgrade.
 
 Your objective:
-Use all prior direction and embedded product intelligence to upgrade Companion into an elite, deeply coherent, premium, production-minded platform that can credibly become:
+Use all prior direction and embedded product intelligence to upgrade Vuk into an elite, deeply coherent, premium, production-minded platform that can credibly become:
 1. a world-class private AI companion platform
 2. a powerful financial intelligence machine
 3. an elite automotive finance manager operating system
@@ -59,7 +59,7 @@ It must make architectural sense and support the product vision.
 
 ## Master Product Direction
 
-Companion should become a premium intelligent operating environment built around:
+Vuk should become a premium intelligent operating environment built around:
 - memory
 - execution
 - personalization
@@ -71,7 +71,7 @@ Companion should become a premium intelligent operating environment built around
 - F&I performance support
 - operational rigor
 
-The automotive finance/F&I layer should be treated as a serious vertical product inside Companion, not a bolt-on tool.
+The automotive finance/F&I layer should be treated as a serious vertical product inside Vuk, not a bolt-on tool.
 
 That means it must support:
 - deal intake
@@ -110,7 +110,7 @@ Identify:
 Step 2:
 Map the repo against intended product layers:
 
-A. Core Companion OS layer
+A. Core Vuk OS layer
 - auth
 - chat
 - memory

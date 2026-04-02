@@ -1,8 +1,8 @@
-# Companion Brain Architecture
+# VUK BRAIN Architecture
 
 ## Overview
 
-The **Companion Brain** is a unified AI orchestration layer that replaces the
+The **VUK BRAIN** is a unified AI orchestration layer that replaces the
 previous pattern of fragmented, independent AI endpoints with a single, coherent
 pipeline.  All AI interactions — chat, roleplay, planning, research, media
 generation, etc. — flow through one entry point (`companion-brain`) which routes
@@ -26,7 +26,7 @@ to domain-specific sub-capabilities.
                                         │
                                         ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     COMPANION BRAIN  (lib/companion-brain.js)              │
+│                     VUK BRAIN  (lib/companion-brain.js)              │
 │                                                                           │
 │  ┌─────────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────────┐   │
 │  │ 1. Intent   │──▶│ 2. Context   │──▶│ 3. Plan  │──▶│ 4. Execute   │   │
@@ -69,7 +69,7 @@ to domain-specific sub-capabilities.
 │ OpenAI / NoFilter /  │ │ Hierarchical     │ │ Episodic / Relation-  │
 │ Gemini providers     │ │ memory + KG +    │ │ ship / Summaries +    │
 │                      │ │ personality +    │ │ Instructions          │
-│                      │ │ companion engine │ │                       │
+│                      │ │ VUK ENGINE │ │                       │
 └──────────────────────┘ └──────────────────┘ └───────────────────────┘
                                   │
                                   ▼
@@ -138,7 +138,7 @@ companion-os/
 │   └── ...
 │
 └── docs/
-    ├── architecture.md               # ★ Companion Brain architecture
+    ├── architecture.md               # ★ VUK BRAIN architecture
     ├── companion-experience-engine.md # ★ Unified experience engine overview
     ├── companion-engine-architecture.md # Core engine (goals, constraints)
     └── realtime-experience.md         # Realtime streaming & avatar layer
@@ -199,7 +199,7 @@ User: "Help me plan my workout for this week based on my fitness goals"
      - User profile (name, preferences, goals)
      - Episodic memory (past workout events)
      - Relationship memory (fitness preferences)
-     - Companion engine (active fitness goals, constraints)
+     - VUK ENGINE (active fitness goals, constraints)
      - Short-term memory (recent session turns)
      - Knowledge graph (workout entities)
    → Build system prompt with all 14 context layers
@@ -254,7 +254,7 @@ Communication style: casual
 Goals: ["Build muscle", "Run 5K in under 25 minutes"]
 Interests: ["fitness", "nutrition", "productivity"]
 
-COMPANION ENGINE — USER MODEL
+VUK ENGINE — USER MODEL
 Active Goals:
 - Build muscle mass (domain: health, priority: high)
 - Complete marathon training (domain: health, priority: medium)
@@ -299,7 +299,7 @@ endpoints. The migration path is:
 1. **Phase 1 (Current):** New `companion-brain` endpoint added alongside
    existing `ai.js` and `chat.js` endpoints. All existing endpoints continue
    to work unchanged. The legacy `ai.js` (handleChat) and `chat.js` endpoints
-   now route through `think()` from the Companion Brain instead of calling the
+   now route through `think()` from the VUK BRAIN instead of calling the
    old `orchestrate()` pipeline directly, ensuring consistent behavior across
    all entry points. All AI calls in `ai.js` (including live-talk) now go
    through the centralized `ai-client.js` instead of direct `runAI()` calls.

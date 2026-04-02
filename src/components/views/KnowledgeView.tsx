@@ -441,7 +441,7 @@ export function KnowledgeView() {
   return (
     <div className="flex flex-col md:flex-row h-full bg-transparent">
       {/* Left panel — knowledge list */}
-      <div className="w-full md:w-80 border-r border-border/75 flex flex-col bg-[oklch(0.18_0.014_255/0.82)] backdrop-blur-sm">
+      <div className="w-full md:w-80 border-r border-border/75 flex flex-col bg-[#080C14D1] backdrop-blur-sm">
         <div className="p-4 border-b border-border/75">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Knowledge Vault</h2>
