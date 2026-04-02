@@ -370,12 +370,26 @@ async function handleCompleteSession(user, body) {
 
   console.log(`[stripe-fc] ${linked}/${accounts.length} accounts persisted, ${balancesSynced} balances synced`);
 
-  // Fetch initial transactions only for successfully linked accounts (non-critical)
+  // Fetch initial transactions — trigger explicit refresh and wait for it
   for (const stripeAccountId of linkedAccountIds) {
     try {
-      const txCount = await fetchAndPersistTransactions(stripe, user.id, stripeAccountId);
-      transactionsSynced += txCount;
-      console.log(`[stripe-fc] ${txCount} transactions persisted for ${stripeAccountId}`);
+      // Trigger transaction refresh (prefetch may not have completed yet)
+      try {
+        await stripe.financialConnections.accounts.refresh(stripeAccountId, {
+          features: ['transactions'],
+        });
+        console.log(`[stripe-fc] Transaction refresh triggered for ${stripeAccountId}`);
+      } catch (refreshErr) {
+        console.warn(`[stripe-fc] Transaction refresh trigger for ${stripeAccountId}:`, refreshErr.message);
+      }
+      const ready = await waitForTransactionRefresh(stripe, stripeAccountId);
+      if (ready) {
+        const txCount = await fetchAndPersistTransactions(stripe, user.id, stripeAccountId);
+        transactionsSynced += txCount;
+        console.log(`[stripe-fc] ${txCount} transactions persisted for ${stripeAccountId}`);
+      } else {
+        console.warn(`[stripe-fc] Transaction refresh not ready for ${stripeAccountId}, will sync later`);
+      }
     } catch (err) {
       console.warn(`[stripe-fc] Initial tx fetch for ${stripeAccountId}:`, err.message);
     }
@@ -391,6 +405,22 @@ async function handleCompleteSession(user, body) {
     syncStatus: transactionsSynced > 0 ? 'complete' : 'transactions_syncing',
     ...(errors.length > 0 ? { partialErrors: errors } : {}),
   });
+}
+
+async function waitForTransactionRefresh(stripe, stripeAccountId, maxWaitMs = 30000) {
+  const start = Date.now();
+  const interval = 2000;
+  while (Date.now() - start < maxWaitMs) {
+    const acct = await stripe.financialConnections.accounts.retrieve(stripeAccountId);
+    const status = acct.transaction_refresh?.status;
+    console.log(`[stripe-fc] transaction_refresh status for ${stripeAccountId}: ${status}`);
+    if (status === 'succeeded') return true;
+    if (status === 'failed') return false;
+    // Still pending — wait and retry
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  console.warn(`[stripe-fc] Transaction refresh timed out for ${stripeAccountId}`);
+  return false;
 }
 
 async function fetchAndPersistTransactions(stripe, userId, stripeAccountId) {
@@ -473,7 +503,12 @@ async function handleRefreshAccount(user, body) {
     await stripe.financialConnections.accounts.refresh(conn.stripe_account_id, {
       features: ['transactions'],
     });
-    await fetchAndPersistTransactions(stripe, user.id, conn.stripe_account_id);
+    const ready = await waitForTransactionRefresh(stripe, conn.stripe_account_id);
+    if (ready) {
+      await fetchAndPersistTransactions(stripe, user.id, conn.stripe_account_id);
+    } else {
+      console.warn(`[stripe-fc] Transaction refresh not ready for ${conn.stripe_account_id}, skipping fetch`);
+    }
   } catch (err) {
     console.warn(`[stripe-fc] Transaction refresh for ${conn.stripe_account_id}:`, err.message);
   }
