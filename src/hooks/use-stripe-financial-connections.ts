@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type {
   LinkedAccountsDashboard,
@@ -12,12 +12,20 @@ const EMPTY_DASHBOARD: LinkedAccountsDashboard = {
 
 const FC_URL = '/.netlify/functions/stripe-financial-connections';
 
+// How often to poll for transactions after linking (ms)
+const TX_SYNC_INTERVAL = 10_000;
+// Max time to keep polling (ms)
+const TX_SYNC_MAX_DURATION = 120_000;
+
 export function useStripeFinancialConnections() {
   const { getFreshAccessToken, user } = useAuth();
   const [dashboard, setDashboard] = useState<LinkedAccountsDashboard>(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncStartRef = useRef<number>(0);
 
   const authedFetch = useCallback(
     async (input: string, init?: RequestInit) => {
@@ -88,6 +96,49 @@ export function useStripeFinancialConnections() {
     }
   }, [authedFetch]);
 
+  const syncTransactions = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await authedFetch(FC_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'sync_transactions' }),
+      });
+      console.log('[stripe-fc] syncTransactions:', JSON.stringify(result));
+      if (result.synced > 0) {
+        await refresh();
+      }
+      return result.complete === true;
+    } catch (err) {
+      console.warn('[stripe-fc] syncTransactions error:', err);
+      return false;
+    }
+  }, [authedFetch, refresh]);
+
+  const stopSyncPolling = useCallback(() => {
+    if (syncTimerRef.current) {
+      clearInterval(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    setSyncing(false);
+  }, []);
+
+  const startSyncPolling = useCallback(() => {
+    stopSyncPolling();
+    setSyncing(true);
+    syncStartRef.current = Date.now();
+    syncTimerRef.current = setInterval(async () => {
+      if (Date.now() - syncStartRef.current > TX_SYNC_MAX_DURATION) {
+        console.log('[stripe-fc] Transaction sync polling timed out after 2 minutes');
+        stopSyncPolling();
+        return;
+      }
+      const complete = await syncTransactions();
+      if (complete) {
+        console.log('[stripe-fc] Transaction sync complete');
+        stopSyncPolling();
+      }
+    }, TX_SYNC_INTERVAL);
+  }, [syncTransactions, stopSyncPolling]);
+
   const completeSession = useCallback(
     async (sessionId: string, accountIds?: string[]): Promise<boolean> => {
       setError(null);
@@ -98,6 +149,11 @@ export function useStripeFinancialConnections() {
         });
         console.log('[stripe-fc] completeSession result:', JSON.stringify(result));
         await refresh();
+
+        // If transactions weren't all synced immediately, start polling
+        if (result.syncStatus === 'transactions_syncing') {
+          startSyncPolling();
+        }
         return true;
       } catch (err) {
         console.error('[stripe-fc] completeSession failed:', err);
@@ -105,7 +161,7 @@ export function useStripeFinancialConnections() {
         return false;
       }
     },
-    [authedFetch, refresh],
+    [authedFetch, refresh, startSyncPolling],
   );
 
   const refreshAccount = useCallback(
@@ -160,15 +216,26 @@ export function useStripeFinancialConnections() {
     void refresh();
   }, [refresh]);
 
+  // Cleanup sync polling on unmount
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) {
+        clearInterval(syncTimerRef.current);
+      }
+    };
+  }, []);
+
   return {
     dashboard,
     loading,
     connecting,
+    syncing,
     error,
     refresh,
     createSession,
     completeSession,
     refreshAccount,
+    syncTransactions,
     disconnectAccount,
     removeAccount,
   };
