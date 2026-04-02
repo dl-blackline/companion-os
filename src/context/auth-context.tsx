@@ -22,6 +22,9 @@ interface AuthContextType {
    *  the in-memory session cached by onAuthStateChange — avoids an extra
    *  async round-trip and the race-condition with getSession(). */
   getAccessToken: () => string | null
+  /** Returns a fresh access token, refreshing the session if expired.
+   *  Use this for critical auth-gated calls (e.g. after page redirects). */
+  getFreshAccessToken: () => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -68,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) return
     try {
       const [{ data: roleData }, { data: planData }] = await Promise.all([
-        supabase.from('user_roles').select('role').eq('user_id', userId).single(),
-        supabase.from('user_entitlements').select('plan').eq('user_id', userId).single(),
+        supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+        supabase.from('user_entitlements').select('plan').eq('user_id', userId).maybeSingle(),
       ])
       if (roleData?.role) setRole(roleData.role as UserRole)
       if (planData?.plan) setPlan(planData.plan as EntitlementPlan)
@@ -178,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, configured: supabaseConfigured, role, plan, isAdmin, authState, login, signup, logout, resetPassword, refreshRole, getAccessToken }}>
+    <AuthContext.Provider value={{ user, session, loading, configured: supabaseConfigured, role, plan, isAdmin, authState, login, signup, logout, resetPassword, refreshRole, getAccessToken, getFreshAccessToken }}>
       {children}
     </AuthContext.Provider>
   )

@@ -13,7 +13,7 @@ const EMPTY_DASHBOARD: LinkedAccountsDashboard = {
 const FC_URL = '/.netlify/functions/stripe-financial-connections';
 
 export function useStripeFinancialConnections() {
-  const { getAccessToken, user } = useAuth();
+  const { getFreshAccessToken, user } = useAuth();
   const [dashboard, setDashboard] = useState<LinkedAccountsDashboard>(EMPTY_DASHBOARD);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -21,7 +21,7 @@ export function useStripeFinancialConnections() {
 
   const authedFetch = useCallback(
     async (input: string, init?: RequestInit) => {
-      const token = getAccessToken();
+      const token = await getFreshAccessToken();
       if (!token) throw new Error('You must be signed in.');
 
       const response = await fetch(input, {
@@ -35,11 +35,18 @@ export function useStripeFinancialConnections() {
 
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || 'Request failed.');
+        const serverMsg = payload?.error;
+        const fallback =
+          response.status === 502
+            ? 'The server encountered an error. Please try again in a moment.'
+            : response.status === 401
+              ? 'Your session has expired. Please sign in again.'
+              : 'Request failed.';
+        throw new Error(serverMsg || fallback);
       }
       return payload.data;
     },
-    [getAccessToken],
+    [getFreshAccessToken],
   );
 
   const refresh = useCallback(async () => {

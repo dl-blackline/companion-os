@@ -7,19 +7,22 @@ import { XCircle } from '@phosphor-icons/react/XCircle';
 import { ArrowLeft } from '@phosphor-icons/react/ArrowLeft';
 import { ArrowsClockwise } from '@phosphor-icons/react/ArrowsClockwise';
 import { useStripeFinancialConnections } from '@/hooks/use-stripe-financial-connections';
+import { useAuth } from '@/context/auth-context';
 
 interface StripeReturnViewProps {
   onNavigateToFinance: () => void;
 }
 
 export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps) {
-  const { completeSession, refresh, loading: refreshing } = useStripeFinancialConnections();
-  const [status, setStatus] = useState<'processing' | 'success' | 'canceled' | 'error'>('processing');
+  const { loading: authLoading } = useAuth();
+  const { completeSession, refresh, error: hookError, loading: refreshing } = useStripeFinancialConnections();
+  const [status, setStatus] = useState<'processing' | 'success' | 'partial' | 'canceled' | 'error'>('processing');
   const [message, setMessage] = useState('Completing your bank link...');
   const [processed, setProcessed] = useState(false);
 
   useEffect(() => {
-    if (processed) return;
+    // Wait for auth session to restore before making protected calls
+    if (authLoading || processed) return;
     setProcessed(true);
 
     const params = new URLSearchParams(window.location.search);
@@ -36,16 +39,17 @@ export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps)
     sessionStorage.removeItem('stripe_fc_session_id');
 
     (async () => {
+      setMessage('Linking your account and syncing data...');
       const success = await completeSession(sessionId);
       if (success) {
         setStatus('success');
-        setMessage('Your bank account has been linked successfully.');
+        setMessage('Your bank account has been linked successfully. Transactions are syncing.');
       } else {
         setStatus('error');
-        setMessage('Something went wrong completing the link. You can try again from the finance section.');
+        setMessage(hookError || 'Something went wrong completing the link. You can try again from the finance section.');
       }
     })();
-  }, [completeSession, processed]);
+  }, [authLoading, completeSession, hookError, processed]);
 
   const handleGoToFinance = () => {
     window.history.pushState({}, '', '/finance');
@@ -75,6 +79,9 @@ export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps)
             <p className="text-xl font-semibold">Bank Account Linked</p>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Badge variant="default" className="mt-2">Connected</Badge>
+            <p className="text-xs text-muted-foreground">
+              Transactions may take a few moments to appear.
+            </p>
             <div className="pt-4">
               <Button onClick={handleGoToFinance} className="gap-2">
                 <ArrowLeft size={16} />

@@ -12,7 +12,7 @@ async function resolveActor(token) {
 }
 
 async function isAdmin(userId) {
-  const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single();
+  const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
   return data?.role === 'admin';
 }
 
