@@ -22,6 +22,7 @@ const MediaView = lazy(() => import('@/components/views/MediaView').then((module
 const MemoryView = lazy(() => import('@/components/views/MemoryView').then((module) => ({ default: module.MemoryView })));
 const KnowledgeView = lazy(() => import('@/components/views/KnowledgeView').then((module) => ({ default: module.KnowledgeView })));
 const GoalsView = lazy(() => import('@/components/views/GoalsView').then((module) => ({ default: module.GoalsView })));
+const CalendarView = lazy(() => import('@/components/views/CalendarView').then((module) => ({ default: module.CalendarView })));
 const InsightsView = lazy(() => import('@/components/views/InsightsView').then((module) => ({ default: module.InsightsView })));
 const CareersView = lazy(() => import('@/components/views/CareersView').then((module) => ({ default: module.CareersView })));
 const FinanceView = lazy(() => import('@/components/views/FinanceView').then((module) => ({ default: module.FinanceView })));
@@ -216,6 +217,8 @@ function App() {
         return <KnowledgeView />;
       case 'goals':
         return <GoalsView />;
+      case 'calendar':
+        return <CalendarView />;
       case 'workflows':
         return <WorkflowsView />;
       case 'insights':

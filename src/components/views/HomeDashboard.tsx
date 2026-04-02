@@ -46,6 +46,7 @@ const quickActions = [
   { id: 'media', label: 'Media Studio', description: 'Generate visual and video assets', icon: Images },
   { id: 'finance', label: 'Finance Pulse', description: 'Live cashflow and resilience tracking', icon: Money },
   { id: 'automotive-finance', label: 'F&I Workspace', description: 'Deal pipeline and lender ops', icon: Car },
+  { id: 'calendar', label: 'Calendar', description: 'Unified event timeline', icon: CalendarBlank },
   { id: 'workflows', label: 'Workflow Ops', description: 'Run repeatable operational logic', icon: Lightning },
 ];
 
