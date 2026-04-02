@@ -140,6 +140,22 @@ export function useStripeFinancialConnections() {
     [authedFetch, refresh],
   );
 
+  const removeAccount = useCallback(
+    async (connectionId: string) => {
+      setError(null);
+      try {
+        await authedFetch(FC_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'remove_account', connectionId }),
+        });
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to remove account.');
+      }
+    },
+    [authedFetch, refresh],
+  );
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -154,5 +170,6 @@ export function useStripeFinancialConnections() {
     completeSession,
     refreshAccount,
     disconnectAccount,
+    removeAccount,
   };
 }
