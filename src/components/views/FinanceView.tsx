@@ -595,21 +595,96 @@ export function FinanceView() {
         </div>
       </div>
 
-      {/* ═══ COCKPIT KPI STRIP ═══ */}
-      <div className="fi-cockpit-kpi-strip">
-        {/* Pulse */}
-        <div className="fi-kpi-cell fi-kpi-pulse">
-          <div className="fi-kpi-label">
-            <Heartbeat size={12} className="text-primary" />
-            Pulse
-          </div>
-          <div className="fi-kpi-value">{pulse.score}</div>
-          <div className="fi-kpi-trend">
-            {pulse.trend === 'improving'
-              ? <TrendUp size={11} className="text-emerald-400" />
-              : <TrendDown size={11} className="text-rose-400" />}
-            <span>{pulse.trend}</span>
-          </div>
+      {error && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {error}
+        </Card>
+      )}
+
+      {stripeError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {stripeError}
+        </Card>
+      )}
+
+      {txError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {txError}
+        </Card>
+      )}
+
+      {intelligenceError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {intelligenceError}
+        </Card>
+      )}
+
+      {analysisError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {analysisError}
+        </Card>
+      )}
+
+      {decoderError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {decoderError}
+        </Card>
+      )}
+
+      {scorecardError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {scorecardError}
+        </Card>
+      )}
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="dashboard" className="gap-1.5"><ChartLineUp size={14} /> Command Center</TabsTrigger>
+          <TabsTrigger value="accounts" className="gap-1.5"><CreditCard size={14} /> Accounts</TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-1.5"><ListBullets size={14} /> Transactions</TabsTrigger>
+          <TabsTrigger value="ledger" className="gap-1.5"><Note size={14} /> Ledger</TabsTrigger>
+          <TabsTrigger value="decoder" className="gap-1.5"><FileArrowUp size={14} /> Bill Decoder</TabsTrigger>
+          <TabsTrigger value="scorecard" className="gap-1.5"><Heartbeat size={14} /> Scorecard</TabsTrigger>
+          <TabsTrigger value="vehicles" className="gap-1.5"><Bank size={14} /> Vehicles</TabsTrigger>
+          <TabsTrigger value="income" className="gap-1.5"><TrendUp size={14} /> Income</TabsTrigger>
+          <TabsTrigger value="cashflow" className="gap-1.5"><Wallet size={14} /> Cash Flow</TabsTrigger>
+          <TabsTrigger value="recurring" className="gap-1.5"><ArrowsClockwise size={14} /> Recurring</TabsTrigger>
+          <TabsTrigger value="planner" className="gap-1.5"><Wallet size={14} /> Obligations</TabsTrigger>
+          <TabsTrigger value="goals" className="gap-1.5"><PiggyBank size={14} /> Savings</TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-1.5"><CalendarBlank size={14} /> Calendar</TabsTrigger>
+          <TabsTrigger value="documents" className="gap-1.5"><FileArrowUp size={14} /> Documents</TabsTrigger>
+          <TabsTrigger value="insights" className="gap-1.5"><Lightbulb size={14} /> Insights</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* ─── Aggregate Metrics Bar ─── */}
+      {linkedAccountsDashboard.aggregates.accountCount > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Total Balance</p>
+            <p className={`text-2xl font-bold tracking-tight ${linkedAccountsDashboard.aggregates.totalBalance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {currency(linkedAccountsDashboard.aggregates.totalBalance)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Across {linkedAccountsDashboard.aggregates.accountCount} connected account{linkedAccountsDashboard.aggregates.accountCount !== 1 ? 's' : ''}
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Cash on Hand</p>
+            <p className="text-2xl font-bold tracking-tight text-blue-300">
+              {currency(linkedAccountsDashboard.aggregates.totalCashOnHand)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">Checking &amp; Savings</p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Available Credit</p>
+            <p className="text-2xl font-bold tracking-tight text-amber-300">
+              {currency(linkedAccountsDashboard.aggregates.totalAvailableCredit)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">Credit Card Accounts</p>
+          </Card>
         </div>
 
         {/* Balance */}
