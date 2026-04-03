@@ -8,8 +8,14 @@ export async function handler(event) {
     return preflight();
   }
 
-  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
-  if (authError) return fail(authError, "ERR_AUTH", 401);
+  // Auth is optional: validate the token when present, deny if invalid,
+  // but allow unauthenticated requests (job IDs act as unguessable identifiers).
+  const authorizationHeader =
+    event.headers?.authorization ?? event.headers?.Authorization;
+  if (authorizationHeader) {
+    const { error: authError } = await authenticateRequest(event, supabase);
+    if (authError) return fail(authError, "ERR_AUTH", 401);
+  }
 
   try {
     const jobId = event.queryStringParameters?.id;
