@@ -26,6 +26,24 @@ export interface PaletteCommand {
   context?: string[];
 }
 
+export interface EntityResult {
+  id: string;
+  label: string;
+  sublabel?: string;
+  type: string;
+  icon: string;
+  section: string;
+}
+
+export interface SmartSuggestion {
+  id: string;
+  label: string;
+  sublabel: string;
+  icon: string;
+  section: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
 export const GROUP_META: Record<CommandGroup, { label: string; order: number }> = {
   navigation: { label: 'Navigate', order: 0 },
   create: { label: 'Quick Create', order: 1 },
@@ -44,6 +62,7 @@ export const COMMANDS: PaletteCommand[] = [
   { id: 'nav-memory', label: 'Go to Memory', group: 'navigation', icon: 'brain', keywords: ['memory', 'memories', 'remember', 'context', 'recall'], section: 'memory' },
   { id: 'nav-knowledge', label: 'Go to Knowledge', group: 'navigation', icon: 'books', keywords: ['knowledge', 'library', 'documents', 'docs', 'reference'], section: 'knowledge' },
   { id: 'nav-goals', label: 'Go to Goals', group: 'navigation', icon: 'target', keywords: ['goals', 'objectives', 'milestones', 'planning', 'life os'], section: 'goals' },
+  { id: 'nav-calendar', label: 'Go to Calendar', group: 'navigation', icon: 'calendar', keywords: ['calendar', 'schedule', 'events', 'dates', 'appointments', 'reminders'], section: 'calendar' },
   { id: 'nav-workflows', label: 'Go to Workflows', group: 'navigation', icon: 'lightning', keywords: ['workflows', 'automation', 'ops', 'logic', 'pipeline'], section: 'workflows' },
   { id: 'nav-insights', label: 'Go to Insights', group: 'navigation', icon: 'lightbulb', keywords: ['insights', 'analytics', 'intelligence', 'analysis'], section: 'insights' },
   { id: 'nav-careers', label: 'Go to Careers', group: 'navigation', icon: 'briefcase', keywords: ['careers', 'jobs', 'resume', 'applications', 'job hunt'], section: 'careers' },
@@ -61,7 +80,7 @@ export const COMMANDS: PaletteCommand[] = [
   { id: 'create-deal', label: 'Create Deal', group: 'create', icon: 'handshake', keywords: ['new deal', 'create deal', 'add deal', 'auto deal', 'desk'], section: 'automotive-finance' },
   { id: 'create-task', label: 'Create Task', group: 'create', icon: 'check', keywords: ['new task', 'create task', 'add task', 'todo', 'to-do'], section: 'goals' },
   { id: 'create-note', label: 'Add Quick Note', group: 'create', icon: 'note', keywords: ['note', 'quick note', 'capture', 'jot', 'memo'], section: 'chat' },
-  { id: 'create-event', label: 'Add Calendar Event', group: 'create', icon: 'calendar', keywords: ['event', 'calendar', 'schedule', 'appointment', 'meeting'], section: 'goals' },
+  { id: 'create-event', label: 'Add Calendar Event', group: 'create', icon: 'calendar', keywords: ['event', 'calendar', 'schedule', 'appointment', 'meeting'], section: 'calendar' },
   { id: 'create-workflow', label: 'Create Workflow', group: 'create', icon: 'lightning', keywords: ['new workflow', 'automation', 'create workflow'], section: 'workflows' },
   { id: 'upload-doc', label: 'Upload Document', group: 'create', icon: 'upload', keywords: ['upload', 'document', 'file', 'attachment', 'scan', 'pdf'], section: 'finance' },
   { id: 'add-portal', label: 'Add Provider Portal', group: 'create', icon: 'globe', keywords: ['provider', 'portal', 'lender link', 'add portal', 'bookmark'], section: 'automotive-finance' },

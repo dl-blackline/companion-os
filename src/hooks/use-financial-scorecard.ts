@@ -76,6 +76,15 @@ export function useFinancialScorecard() {
       method: 'POST',
       body: JSON.stringify({ action: 'upsert_vehicle', ...vehicle }),
     });
+    // Recompute scorecard so vehicle_position updates immediately
+    try {
+      await authedFetch('/.netlify/functions/financial-scorecard', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'compute_scorecard' }),
+      });
+    } catch {
+      // Scorecard recompute is best-effort; vehicle was already saved
+    }
     await refresh();
   }, [authedFetch, refresh]);
 
@@ -84,6 +93,14 @@ export function useFinancialScorecard() {
       method: 'POST',
       body: JSON.stringify({ action: 'delete_vehicle', vehicleId }),
     });
+    try {
+      await authedFetch('/.netlify/functions/financial-scorecard', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'compute_scorecard' }),
+      });
+    } catch {
+      // best-effort recompute
+    }
     await refresh();
   }, [authedFetch, refresh]);
 

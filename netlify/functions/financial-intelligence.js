@@ -168,14 +168,32 @@ Rules:
 }
 
 async function ingestDocument({ user, body }) {
-  const sourceType = body?.sourceType;
+  let sourceType = body?.sourceType;
   const storagePath = body?.storagePath;
   const filename = body?.filename;
   const mimeType = body?.mimeType || null;
   const fileSizeBytes = body?.fileSizeBytes || null;
 
-  if (!sourceType || !storagePath || !filename) {
-    return fail('Missing required fields: sourceType, storagePath, filename', 'ERR_VALIDATION', 400);
+  if (!storagePath || !filename) {
+    return fail('Missing required fields: storagePath, filename', 'ERR_VALIDATION', 400);
+  }
+
+  // AI-assisted document type detection
+  if (!sourceType || sourceType === 'auto_detect') {
+    try {
+      const rawText = await extractDocumentText({ storagePath, mimeType });
+      const classifyPrompt = {
+        system: `You are a financial document classifier. Given the raw text of a financial document, determine its type.
+Return ONLY one of these exact strings (no other text):
+bank_statement, credit_card_statement, loan_statement, pay_stub, tax_return, insurance_policy, investment_statement, bill, receipt, other`,
+        user: `Filename: ${filename}\n\nDocument text:\n${rawText.slice(0, 6000)}`,
+      };
+      const detected = (await generateChatCompletion(classifyPrompt, 'gpt-4.1-mini', 0.05)).trim().toLowerCase();
+      const validTypes = ['bank_statement', 'credit_card_statement', 'loan_statement', 'pay_stub', 'tax_return', 'insurance_policy', 'investment_statement', 'bill', 'receipt', 'other'];
+      sourceType = validTypes.includes(detected) ? detected : 'other';
+    } catch {
+      sourceType = 'other';
+    }
   }
 
   const { data: document, error: docError } = await supabase
@@ -635,6 +653,140 @@ async function setPreference(userId, body) {
   return ok(await loadDashboard(userId));
 }
 
+// ── AI Financial Intake ────────────────────────────────────────────────────
+async function handleAIFinancialIntake(userId, body) {
+  const message = (body.message || '').trim();
+  if (!message) return fail('Message is required.', 'ERR_VALIDATION', 400);
+
+  // Load current dashboard for context
+  const dashboard = await loadDashboard(userId);
+  const existingObligations = (dashboard.obligations || [])
+    .map(o => `${o.account_label || o.institution_name}: $${o.amount_due} due ${o.due_date}`)
+    .join('\n');
+
+  const prompt = {
+    system: `You are a premium financial AI assistant. The user is telling you about their financial situation — bills, money owed, upcoming expenses, income, debts, or asking for financial planning help.
+
+Your job:
+1. Extract any obligations, bills, or expenses mentioned and return them as structured items to save.
+2. Provide a brief, helpful natural language response acknowledging what you understood and any advice.
+3. If the user mentions savings goals, extract those too.
+
+Current obligations on file:
+${existingObligations || 'None yet.'}
+
+Return ONLY valid JSON with this schema:
+{
+  "response": "Your natural language response to the user",
+  "obligations": [
+    {
+      "accountLabel": "string",
+      "category": "bill|debt|subscription|insurance|rent_mortgage|utility|medical|loan|other",
+      "dueDate": "YYYY-MM-DD or null",
+      "amountDue": 0,
+      "minimumDue": 0,
+      "isRecurring": false,
+      "notes": "string or null"
+    }
+  ],
+  "goals": [
+    {
+      "name": "string",
+      "targetAmount": 0,
+      "currentAmount": 0,
+      "priority": "low|medium|high|critical",
+      "notes": "string or null"
+    }
+  ],
+  "calendarEvents": [
+    {
+      "title": "string",
+      "eventType": "bill_due|payday|savings_transfer|debt_payment|reminder|custom",
+      "scheduledDate": "YYYY-MM-DD",
+      "amount": 0
+    }
+  ]
+}
+
+Rules:
+- Only include obligations/goals/events that the user explicitly mentions.
+- If no extractable items, return empty arrays.
+- Be conversational and helpful in the response.
+- Use realistic amounts from what the user says.
+- If dates are vague ("next week", "end of month"), estimate a reasonable date. Today is ${new Date().toISOString().slice(0, 10)}.
+- category should match the type of obligation.`,
+    user: message,
+  };
+
+  try {
+    const raw = await generateChatCompletion(prompt, 'gpt-4.1-mini', 0.2);
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    const savedItems = { obligations: 0, goals: 0, events: 0 };
+
+    // Save extracted obligations
+    if (Array.isArray(parsed.obligations)) {
+      for (const obl of parsed.obligations) {
+        if (!obl.accountLabel) continue;
+        const { error: oblErr } = await supabase.from('financial_obligations').insert({
+          user_id: userId,
+          account_label: obl.accountLabel,
+          category: obl.category || 'bill',
+          due_date: parseDate(obl.dueDate),
+          amount_due: toNumber(obl.amountDue),
+          minimum_due: toNumber(obl.minimumDue),
+          is_recurring: Boolean(obl.isRecurring),
+          notes: obl.notes || null,
+          status: 'planned',
+        });
+        if (!oblErr) savedItems.obligations++;
+      }
+    }
+
+    // Save extracted goals
+    if (Array.isArray(parsed.goals)) {
+      for (const goal of parsed.goals) {
+        if (!goal.name || toNumber(goal.targetAmount) <= 0) continue;
+        const { error: goalErr } = await supabase.from('financial_savings_goals').insert({
+          user_id: userId,
+          name: goal.name,
+          target_amount: toNumber(goal.targetAmount),
+          current_amount: toNumber(goal.currentAmount),
+          priority: goal.priority || 'medium',
+          notes: goal.notes || null,
+          status: 'active',
+        });
+        if (!goalErr) savedItems.goals++;
+      }
+    }
+
+    // Save extracted calendar events
+    if (Array.isArray(parsed.calendarEvents)) {
+      for (const evt of parsed.calendarEvents) {
+        if (!evt.title || !evt.scheduledDate) continue;
+        const { error: evtErr } = await supabase.from('financial_calendar_events').insert({
+          user_id: userId,
+          title: evt.title,
+          event_type: evt.eventType || 'reminder',
+          scheduled_date: parseDate(evt.scheduledDate),
+          amount: toNumber(evt.amount),
+          status: 'scheduled',
+        });
+        if (!evtErr) savedItems.events++;
+      }
+    }
+
+    return ok({
+      response: parsed.response || 'Got it. I\'ve processed your financial information.',
+      savedItems,
+      dashboard: await loadDashboard(userId),
+    });
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : 'AI financial intake failed.', 'ERR_AI_INTAKE', 500);
+  }
+}
+
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
@@ -668,8 +820,44 @@ export async function handler(event) {
       return upsertObligation(user.id, body);
     }
 
+    if (action === 'delete_obligation') {
+      const oblId = body.id;
+      if (!oblId) return fail('Obligation ID is required.', 'ERR_VALIDATION', 400);
+      const { error: delErr } = await supabase
+        .from('financial_obligations')
+        .delete()
+        .eq('id', oblId)
+        .eq('user_id', user.id);
+      if (delErr) return fail('Failed to delete obligation.', 'ERR_DB', 500);
+      return ok(await loadDashboard(user.id));
+    }
+
     if (action === 'upsert_goal') {
       return upsertGoal(user.id, body);
+    }
+
+    if (action === 'delete_goal') {
+      const goalId = body.id;
+      if (!goalId) return fail('Goal ID is required.', 'ERR_VALIDATION', 400);
+      const { error: delErr } = await supabase
+        .from('financial_savings_goals')
+        .delete()
+        .eq('id', goalId)
+        .eq('user_id', user.id);
+      if (delErr) return fail('Failed to delete goal.', 'ERR_DB', 500);
+      return ok(await loadDashboard(user.id));
+    }
+
+    if (action === 'delete_calendar_event') {
+      const eventId = body.id;
+      if (!eventId) return fail('Event ID is required.', 'ERR_VALIDATION', 400);
+      const { error: delErr } = await supabase
+        .from('financial_calendar_events')
+        .delete()
+        .eq('id', eventId)
+        .eq('user_id', user.id);
+      if (delErr) return fail('Failed to delete event.', 'ERR_DB', 500);
+      return ok(await loadDashboard(user.id));
     }
 
     if (action === 'upsert_calendar_event') {
@@ -683,6 +871,10 @@ export async function handler(event) {
     if (action === 'refresh_insights') {
       await refreshInsights(user.id);
       return ok(await loadDashboard(user.id));
+    }
+
+    if (action === 'ai_financial_intake') {
+      return handleAIFinancialIntake(user.id, body);
     }
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);

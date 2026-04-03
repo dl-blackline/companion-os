@@ -77,6 +77,18 @@ export function useStripeFinancialConnections() {
     try {
       const data = await authedFetch(FC_URL);
       const result = data as LinkedAccountsDashboard;
+
+      // Deduplicate accounts by stripe_account_id (keep latest) and filter to connected only
+      const seen = new Map<string, typeof result.accounts[number]>();
+      for (const acct of result.accounts) {
+        const key = acct.stripe_account_id || acct.id;
+        const existing = seen.get(key);
+        if (!existing || acct.status === 'connected') {
+          seen.set(key, acct);
+        }
+      }
+      result.accounts = Array.from(seen.values());
+
       console.log(`[stripe-fc] refresh: ${result.accounts.length} accounts, ${result.totalTransactions} transactions`);
       setDashboard(result);
     } catch (err) {
@@ -221,7 +233,7 @@ export function useStripeFinancialConnections() {
   );
 
   const updateAccount = useCallback(
-    async (connectionId: string, updates: { nickname?: string; user_notes?: string }) => {
+    async (connectionId: string, updates: { nickname?: string; user_notes?: string; website_url?: string }) => {
       setError(null);
       try {
         await authedFetch(FC_URL, {

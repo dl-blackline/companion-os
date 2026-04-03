@@ -137,10 +137,10 @@ export function validateAIEnv({ requireOpenAI = true, model = "" } = {}) {
  * This is the recommended entry point for all non-streaming AI requests.
  *
  * @param {object} params
- * @param {string}   params.task              - Logical task label: "chat", "roleplay", "planning", etc.
- * @param {string}   params.message           - User message text.
- * @param {string}   params.user_id           - User identifier.
- * @param {string}   params.conversation_id   - Conversation identifier.
+ * @param {string}   [params.task]            - Logical task label: "chat", "roleplay", "planning", etc.
+ * @param {string}   [params.message]          - User message text.
+ * @param {string}   [params.user_id]          - User identifier.
+ * @param {string}   [params.conversation_id]  - Conversation identifier.
  * @param {string}   [params.model]           - AI model to use (defaults from MODEL_CONFIG).
  * @param {string}   [params.capability]      - Brain capability override.
  * @param {Function} [params.getRecentConversation] - Callback to fetch recent messages.
@@ -149,15 +149,15 @@ export function validateAIEnv({ requireOpenAI = true, model = "" } = {}) {
  */
 export async function orchestrate({
   task = "chat",
-  message,
-  user_id,
-  conversation_id,
-  model,
-  capability,
-  getRecentConversation,
-  extra,
+  message = "",
+  user_id = undefined,
+  conversation_id = undefined,
+  model = undefined,
+  capability = undefined,
+  getRecentConversation = undefined,
+  extra = undefined,
   ...rest
-}) {
+} = {}) {
   const resolvedModel = model || MODEL_CONFIG.chat;
   const startMs = Date.now();
 
@@ -205,15 +205,15 @@ export async function orchestrate({
  * and memory before streaming begins.
  *
  * @param {object} params
- * @param {string}   params.task    - Logical task label.
- * @param {{ system: string, user: string }} params.prompt - Prompt object.
+ * @param {string}   [params.task]    - Logical task label.
+ * @param {{ system: string, user: string }} [params.prompt] - Prompt object.
  * @param {string}   [params.model] - Model to use.
  * @param {string}   [params.user_id] - User id for context injection.
  * @param {string}   [params.conversation_id] - Conversation id for context injection.
  * @param {string}   [params.session_id] - Session id for memory lookup.
  * @returns {AsyncGenerator<string>} Yields individual tokens.
  */
-export async function* orchestrateStream({ task = "chat", prompt, model, user_id, conversation_id, session_id }) {
+export async function* orchestrateStream({ task = "chat", prompt = undefined, model = undefined, user_id = undefined, conversation_id = undefined, session_id = undefined } = {}) {
   const resolvedModel = model || MODEL_CONFIG.chat;
   const startMs = Date.now();
 
@@ -255,7 +255,7 @@ export async function* orchestrateStream({ task = "chat", prompt, model, user_id
  * @param {string} [params.session_id] - Session id for memory lookup.
  * @returns {Promise<string>}
  */
-export async function orchestrateSimple({ prompt, model, task = "chat", user_id, conversation_id, session_id }) {
+export async function orchestrateSimple({ prompt = undefined, model = undefined, task = "chat", user_id = undefined, conversation_id = undefined, session_id = undefined } = {}) {
   const resolvedModel = model || MODEL_CONFIG.chat;
   log.info("[orchestrator]", `simple task=${task}`, `model=${resolvedModel}`);
 

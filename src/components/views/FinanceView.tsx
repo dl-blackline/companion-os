@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs UI replaced with cockpit nav
 import { useFinancialHealth } from '@/hooks/use-financial-health';
 import { useFinancialIntelligence } from '@/hooks/use-financial-intelligence';
 import { useFinancialAnalysis } from '@/hooks/use-financial-analysis';
@@ -24,6 +24,9 @@ import { Heartbeat } from '@phosphor-icons/react/Heartbeat';
 import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
 import { ListBullets } from '@phosphor-icons/react/ListBullets';
 import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
+import { Microphone } from '@phosphor-icons/react/Microphone';
+import { PaperPlaneRight } from '@phosphor-icons/react/PaperPlaneRight';
+import { ChatCircleDots } from '@phosphor-icons/react/ChatCircleDots';
 import { Note } from '@phosphor-icons/react/Note';
 import { PiggyBank } from '@phosphor-icons/react/PiggyBank';
 import { TrendDown } from '@phosphor-icons/react/TrendDown';
@@ -86,8 +89,14 @@ function dimensionDisplayName(name: string): string {
 
 export function FinanceView() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('dashboard');
-  const [selectedDocumentType, setSelectedDocumentType] = useState<FinancialDocumentSourceType>('bank_statement');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<FinancialDocumentSourceType>('auto_detect');
   const [uploadingDoc, setUploadingDoc] = useState(false);
+
+  // AI Financial Intake state
+  const [aiInput, setAiInput] = useState('');
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiListening, setAiListening] = useState(false);
 
   // Vehicle form state
   const [vYear, setVYear] = useState('');
@@ -109,6 +118,7 @@ export function FinanceView() {
   const [plannerAmount, setPlannerAmount] = useState('');
   const [plannerMinimum, setPlannerMinimum] = useState('');
   const [plannerPlanned, setPlannerPlanned] = useState('');
+  const [editingObligationId, setEditingObligationId] = useState<string | null>(null);
 
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
@@ -121,6 +131,12 @@ export function FinanceView() {
   const [eventType, setEventType] = useState('reminder');
   const [eventDate, setEventDate] = useState('');
   const [eventAmount, setEventAmount] = useState('');
+
+  // Manual income form state
+  const [incomeSource, setIncomeSource] = useState('');
+  const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeFrequency, setIncomeFrequency] = useState('monthly');
+  const [addingIncome, setAddingIncome] = useState(false);
 
   const {
     summary,
@@ -136,9 +152,13 @@ export function FinanceView() {
     saving: intelligenceSaving,
     error: intelligenceError,
     uploadAndIngestDocument,
+    aiFinancialIntake,
     saveObligation,
+    deleteObligation,
     saveGoal,
+    deleteGoal,
     saveCalendarEvent,
+    deleteCalendarEvent,
     refreshInsights,
   } = useFinancialIntelligence();
 
@@ -151,6 +171,7 @@ export function FinanceView() {
     confirmIncomeSignal,
     confirmExpenseSignal,
     dismissSignal,
+    addManualIncome,
   } = useFinancialAnalysis();
 
   const {
@@ -290,7 +311,9 @@ export function FinanceView() {
     setUploadingDoc(true);
     try {
       await uploadAndIngestDocument(file, selectedDocumentType);
-      toast.success('Financial document uploaded and parsed.');
+      toast.success(selectedDocumentType === 'auto_detect'
+        ? 'Document uploaded — AI classified and parsed it.'
+        : 'Financial document uploaded and parsed.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Document ingestion failed.');
     } finally {
@@ -306,6 +329,7 @@ export function FinanceView() {
 
     try {
       await saveObligation({
+        id: editingObligationId || undefined,
         accountLabel: plannerLabel.trim(),
         category: plannerCategory,
         dueDate: plannerDueDate,
@@ -314,16 +338,17 @@ export function FinanceView() {
         plannedPayment: Number(plannerPlanned || 0),
         status: 'planned',
       });
-      toast.success('Bill saved to planner.');
+      toast.success(editingObligationId ? 'Obligation updated.' : 'Bill saved to planner.');
       setPlannerLabel('');
       setPlannerDueDate('');
       setPlannerAmount('');
       setPlannerMinimum('');
       setPlannerPlanned('');
+      setEditingObligationId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to save planner item.');
     }
-  }, [plannerAmount, plannerCategory, plannerDueDate, plannerLabel, plannerMinimum, plannerPlanned, saveObligation]);
+  }, [editingObligationId, plannerAmount, plannerCategory, plannerDueDate, plannerLabel, plannerMinimum, plannerPlanned, saveObligation]);
 
   const handleSaveGoal = useCallback(async () => {
     if (!goalName.trim() || Number(goalTarget) <= 0) {
@@ -402,13 +427,89 @@ export function FinanceView() {
     }
   }, [vYear, vMake, vModel, vTrim, vMileage, vCondition, vPayoff, vPayment, vLender, vTermRemaining, vValue, vValueSource, upsertVehicle]);
 
+  const handleAIIntake = useCallback(async () => {
+    if (!aiInput.trim() || aiProcessing) return;
+    setAiProcessing(true);
+    setAiResponse(null);
+    try {
+      const result = await aiFinancialIntake(aiInput.trim());
+      setAiResponse(result.response);
+      const items = result.savedItems;
+      const parts: string[] = [];
+      if (items.obligations > 0) parts.push(`${items.obligations} obligation${items.obligations > 1 ? 's' : ''}`);
+      if (items.goals > 0) parts.push(`${items.goals} goal${items.goals > 1 ? 's' : ''}`);
+      if (items.events > 0) parts.push(`${items.events} event${items.events > 1 ? 's' : ''}`);
+      if (parts.length > 0) {
+        toast.success(`Saved ${parts.join(', ')} from your input.`);
+      }
+      setAiInput('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'AI intake failed.');
+    } finally {
+      setAiProcessing(false);
+    }
+  }, [aiInput, aiProcessing, aiFinancialIntake]);
+
+  const handleAddManualIncome = useCallback(async () => {
+    if (!incomeSource.trim() || Number(incomeAmount) <= 0) {
+      toast.error('Source name and amount are required.');
+      return;
+    }
+    setAddingIncome(true);
+    try {
+      await addManualIncome(incomeSource.trim(), Number(incomeAmount), incomeFrequency);
+      toast.success('Manual income source added.');
+      setIncomeSource('');
+      setIncomeAmount('');
+      setIncomeFrequency('monthly');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add income.');
+    } finally {
+      setAddingIncome(false);
+    }
+  }, [incomeSource, incomeAmount, incomeFrequency, addManualIncome]);
+
+  const handleVoiceInput = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error('Voice input is not supported in this browser.');
+      return;
+    }
+    const SpeechRecognition = (window as unknown as { SpeechRecognition?: new () => SpeechRecognition; webkitSpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition
+      || (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    setAiListening(true);
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      setAiInput(prev => prev ? `${prev} ${transcript}` : transcript);
+      setAiListening(false);
+    };
+
+    recognition.onerror = () => {
+      setAiListening(false);
+      toast.error('Voice recognition failed. Try again.');
+    };
+
+    recognition.onend = () => {
+      setAiListening(false);
+    };
+
+    recognition.start();
+  }, []);
+
   const sortedObligations = useMemo(
-    () => [...dashboard.obligations].sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
+    () => [...(dashboard.obligations ?? [])].sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
     [dashboard.obligations]
   );
 
   const sortedGoals = useMemo(
-    () => [...dashboard.goals].sort((a, b) => a.name.localeCompare(b.name)),
+    () => [...(dashboard.goals ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [dashboard.goals]
   );
 
@@ -429,37 +530,67 @@ export function FinanceView() {
     return map[f] || f;
   };
 
-  return (
-    <div className="settings-panel p-4 md:p-8 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="executive-eyebrow">Money Intelligence</p>
-          <h1 className="text-3xl font-bold tracking-tight">Financial Intelligence Command</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload statements, structure obligations, plan bills and savings, and run a private executive-grade finance operating layer.
-          </p>
-        </div>
+  // Consolidated errors
+  const allErrors = [error, stripeError, txError, intelligenceError, analysisError, decoderError, scorecardError].filter(Boolean);
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => sync()} disabled={syncing || loading} className="gap-2">
-            <ArrowsClockwise size={14} />
+  // Navigation groups
+  const navGroups = [
+    { label: 'Core', items: [
+      { value: 'dashboard' as FinanceTab, icon: ChartLineUp, label: 'Command Center' },
+      { value: 'accounts' as FinanceTab, icon: CreditCard, label: 'Accounts' },
+      { value: 'transactions' as FinanceTab, icon: ListBullets, label: 'Transactions' },
+      { value: 'ledger' as FinanceTab, icon: Note, label: 'Ledger' },
+    ]},
+    { label: 'Analysis', items: [
+      { value: 'decoder' as FinanceTab, icon: FileArrowUp, label: 'Bill Decoder' },
+      { value: 'scorecard' as FinanceTab, icon: Heartbeat, label: 'Scorecard' },
+      { value: 'income' as FinanceTab, icon: TrendUp, label: 'Income' },
+      { value: 'cashflow' as FinanceTab, icon: Wallet, label: 'Cash Flow' },
+      { value: 'recurring' as FinanceTab, icon: ArrowsClockwise, label: 'Recurring' },
+    ]},
+    { label: 'Planning', items: [
+      { value: 'planner' as FinanceTab, icon: Wallet, label: 'Obligations' },
+      { value: 'goals' as FinanceTab, icon: PiggyBank, label: 'Savings' },
+      { value: 'calendar' as FinanceTab, icon: CalendarBlank, label: 'Calendar' },
+      { value: 'vehicles' as FinanceTab, icon: Bank, label: 'Vehicles' },
+    ]},
+    { label: 'Intelligence', items: [
+      { value: 'documents' as FinanceTab, icon: FileArrowUp, label: 'Documents' },
+      { value: 'insights' as FinanceTab, icon: Lightbulb, label: 'Insights' },
+    ]},
+  ];
+
+  const hasAccounts = linkedAccountsDashboard.aggregates.accountCount > 0;
+
+  return (
+    <div className="settings-panel p-4 md:p-6 max-w-7xl mx-auto space-y-0">
+
+      {/* ═══ COCKPIT HEADER ═══ */}
+      <div className="fi-cockpit-header">
+        <div className="fi-cockpit-identity">
+          <p className="executive-eyebrow">Financial Intelligence</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Command Cockpit</h1>
+        </div>
+        <div className="fi-cockpit-actions">
+          <Button variant="outline" size="sm" onClick={() => sync()} disabled={syncing || loading} className="fi-cockpit-btn gap-1.5">
+            <ArrowsClockwise size={13} className={syncing ? 'animate-spin' : ''} />
             Sync
           </Button>
-          <Button onClick={handleStripeConnect} disabled={stripeConnecting || loading} className="gap-2">
-            <CreditCard size={15} />
-            {stripeConnecting ? 'Connecting...' : 'Link Bank Account'}
+          <Button size="sm" onClick={handleStripeConnect} disabled={stripeConnecting || loading} className="fi-cockpit-btn fi-cockpit-btn-primary gap-1.5">
+            <CreditCard size={13} />
+            {stripeConnecting ? 'Linking…' : 'Link Account'}
           </Button>
-          <Button variant="outline" onClick={() => void runAnalysis()} disabled={analyzing || analysisLoading} className="gap-2">
-            <ChartLineUp size={14} />
-            {analyzing ? 'Analyzing...' : 'Run Analysis'}
+          <Button variant="outline" size="sm" onClick={() => void runAnalysis()} disabled={analyzing || analysisLoading} className="fi-cockpit-btn gap-1.5">
+            <ChartLineUp size={13} />
+            {analyzing ? 'Analyzing…' : 'Analyze'}
           </Button>
-          <Button variant="outline" onClick={() => void computeScorecard()} disabled={computing || scorecardLoading} className="gap-2">
-            <Heartbeat size={14} />
-            {computing ? 'Computing...' : 'Scorecard'}
+          <Button variant="outline" size="sm" onClick={() => void computeScorecard()} disabled={computing || scorecardLoading} className="fi-cockpit-btn gap-1.5">
+            <Heartbeat size={13} />
+            {computing ? 'Scoring…' : 'Score'}
           </Button>
-          <Button variant="outline" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="gap-2">
-            <Lightbulb size={14} />
-            Refresh Insights
+          <Button variant="ghost" size="sm" onClick={() => void refreshInsights()} disabled={intelligenceSaving || intelligenceLoading} className="fi-cockpit-btn gap-1.5">
+            <Lightbulb size={13} />
+            Insights
           </Button>
         </div>
       </div>
@@ -555,45 +686,112 @@ export function FinanceView() {
             <p className="text-xs text-muted-foreground mt-2">Credit Card Accounts</p>
           </Card>
         </div>
+
+        {/* Balance */}
+        {hasAccounts && (
+          <div className="fi-kpi-cell">
+            <div className="fi-kpi-label">Net Balance</div>
+            <div className={`fi-kpi-value ${linkedAccountsDashboard.aggregates.totalBalance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {currency(linkedAccountsDashboard.aggregates.totalBalance)}
+            </div>
+            <div className="fi-kpi-sub">{linkedAccountsDashboard.aggregates.accountCount} account{linkedAccountsDashboard.aggregates.accountCount !== 1 ? 's' : ''}</div>
+          </div>
+        )}
+
+        {/* Cash on Hand */}
+        {hasAccounts && (
+          <div className="fi-kpi-cell">
+            <div className="fi-kpi-label">Cash on Hand</div>
+            <div className="fi-kpi-value text-blue-300">{currency(linkedAccountsDashboard.aggregates.totalCashOnHand)}</div>
+            <div className="fi-kpi-sub">Checking & Savings</div>
+          </div>
+        )}
+
+        {/* Available Credit */}
+        {hasAccounts && (
+          <div className="fi-kpi-cell">
+            <div className="fi-kpi-label">Avail. Credit</div>
+            <div className="fi-kpi-value text-amber-300">{currency(linkedAccountsDashboard.aggregates.totalAvailableCredit)}</div>
+            <div className="fi-kpi-sub">Credit Lines</div>
+          </div>
+        )}
+
+        {/* Cash Flow 30d */}
+        <div className="fi-kpi-cell">
+          <div className="fi-kpi-label">Cash Flow 30d</div>
+          <div className={`fi-kpi-value ${pulse.metrics.netCashFlow30d >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+            {currency(pulse.metrics.netCashFlow30d)}
+          </div>
+          <div className="fi-kpi-sub">In {currency(pulse.metrics.income30d)} · Out {currency(pulse.metrics.expenses30d)}</div>
+        </div>
+
+        {/* Delta to Cover */}
+        {(() => {
+          const deltaToCover = pulse.metrics.income30d - snap.minimumPaymentsThisMonth;
+          return (
+            <div className="fi-kpi-cell">
+              <div className="fi-kpi-label">Delta to Cover</div>
+              <div className={`fi-kpi-value ${deltaToCover >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {deltaToCover >= 0 ? '+' : ''}{currency(deltaToCover)}
+              </div>
+              <div className="fi-kpi-sub">Income vs min. obligations</div>
+            </div>
+          );
+        })()}
+
+        {/* Runway */}
+        <div className="fi-kpi-cell">
+          <div className="fi-kpi-label">Runway</div>
+          <div className="fi-kpi-value">{pulse.metrics.liquidityDays.toFixed(0)}d</div>
+          <div className="fi-kpi-sub">Liquidity buffer</div>
+        </div>
+
+        {/* Savings Rate */}
+        <div className="fi-kpi-cell">
+          <div className="fi-kpi-label">Savings Rate</div>
+          <div className={`fi-kpi-value ${pulse.metrics.savingsRate >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+            {pulse.metrics.savingsRate.toFixed(1)}%
+          </div>
+          <div className="fi-kpi-sub">Last updated {new Date(pulse.lastEvaluatedAt).toLocaleDateString()}</div>
+        </div>
+      </div>
+
+      {/* ═══ COCKPIT NAV ═══ */}
+      <div className="fi-cockpit-nav">
+        {navGroups.map(group => (
+          <div key={group.label} className="fi-nav-group">
+            <span className="fi-nav-group-label">{group.label}</span>
+            <div className="fi-nav-group-items">
+              {group.items.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.value;
+                return (
+                  <button
+                    key={item.value}
+                    onClick={() => setActiveTab(item.value)}
+                    className={`fi-nav-item ${isActive ? 'fi-nav-item-active' : ''}`}
+                  >
+                    <Icon size={13} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══ ERROR STRIP ═══ */}
+      {allErrors.length > 0 && (
+        <div className="fi-cockpit-errors">
+          {allErrors.map((err, i) => (
+            <p key={i} className="text-xs text-rose-300">{err}</p>
+          ))}
+        </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Pulse Score</span>
-            <Heartbeat size={18} className="text-primary" />
-          </div>
-          <p className="text-4xl font-bold tracking-tight">{pulse.score}</p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            {pulse.trend === 'improving' ? <TrendUp size={13} className="text-emerald-400" /> : <TrendDown size={13} className="text-rose-400" />}
-            {pulse.trend}
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Net Cash Flow (30d)</p>
-          <p className={`text-2xl font-semibold ${pulse.metrics.netCashFlow30d >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-            {currency(pulse.metrics.netCashFlow30d)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Income {currency(pulse.metrics.income30d)} • Expenses {currency(pulse.metrics.expenses30d)}
-          </p>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Liquidity Runway</p>
-          <p className="text-2xl font-semibold">{pulse.metrics.liquidityDays.toFixed(1)} days</p>
-          <p className="text-xs text-muted-foreground mt-2">Total balance: {currency(pulse.metrics.totalBalance)}</p>
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-2">Savings Rate</p>
-          <p className={`text-2xl font-semibold ${pulse.metrics.savingsRate >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-            {pulse.metrics.savingsRate.toFixed(1)}%
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">Updated {new Date(pulse.lastEvaluatedAt).toLocaleString()}</p>
-        </Card>
-      </div>
+      {/* ═══ CONTENT AREA ═══ */}
+      <div className="space-y-6 mt-5">
 
       {activeTab === 'dashboard' && (
         <>
@@ -944,9 +1142,9 @@ export function FinanceView() {
                           className="text-xs flex-1"
                           onClick={async () => {
                             await updateAccount(acct.id, {
-                              nickname: editNickname || null,
-                              user_notes: editAccountNotes || null,
-                              website_url: editWebsiteUrl || null,
+                              nickname: editNickname || undefined,
+                              user_notes: editAccountNotes || undefined,
+                              website_url: editWebsiteUrl || undefined,
                             });
                             setEditingAccountId(null);
                           }}
@@ -1463,8 +1661,8 @@ export function FinanceView() {
                     direction: ledgerDirection,
                     due_date: ledgerDueDate,
                     recurrence: ledgerRecurrence || 'once',
-                    notes: ledgerNotes || null,
-                    connection_id: ledgerAccount || null,
+                    notes: ledgerNotes || undefined,
+                    connection_id: ledgerAccount || undefined,
                   });
                   setShowLedgerForm(false);
                   setLedgerTitle('');
@@ -1594,6 +1792,7 @@ export function FinanceView() {
                   onChange={(e) => setSelectedDocumentType(e.target.value as FinancialDocumentSourceType)}
                   className="mt-1 w-full bg-background border border-border rounded-md h-10 px-3"
                 >
+                  <option value="auto_detect">✨ Auto-detect (AI)</option>
                   <option value="credit_card_statement">Credit Card Statement</option>
                   <option value="utility_bill">Utility Bill</option>
                   <option value="insurance_bill">Insurance Bill</option>
@@ -2003,6 +2202,36 @@ export function FinanceView() {
             </Card>
           )}
 
+          {/* Manual Income Entry */}
+          <Card className="p-5 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Add Income Manually</p>
+              <p className="text-xs text-muted-foreground mt-1">Enter income sources that aren&apos;t detected from linked accounts — side jobs, freelance, rental income, etc.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input value={incomeSource} onChange={(e) => setIncomeSource(e.target.value)} placeholder="Source name *" />
+              <Input value={incomeAmount} onChange={(e) => setIncomeAmount(e.target.value)} placeholder="Amount per occurrence *" type="number" min="0" step="100" />
+              <label className="text-sm text-muted-foreground">
+                Frequency
+                <select
+                  value={incomeFrequency}
+                  onChange={(e) => setIncomeFrequency(e.target.value)}
+                  className="mt-1 w-full bg-background border border-border rounded-md h-10 px-3"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="semi_monthly">Semi-monthly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
+                </select>
+              </label>
+            </div>
+            <Button onClick={() => void handleAddManualIncome()} disabled={addingIncome || !incomeSource.trim() || Number(incomeAmount) <= 0}>
+              {addingIncome ? 'Saving…' : 'Add Income Source'}
+            </Button>
+          </Card>
+
           <Card className="p-5 space-y-3">
             <p className="text-sm font-semibold">Detected Income Sources</p>
             {analysisDashboard.incomeSignals.length === 0 ? (
@@ -2234,6 +2463,7 @@ export function FinanceView() {
                 onChange={(e) => setSelectedDocumentType(e.target.value as FinancialDocumentSourceType)}
                 className="mt-1 w-full bg-background border border-border rounded-md h-10 px-3"
               >
+                <option value="auto_detect">✨ Auto-detect (AI)</option>
                 <option value="bank_statement">Bank Statement</option>
                 <option value="credit_card_statement">Credit Card Statement</option>
                 <option value="loan_statement">Loan Statement</option>
@@ -2265,7 +2495,18 @@ export function FinanceView() {
               <Input value={plannerMinimum} onChange={(e) => setPlannerMinimum(e.target.value)} placeholder="Minimum due" />
               <Input value={plannerPlanned} onChange={(e) => setPlannerPlanned(e.target.value)} placeholder="Planned payment" />
             </div>
-            <Button onClick={() => void handleSavePlanner()} disabled={intelligenceSaving}>Save to Bill Planner</Button>
+            <div className="flex gap-2">
+              <Button onClick={() => void handleSavePlanner()} disabled={intelligenceSaving}>
+                {editingObligationId ? 'Update Obligation' : 'Save to Bill Planner'}
+              </Button>
+              {editingObligationId && (
+                <Button variant="ghost" onClick={() => {
+                  setEditingObligationId(null);
+                  setPlannerLabel(''); setPlannerDueDate(''); setPlannerAmount('');
+                  setPlannerMinimum(''); setPlannerPlanned('');
+                }}>Cancel</Button>
+              )}
+            </div>
           </Card>
 
           <Card className="p-5 space-y-2">
@@ -2279,9 +2520,36 @@ export function FinanceView() {
                     <p className="text-sm font-medium">{item.account_label || item.institution_name || 'Obligation'}</p>
                     <p className="text-xs text-muted-foreground">Due {item.due_date || 'n/a'} • {item.category}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{currency(item.amount_due || item.minimum_due || 0)}</p>
-                    <Badge variant={item.status === 'overdue' ? 'destructive' : 'secondary'} className="capitalize">{item.status}</Badge>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{currency(item.amount_due || item.minimum_due || 0)}</p>
+                      <Badge variant={item.status === 'overdue' ? 'destructive' : 'secondary'} className="capitalize">{item.status}</Badge>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        title="Edit obligation"
+                        className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                        onClick={() => {
+                          setPlannerLabel(item.account_label || item.institution_name || '');
+                          setPlannerCategory(item.category || 'bill');
+                          setPlannerDueDate(item.due_date || '');
+                          setPlannerAmount(String(item.amount_due || ''));
+                          setPlannerMinimum(String(item.minimum_due || ''));
+                          setPlannerPlanned(String(item.planned_payment || ''));
+                          setEditingObligationId(item.id);
+                        }}
+                      >
+                        <PencilSimple size={13} />
+                      </button>
+                      <button
+                        title="Delete obligation"
+                        className="text-muted-foreground/60 hover:text-rose-400 transition-colors"
+                        onClick={() => void deleteObligation(item.id)}
+                        disabled={intelligenceSaving}
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -2295,11 +2563,17 @@ export function FinanceView() {
           <Card className="p-5 space-y-3">
             <p className="text-sm font-semibold">Savings Goal Strategy</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="Goal name" />
-              <Input value={goalTarget} onChange={(e) => setGoalTarget(e.target.value)} placeholder="Target amount" />
-              <Input value={goalCurrent} onChange={(e) => setGoalCurrent(e.target.value)} placeholder="Current amount" />
+              <div className="space-y-1">
+                <Input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="Goal name *" className={!goalName.trim() && goalTarget ? 'border-rose-500/60' : ''} />
+                {!goalName.trim() && goalTarget && <p className="text-[10px] text-rose-400">Required</p>}
+              </div>
+              <div className="space-y-1">
+                <Input value={goalTarget} onChange={(e) => setGoalTarget(e.target.value)} placeholder="Target amount *" type="number" min="0" step="100" className={goalName.trim() && (!goalTarget || Number(goalTarget) <= 0) ? 'border-rose-500/60' : ''} />
+                {goalName.trim() && (!goalTarget || Number(goalTarget) <= 0) && <p className="text-[10px] text-rose-400">Required — enter a target &gt; $0</p>}
+              </div>
+              <Input value={goalCurrent} onChange={(e) => setGoalCurrent(e.target.value)} placeholder="Current amount (optional)" type="number" min="0" step="100" />
               <Input value={goalDate} onChange={(e) => setGoalDate(e.target.value)} type="date" />
-              <Input value={goalMonthly} onChange={(e) => setGoalMonthly(e.target.value)} placeholder="Monthly contribution target" />
+              <Input value={goalMonthly} onChange={(e) => setGoalMonthly(e.target.value)} placeholder="Monthly contribution target" type="number" min="0" step="50" />
               <label className="text-sm text-muted-foreground">
                 Priority
                 <select
@@ -2314,7 +2588,9 @@ export function FinanceView() {
                 </select>
               </label>
             </div>
-            <Button onClick={() => void handleSaveGoal()} disabled={intelligenceSaving}>Save Savings Goal</Button>
+            <Button onClick={() => void handleSaveGoal()} disabled={intelligenceSaving || !goalName.trim() || Number(goalTarget) <= 0}>
+              {intelligenceSaving ? 'Saving…' : 'Save Savings Goal'}
+            </Button>
           </Card>
 
           <Card className="p-5 space-y-2">
@@ -2493,11 +2769,34 @@ export function FinanceView() {
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold">Recent Transactions</p>
-            <Wallet size={18} className="text-muted-foreground" />
+            <div className="flex items-center gap-2">
+              {linkedAccountsDashboard.accounts.length > 0 && txFeed.length === 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 gap-1"
+                  disabled={stripeSyncing}
+                  onClick={async () => {
+                    await syncTransactions();
+                    txRefresh();
+                  }}
+                >
+                  <ArrowsClockwise size={11} className={stripeSyncing ? 'animate-spin' : ''} />
+                  {stripeSyncing ? 'Syncing…' : 'Sync'}
+                </Button>
+              )}
+              <Wallet size={18} className="text-muted-foreground" />
+            </div>
           </div>
 
           {summary.transactions.length === 0 && txFeed.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No transactions available yet.</p>
+            <p className="text-sm text-muted-foreground">
+              {linkedAccountsDashboard.accounts.length === 0
+                ? 'Link a bank account to see transactions.'
+                : stripeSyncing
+                  ? 'Syncing transactions from your bank…'
+                  : 'No transactions synced yet. Try clicking Sync above.'}
+            </p>
           ) : (
             <div className="space-y-2">
               {txFeed.slice(0, 5).map((tx) => (
@@ -2527,6 +2826,8 @@ export function FinanceView() {
             </div>
           )}
         </Card>
+      </div>
+      {/* end content area */}
       </div>
     </div>
   );

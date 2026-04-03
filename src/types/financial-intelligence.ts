@@ -1,4 +1,5 @@
 export type FinancialDocumentSourceType =
+  | 'auto_detect'
   | 'bank_statement'
   | 'credit_card_statement'
   | 'loan_statement'

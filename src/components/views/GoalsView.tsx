@@ -22,6 +22,8 @@ import { Clock } from '@phosphor-icons/react/Clock';
 import { Flag } from '@phosphor-icons/react/Flag';
 import { PencilSimple } from '@phosphor-icons/react/PencilSimple';
 import { Plus } from '@phosphor-icons/react/Plus';
+import { Rows } from '@phosphor-icons/react/Rows';
+import { SquaresFour } from '@phosphor-icons/react/SquaresFour';
 import { Target } from '@phosphor-icons/react/Target';
 import { Trash } from '@phosphor-icons/react/Trash';
 import { X } from '@phosphor-icons/react/X';
@@ -785,6 +787,7 @@ export function GoalsView() {
   const [creating, setCreating] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<LifeCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<GoalStatus | 'all'>('all');
+  const [viewMode, setViewMode] = useState<'cards' | 'compact'>('cards');
 
   const goals = dashboard.goals;
   const signals = dashboard.signals;
@@ -932,6 +935,24 @@ export function GoalsView() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center border border-border rounded-md">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0 rounded-r-none"
+                onClick={() => setViewMode('cards')}
+              >
+                <SquaresFour size={14} />
+              </Button>
+              <Button
+                variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0 rounded-l-none"
+                onClick={() => setViewMode('compact')}
+              >
+                <Rows size={14} />
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -1012,6 +1033,56 @@ export function GoalsView() {
                     </Button>
                   </Card>
                 </motion.div>
+              ) : viewMode === 'compact' ? (
+                /* ── Compact List View ── */
+                <div className="space-y-1">
+                  {filteredGoals.map((goal, idx) => {
+                    const catInfo = LIFE_CATEGORIES.find((c) => c.value === goal.life_category);
+                    const pct = goal.is_financial && goal.target_amount
+                      ? Math.min(100, Math.round(((goal.current_amount ?? 0) / goal.target_amount) * 100))
+                      : goal.progress != null ? Math.round(goal.progress) : null;
+
+                    return (
+                      <motion.div
+                        key={goal.id}
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.15, delay: idx * 0.02 }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/50 cursor-pointer hover:border-primary/40 hover:bg-muted/30 transition-colors"
+                        onClick={() => setSelectedGoalId(goal.id)}
+                      >
+                        <span className="text-sm shrink-0">{catInfo?.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{goal.title}</p>
+                          {goal.is_financial && goal.target_amount != null && goal.target_amount > 0 && (
+                            <p className="text-[11px] text-muted-foreground">
+                              {formatCurrency(goal.current_amount ?? 0)} / {formatCurrency(goal.target_amount)}
+                            </p>
+                          )}
+                        </div>
+                        {pct !== null && (
+                          <div className="flex items-center gap-2 shrink-0 w-24">
+                            <Progress value={pct} className="h-1.5 flex-1" />
+                            <span className="text-[11px] font-medium w-8 text-right">{pct}%</span>
+                          </div>
+                        )}
+                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize shrink-0', STATUS_COLORS[goal.status])}>
+                          {goal.status}
+                        </span>
+                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize shrink-0', PRIORITY_COLORS[goal.priority])}>
+                          {goal.priority}
+                        </span>
+                        {goal.target_date && (
+                          <span className="text-[11px] text-muted-foreground shrink-0 flex items-center gap-1">
+                            <Clock size={10} />
+                            {fmtDate(goal.target_date)}
+                          </span>
+                        )}
+                        <CaretRight size={14} className="text-muted-foreground shrink-0" />
+                      </motion.div>
+                    );
+                  })}
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredGoals.map((goal, idx) => {

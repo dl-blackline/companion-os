@@ -18,7 +18,7 @@ describe('useRuntimeHealth', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal('fetch', vi.fn());
-    (window as typeof window & { SpeechRecognition?: unknown }).SpeechRecognition = function MockSpeechRecognition() {};
+    (window as typeof window & { SpeechRecognition?: unknown }).SpeechRecognition = function MockSpeechRecognition() {} as unknown as typeof SpeechRecognition;
   });
 
   afterEach(() => {

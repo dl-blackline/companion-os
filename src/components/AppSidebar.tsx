@@ -9,6 +9,7 @@ import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
 import { Lightning } from '@phosphor-icons/react/Lightning';
 import { Briefcase } from '@phosphor-icons/react/Briefcase';
 import { Car } from '@phosphor-icons/react/Car';
+import { CalendarBlank } from '@phosphor-icons/react/CalendarBlank';
 import { Money } from '@phosphor-icons/react/Money';
 import { Microphone } from '@phosphor-icons/react/Microphone';
 import { MoonStars } from '@phosphor-icons/react/MoonStars';
@@ -38,6 +39,7 @@ export type NavSection =
   | 'memory'
   | 'knowledge'
   | 'goals'
+  | 'calendar'
   | 'workflows'
   | 'insights'
   | 'careers'
@@ -67,6 +69,7 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
   { id: 'memory', label: 'Memory', icon: Brain, group: 'tools' },
   { id: 'knowledge', label: 'Knowledge', icon: Books, group: 'tools' },
   { id: 'goals', label: 'Goals', icon: Target, group: 'tools' },
+  { id: 'calendar', label: 'Calendar', icon: CalendarBlank, group: 'tools' },
   { id: 'workflows', label: 'Workflows', icon: Lightning, group: 'tools' },
   { id: 'insights', label: 'Insights', icon: Lightbulb, group: 'tools' },
   { id: 'careers', label: 'Careers', icon: Briefcase, group: 'tools' },
