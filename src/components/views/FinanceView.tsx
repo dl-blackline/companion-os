@@ -686,7 +686,9 @@ export function FinanceView() {
             <p className="text-xs text-muted-foreground mt-2">Credit Card Accounts</p>
           </Card>
         </div>
+      )}
 
+      <div className="fi-kpi-bar flex flex-wrap gap-3 mt-2">
         {/* Balance */}
         {hasAccounts && (
           <div className="fi-kpi-cell">
