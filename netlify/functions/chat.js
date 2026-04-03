@@ -1,7 +1,7 @@
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { orchestrate, orchestrateEmbed } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight, raw } from "../../lib/_responses.js";
-import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
+import { validatePayloadSize, validateAIPayload, sanitizeDeep, authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 async function getRecentConversation(conversation_id) {
@@ -51,6 +51,11 @@ export async function handler(event) {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
+  if (!supabase) return fail("Server configuration error", "ERR_CONFIG", 500);
+
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
+
   let message;
   let model;
 
@@ -62,10 +67,11 @@ export async function handler(event) {
     let body = JSON.parse(event.body);
     body = sanitizeDeep(body);
 
-    const validationError = validateAIPayload(body);
+    const validationError = validateAIPayload(body, { requireUserId: false });
     if (validationError) return fail(validationError, "ERR_VALIDATION", 400);
 
-    const { conversation_id, user_id } = body;
+    const conversation_id = body.conversation_id;
+    const user_id = authUser.id;
     model = body.model;
     message = body.message;
 

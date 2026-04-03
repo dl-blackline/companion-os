@@ -106,10 +106,13 @@ async function handleGetTransactions(userId, queryParams) {
     query = query.not('notes', 'is', null).neq('notes', '');
   }
 
-  // Text search
+  // Text search — sanitize PostgREST metacharacters to prevent filter injection
   if (queryParams.search) {
-    const term = `%${queryParams.search}%`;
-    query = query.or(`description.ilike.${term},merchant_name.ilike.${term}`);
+    const safeTerm = queryParams.search.replace(/[,.()|%_]/g, "");
+    if (safeTerm) {
+      const term = `%${safeTerm}%`;
+      query = query.or(`description.ilike.${term},merchant_name.ilike.${term}`);
+    }
   }
 
   // Pagination

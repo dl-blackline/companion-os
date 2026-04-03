@@ -77,6 +77,6 @@ export async function handler(event) {
     return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
     log.error("[settings]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }

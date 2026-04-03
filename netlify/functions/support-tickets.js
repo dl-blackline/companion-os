@@ -5,6 +5,7 @@
  */
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 async function getUser(supabase, token) {
@@ -109,6 +110,6 @@ export async function handler(event) {
     return fail("Not found", "ERR_NOT_FOUND", 404);
   } catch (err) {
     log.error("[support-tickets]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }

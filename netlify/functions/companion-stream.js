@@ -14,6 +14,7 @@ import {
 } from "../../lib/realtime/avatar-controller.js";
 import { formatSSE } from "../../lib/realtime/stream-handler.js";
 import { preflight, fail, CORS_HEADERS } from "../../lib/_responses.js";
+import { authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 /** Default estimated speech duration (ms) used for lip-sync frame generation. */
@@ -58,6 +59,11 @@ export async function handler(event) {
     return fail("Invalid JSON body", "ERR_PARSE", 400);
   }
 
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
+
+  // Override user_id from token
+  body.user_id = authUser.id;
   const { message, user_id, conversation_id } = body;
 
   if (!message || !user_id || !conversation_id) {

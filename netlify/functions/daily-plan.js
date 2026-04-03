@@ -10,7 +10,7 @@
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { orchestrate } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
+import { validatePayloadSize, validateAIPayload, sanitizeDeep, authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 async function getRecentConversation(supabase, conversation_id) {
@@ -43,16 +43,20 @@ export async function handler(event) {
   }
 
   try {
+    const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+    if (authError) return fail(authError, "ERR_AUTH", 401);
+
     const sizeCheck = validatePayloadSize(event.body);
     if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
 
     let body = JSON.parse(event.body);
     body = sanitizeDeep(body);
 
-    const validationError = validateAIPayload(body, { requireMessage: false });
+    const validationError = validateAIPayload(body, { requireMessage: false, requireUserId: false });
     if (validationError) return fail(validationError, "ERR_VALIDATION", 400);
 
-    const { user_id, conversation_id, message, model } = body;
+    const user_id = authUser.id;
+    const { conversation_id, message, model } = body;
 
     log.info("[daily-plan]", `user=${user_id?.slice(0, 8)}`);
 

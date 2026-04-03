@@ -5,6 +5,7 @@
  */
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 async function resolveUser(supabase, token) {
@@ -101,6 +102,6 @@ export async function handler(event) {
     return fail("Method not allowed", "ERR_METHOD", 405);
   } catch (err) {
     log.error("[feature-flags]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }

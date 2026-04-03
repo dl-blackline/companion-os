@@ -252,6 +252,6 @@ export async function handler(event) {
     return fail("Not found", "ERR_NOT_FOUND", 404);
   } catch (err) {
     log.error("[admin-users]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }
