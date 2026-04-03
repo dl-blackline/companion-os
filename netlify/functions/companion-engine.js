@@ -42,7 +42,9 @@ import {
   formatCompanionContext,
 } from "../../lib/companion-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
+import { supabase } from "../../lib/_supabase.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -60,6 +62,11 @@ export async function handler(event) {
     return fail("Invalid JSON body", "ERR_VALIDATION", 400);
   }
 
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
+
+  // Override user_id from token
+  body.user_id = authUser.id;
   const { action, user_id } = body;
 
   if (!action) return fail("Missing required field: action", "ERR_VALIDATION", 400);

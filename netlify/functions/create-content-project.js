@@ -1,6 +1,8 @@
 import { createProject, addWorkflowStep } from "../../lib/workflow-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
+import { supabase } from "../../lib/_supabase.js";
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -11,13 +13,17 @@ export async function handler(event) {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
+
   try {
-    const { user_id, title, description, project_type, steps } = JSON.parse(
+    const { title, description, project_type, steps } = JSON.parse(
       event.body
     );
+    const user_id = authUser.id;
 
-    if (!user_id || !title) {
-      return fail("Missing required fields: user_id, title", "ERR_VALIDATION", 400);
+    if (!title) {
+      return fail("Missing required field: title", "ERR_VALIDATION", 400);
     }
 
     const project = await createProject({

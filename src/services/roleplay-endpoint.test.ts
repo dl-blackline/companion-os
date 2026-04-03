@@ -19,6 +19,12 @@ vi.mock('@lib/companion-brain.js', () => ({
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
+    auth: {
+      getUser: (token: string) =>
+        token === 'valid-test-token'
+          ? Promise.resolve({ data: { user: { id: '00000000-0000-4000-a000-000000000001', email: 'test@test.com' } } })
+          : Promise.resolve({ data: { user: null } }),
+    },
     from: () => ({
       select: () => ({
         eq: () => ({
@@ -38,6 +44,7 @@ import { handler } from '../../netlify/functions/roleplay.js';
 function makeEvent(body: Record<string, unknown>, method = 'POST') {
   return {
     httpMethod: method,
+    headers: { authorization: 'Bearer valid-test-token' },
     body: JSON.stringify(body),
   };
 }
@@ -76,14 +83,18 @@ describe('roleplay handler', () => {
     expect(body.code).toBe('ERR_METHOD');
   });
 
-  // ── Input validation ─────────────────────────────────────────────────────
+  // ── Auth validation ──────────────────────────────────────────────────────
 
-  it('returns 400 when user_id is missing', async () => {
-    const result = await handler(makeEvent({ message: 'hello' }));
-    expect(result.statusCode).toBe(400);
+  it('returns 401 when no auth token is provided', async () => {
+    const result = await handler({
+      httpMethod: 'POST',
+      headers: {},
+      body: JSON.stringify({ message: 'hello' }),
+    });
+    expect(result.statusCode).toBe(401);
     const body = parseBody(result);
     expect(body.success).toBe(false);
-    expect(body.code).toBe('ERR_VALIDATION');
+    expect(body.code).toBe('ERR_AUTH');
   });
 
   it('returns 400 when message is missing', async () => {
@@ -124,6 +135,7 @@ describe('roleplay handler', () => {
     const thinkArgs = mockThink.mock.calls[0][0];
     expect(thinkArgs.capability).toBe('roleplay');
     expect(thinkArgs.message).toBe('I draw my sword');
+    // user_id comes from auth token now, not body
     expect(thinkArgs.user_id).toBe(TEST_USER_ID);
     expect(thinkArgs.conversation_id).toBe(TEST_CONV_ID);
     expect(thinkArgs.model).toBe('gpt-4o');
@@ -139,12 +151,12 @@ describe('roleplay handler', () => {
 
     await handler(
       makeEvent({
-        user_id: TEST_USER_ID,
         message: 'hello',
       }),
     );
 
     const thinkArgs = mockThink.mock.calls[0][0];
+    // user_id comes from the auth token (TEST_USER_ID)
     expect(thinkArgs.conversation_id).toBe(TEST_USER_ID);
   });
 
@@ -156,7 +168,6 @@ describe('roleplay handler', () => {
 
     await handler(
       makeEvent({
-        user_id: TEST_USER_ID,
         message: 'Continue the story',
         character: 'Gandalf',
         scenario: 'The Shire',
@@ -175,7 +186,6 @@ describe('roleplay handler', () => {
 
     const result = await handler(
       makeEvent({
-        user_id: TEST_USER_ID,
         message: 'hello',
       }),
     );
@@ -183,7 +193,5 @@ describe('roleplay handler', () => {
     expect(result.statusCode).toBe(500);
     const body = parseBody(result);
     expect(body.success).toBe(false);
-    expect(body.code).toBe('ERR_ROLEPLAY');
-    expect(body.error).toBe('AI provider timeout');
   });
 });

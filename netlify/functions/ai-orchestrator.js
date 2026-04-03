@@ -934,66 +934,36 @@ export async function handler(event) {
 
     const authUser = await getUserFromEventAuth(event).catch(() => null);
 
+    // ── Require auth for all request types ──
+    if (!authUser?.id) {
+      return fail("Unauthorized", "ERR_AUTH", 401);
+    }
+
+    // Override user_id from authenticated token for all types
+    if (payload && typeof payload === "object") {
+      payload.user_id = authUser.id;
+      if (authUser.email) payload.user_email = authUser.email;
+    }
+
     if (action && typeof payload === "object") {
       payload.action = payload.action || action;
     }
 
     switch (type) {
       case "chat":
-        if (payload && typeof payload === "object") {
-          if (authUser?.id) {
-            payload.user_id = authUser.id;
-          }
-          if (!payload.user_id) {
-            return fail("Unauthorized", "ERR_AUTH", 401);
-          }
-        }
         return await handleChat(payload);
 
       case "memory":
         return await handleMemory(payload);
 
       case "media":
-        if (payload && typeof payload === "object") {
-          if (authUser?.id) {
-            payload.user_id = authUser.id;
-          }
-          if (authUser?.email) {
-            payload.user_email = authUser.email;
-          }
-          if (!payload.user_id) {
-            return fail("Unauthorized", "ERR_AUTH", 401);
-          }
-        }
         return await handleMedia(payload);
 
       // Explicit image/video aliases — route through the media handler
       case "image":
-        if (payload && typeof payload === "object") {
-          if (authUser?.id) {
-            payload.user_id = authUser.id;
-          }
-          if (authUser?.email) {
-            payload.user_email = authUser.email;
-          }
-          if (!payload.user_id) {
-            return fail("Unauthorized", "ERR_AUTH", 401);
-          }
-        }
         return await handleMedia({ ...payload, media_type: "image" });
 
       case "video":
-        if (payload && typeof payload === "object") {
-          if (authUser?.id) {
-            payload.user_id = authUser.id;
-          }
-          if (authUser?.email) {
-            payload.user_email = authUser.email;
-          }
-          if (!payload.user_id) {
-            return fail("Unauthorized", "ERR_AUTH", 401);
-          }
-        }
         return await handleMedia({ ...payload, media_type: "video" });
 
       case "workflow":
@@ -1019,14 +989,6 @@ export async function handler(event) {
 
       // Streaming chat — delegates to handleChat with stream flag forced on
       case "stream":
-        if (payload && typeof payload === "object") {
-          if (authUser?.id) {
-            payload.user_id = authUser.id;
-          }
-          if (!payload.user_id) {
-            return fail("Unauthorized", "ERR_AUTH", 401);
-          }
-        }
         return await handleChat({ ...payload, stream: true });
 
       // Knowledge analysis (structured AI calls with messages array)

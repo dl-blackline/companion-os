@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 const CHAT_TABLE = process.env.CHAT_HISTORY_TABLE || "messages";
@@ -18,14 +19,13 @@ export async function handler(event) {
   }
 
   try {
+    const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+    if (authError) return fail(authError, "ERR_AUTH", 401);
+
     const params = event.queryStringParameters || {};
     const conversation_id = params.conversation_id;
-    const user_id = params.user_id;
+    const user_id = authUser.id;
     const limit = parseInt(params.limit || "50", 10);
-
-    if (!user_id) {
-      return fail("Missing required parameter: user_id", "ERR_VALIDATION", 400);
-    }
 
     let query = supabase
       .from(CHAT_TABLE)
@@ -48,6 +48,6 @@ export async function handler(event) {
     return ok({ messages: (data || []).reverse() });
   } catch (err) {
     log.error("[conversations]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }

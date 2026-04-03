@@ -1,5 +1,6 @@
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 // ── Status values ───────────────────────────────────────────────────────────
@@ -123,6 +124,9 @@ export async function handler(event) {
   if (event.httpMethod !== "GET") {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
+
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
 
   try {
     const [openai, supa, vector_search, media, leonardo] = await Promise.all([

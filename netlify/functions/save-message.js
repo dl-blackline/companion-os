@@ -1,6 +1,7 @@
 import { supabase } from "../../lib/_supabase.js";
 import { orchestrateEmbed } from "../../services/ai/orchestrator.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { authenticateRequest, safeParseJSON } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 export async function handler(event) {
@@ -12,12 +13,19 @@ export async function handler(event) {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
-  try {
-    const { conversation_id, user_id, role, content } = JSON.parse(event.body);
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
 
-    if (!conversation_id || !user_id || !role || !content) {
+  try {
+    const { data: body, error: parseError } = safeParseJSON(event.body);
+    if (parseError) return fail(parseError, "ERR_VALIDATION", 400);
+
+    const { conversation_id, role, content } = body;
+    const user_id = authUser.id;
+
+    if (!conversation_id || !role || !content) {
       return fail(
-        "Missing required fields: conversation_id, user_id, role, content",
+        "Missing required fields: conversation_id, role, content",
         "ERR_VALIDATION",
         400,
       );
@@ -36,12 +44,13 @@ export async function handler(event) {
     }).select();
 
     if (error) {
-      return fail(error.message, "ERR_DB", 500);
+      log.error("[save-message]", "db error:", error.message);
+      return fail("Failed to save message", "ERR_DB", 500);
     }
 
     return ok({ message: "Message saved", data });
   } catch (err) {
     log.error("[save-message]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }

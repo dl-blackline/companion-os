@@ -3,6 +3,7 @@
  */
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { log } from "../../lib/_log.js";
 import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
 export async function handler(event) {
@@ -35,15 +36,19 @@ export async function handler(event) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (action) query = query.ilike("action", `%${action}%`);
+    if (action) {
+      // Sanitize PostgREST metacharacters from filter value
+      const safeAction = action.replace(/[,.()|]/g, "");
+      query = query.ilike("action", `%${safeAction}%`);
+    }
     if (actor_id) query = query.eq("actor_id", actor_id);
 
     const { data, error, count } = await query;
-    if (error) return fail(error.message, "ERR_INTERNAL", 500);
+    if (error) return fail("Failed to fetch audit logs", "ERR_INTERNAL", 500);
 
     return ok({ logs: data || [], total: count || 0, page, limit });
   } catch (err) {
     log.error("[audit-log]", "handler error:", err.message);
-    return fail(err.message, "ERR_INTERNAL", 500);
+    return fail("Internal server error", "ERR_INTERNAL", 500);
   }
 }

@@ -20,6 +20,7 @@ import {
   searchRelationshipMemory,
 } from "../../lib/memory-manager.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 /* ─── Determine which memory table to use based on memory_type/category ───── */
@@ -72,6 +73,12 @@ export async function handler(event) {
   } catch {
     return fail("Invalid JSON body", "ERR_VALIDATION", 400);
   }
+
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
+
+  // Override user_id from token
+  body.user_id = authUser.id;
 
   const { action } = body;
 

@@ -2,7 +2,7 @@ import { orchestrate } from "../../services/ai/orchestrator.js";
 import { listCapabilities } from "../../lib/companion-brain.js";
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-import { validatePayloadSize, validateAIPayload, sanitizeDeep } from "../../lib/_security.js";
+import { validatePayloadSize, validateAIPayload, sanitizeDeep, authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 /**
@@ -47,6 +47,9 @@ export async function handler(event) {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
 
+  const { user: authUser, error: authError } = await authenticateRequest(event, supabase);
+  if (authError) return fail(authError, "ERR_AUTH", 401);
+
   let body;
   try {
     body = JSON.parse(event.body || "{}");
@@ -60,9 +63,11 @@ export async function handler(event) {
 
   body = sanitizeDeep(body);
 
-  const validationError = validateAIPayload(body);
+  const validationError = validateAIPayload(body, { requireUserId: false });
   if (validationError) return fail(validationError, "ERR_VALIDATION", 400);
 
+  // Use authenticated user_id
+  body.user_id = authUser.id;
   const { message, user_id, conversation_id } = body;
 
   // Build a getRecentConversation callback from Supabase

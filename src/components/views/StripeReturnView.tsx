@@ -37,7 +37,13 @@ export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps)
 
     // Retrieve account IDs stored by the in-app flow (if available)
     const storedAccountIds = sessionStorage.getItem('stripe_fc_account_ids');
-    const accountIds: string[] = storedAccountIds ? JSON.parse(storedAccountIds) : [];
+    let accountIds: string[] = [];
+    try {
+      const parsed = storedAccountIds ? JSON.parse(storedAccountIds) : [];
+      if (Array.isArray(parsed)) accountIds = parsed;
+    } catch {
+      // Corrupted storage — proceed without stored IDs
+    }
 
     // Clear stored session data
     sessionStorage.removeItem('stripe_fc_session_id');
@@ -51,10 +57,10 @@ export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps)
         setMessage('Your bank account has been linked successfully. Transactions are syncing.');
       } else {
         setStatus('error');
-        setMessage(hookError || 'Something went wrong completing the link. You can try again from the finance section.');
+        setMessage('Something went wrong completing the link. You can try again from the finance section.');
       }
     })();
-  }, [authLoading, completeSession, hookError, processed]);
+  }, [authLoading, completeSession, processed]);
 
   const handleGoToFinance = () => {
     window.history.pushState({}, '', '/finance');
