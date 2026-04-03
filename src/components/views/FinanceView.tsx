@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-// Tabs UI replaced with cockpit nav
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinancialHealth } from '@/hooks/use-financial-health';
 import { useFinancialIntelligence } from '@/hooks/use-financial-intelligence';
 import { useFinancialAnalysis } from '@/hooks/use-financial-analysis';
@@ -686,7 +686,10 @@ export function FinanceView() {
             <p className="text-xs text-muted-foreground mt-2">Credit Card Accounts</p>
           </Card>
         </div>
+      )}
 
+      {/* ─── KPI Strip ─── */}
+      <div className="fi-kpi-strip">
         {/* Balance */}
         {hasAccounts && (
           <div className="fi-kpi-cell">
