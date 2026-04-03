@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -502,6 +502,16 @@ export function FinanceView() {
 
     recognition.start();
   }, []);
+
+  // Auto-refresh transaction feed when Stripe sync completes
+  const wasSyncingRef = useRef(false);
+  useEffect(() => {
+    if (wasSyncingRef.current && !stripeSyncing) {
+      // Sync just finished — refresh the transaction feed
+      txRefresh();
+    }
+    wasSyncingRef.current = stripeSyncing;
+  }, [stripeSyncing, txRefresh]);
 
   const sortedObligations = useMemo(
     () => [...(dashboard.obligations ?? [])].sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
@@ -1382,17 +1392,37 @@ export function FinanceView() {
               >
                 Search
               </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 gap-1"
+                disabled={txLoading}
+                onClick={() => txRefresh()}
+              >
+                <ArrowsClockwise size={12} className={txLoading ? 'animate-spin' : ''} />
+                Refresh
+              </Button>
             </div>
           </Card>
 
           {/* Transactions list */}
+          {txError && (
+            <Card className="p-4 border-destructive/40 bg-destructive/5">
+              <p className="text-xs text-destructive font-medium">Error loading transactions: {txError}</p>
+              <Button variant="outline" size="sm" className="mt-2 text-xs" onClick={() => txRefresh()}>
+                Retry
+              </Button>
+            </Card>
+          )}
+
           {txLoading && txFeed.length === 0 && (
             <Card className="p-8 text-center">
               <p className="text-sm text-muted-foreground animate-pulse">Loading transactions…</p>
             </Card>
           )}
 
-          {!txLoading && txFeed.length === 0 && (
+          {!txLoading && !txError && txFeed.length === 0 && (
             <Card className="p-8 text-center space-y-3">
               <ListBullets size={36} className="mx-auto text-muted-foreground/60" />
               <p className="text-sm font-semibold">No Transactions</p>
