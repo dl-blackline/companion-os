@@ -128,6 +128,20 @@ export function useFinancialAnalysis() {
     }
   }, [authedFetch]);
 
+  const addManualIncome = useCallback(async (sourceName: string, amount: number, frequency: string) => {
+    setError(null);
+    try {
+      const data = await authedFetch('/.netlify/functions/financial-analysis', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'add_manual_income', sourceName, amount, frequency }),
+      });
+      setDashboard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add manual income.');
+      throw err;
+    }
+  }, [authedFetch]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -142,5 +156,6 @@ export function useFinancialAnalysis() {
     confirmIncomeSignal,
     confirmExpenseSignal,
     dismissSignal,
+    addManualIncome,
   };
 }

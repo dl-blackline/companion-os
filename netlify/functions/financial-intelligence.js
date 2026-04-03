@@ -168,14 +168,32 @@ Rules:
 }
 
 async function ingestDocument({ user, body }) {
-  const sourceType = body?.sourceType;
+  let sourceType = body?.sourceType;
   const storagePath = body?.storagePath;
   const filename = body?.filename;
   const mimeType = body?.mimeType || null;
   const fileSizeBytes = body?.fileSizeBytes || null;
 
-  if (!sourceType || !storagePath || !filename) {
-    return fail('Missing required fields: sourceType, storagePath, filename', 'ERR_VALIDATION', 400);
+  if (!storagePath || !filename) {
+    return fail('Missing required fields: storagePath, filename', 'ERR_VALIDATION', 400);
+  }
+
+  // AI-assisted document type detection
+  if (!sourceType || sourceType === 'auto_detect') {
+    try {
+      const rawText = await extractDocumentText({ storagePath, mimeType });
+      const classifyPrompt = {
+        system: `You are a financial document classifier. Given the raw text of a financial document, determine its type.
+Return ONLY one of these exact strings (no other text):
+bank_statement, credit_card_statement, loan_statement, pay_stub, tax_return, insurance_policy, investment_statement, bill, receipt, other`,
+        user: `Filename: ${filename}\n\nDocument text:\n${rawText.slice(0, 6000)}`,
+      };
+      const detected = (await generateChatCompletion(classifyPrompt, 'gpt-4.1-mini', 0.05)).trim().toLowerCase();
+      const validTypes = ['bank_statement', 'credit_card_statement', 'loan_statement', 'pay_stub', 'tax_return', 'insurance_policy', 'investment_statement', 'bill', 'receipt', 'other'];
+      sourceType = validTypes.includes(detected) ? detected : 'other';
+    } catch {
+      sourceType = 'other';
+    }
   }
 
   const { data: document, error: docError } = await supabase

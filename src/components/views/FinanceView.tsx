@@ -89,7 +89,7 @@ function dimensionDisplayName(name: string): string {
 
 export function FinanceView() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('dashboard');
-  const [selectedDocumentType, setSelectedDocumentType] = useState<FinancialDocumentSourceType>('bank_statement');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<FinancialDocumentSourceType>('auto_detect');
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
   // AI Financial Intake state
@@ -132,6 +132,12 @@ export function FinanceView() {
   const [eventDate, setEventDate] = useState('');
   const [eventAmount, setEventAmount] = useState('');
 
+  // Manual income form state
+  const [incomeSource, setIncomeSource] = useState('');
+  const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeFrequency, setIncomeFrequency] = useState('monthly');
+  const [addingIncome, setAddingIncome] = useState(false);
+
   const {
     summary,
     loading,
@@ -165,6 +171,7 @@ export function FinanceView() {
     confirmIncomeSignal,
     confirmExpenseSignal,
     dismissSignal,
+    addManualIncome,
   } = useFinancialAnalysis();
 
   const {
@@ -304,7 +311,9 @@ export function FinanceView() {
     setUploadingDoc(true);
     try {
       await uploadAndIngestDocument(file, selectedDocumentType);
-      toast.success('Financial document uploaded and parsed.');
+      toast.success(selectedDocumentType === 'auto_detect'
+        ? 'Document uploaded — AI classified and parsed it.'
+        : 'Financial document uploaded and parsed.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Document ingestion failed.');
     } finally {
@@ -440,6 +449,25 @@ export function FinanceView() {
       setAiProcessing(false);
     }
   }, [aiInput, aiProcessing, aiFinancialIntake]);
+
+  const handleAddManualIncome = useCallback(async () => {
+    if (!incomeSource.trim() || Number(incomeAmount) <= 0) {
+      toast.error('Source name and amount are required.');
+      return;
+    }
+    setAddingIncome(true);
+    try {
+      await addManualIncome(incomeSource.trim(), Number(incomeAmount), incomeFrequency);
+      toast.success('Manual income source added.');
+      setIncomeSource('');
+      setIncomeAmount('');
+      setIncomeFrequency('monthly');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add income.');
+    } finally {
+      setAddingIncome(false);
+    }
+  }, [incomeSource, incomeAmount, incomeFrequency, addManualIncome]);
 
   const handleVoiceInput = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -621,6 +649,20 @@ export function FinanceView() {
           </div>
           <div className="fi-kpi-sub">In {currency(pulse.metrics.income30d)} · Out {currency(pulse.metrics.expenses30d)}</div>
         </div>
+
+        {/* Delta to Cover */}
+        {(() => {
+          const deltaToCover = pulse.metrics.income30d - snap.minimumPaymentsThisMonth;
+          return (
+            <div className="fi-kpi-cell">
+              <div className="fi-kpi-label">Delta to Cover</div>
+              <div className={`fi-kpi-value ${deltaToCover >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {deltaToCover >= 0 ? '+' : ''}{currency(deltaToCover)}
+              </div>
+              <div className="fi-kpi-sub">Income vs min. obligations</div>
+            </div>
+          );
+        })()}
 
         {/* Runway */}
         <div className="fi-kpi-cell">
@@ -1675,6 +1717,7 @@ export function FinanceView() {
                   onChange={(e) => setSelectedDocumentType(e.target.value as FinancialDocumentSourceType)}
                   className="mt-1 w-full bg-background border border-border rounded-md h-10 px-3"
                 >
+                  <option value="auto_detect">✨ Auto-detect (AI)</option>
                   <option value="credit_card_statement">Credit Card Statement</option>
                   <option value="utility_bill">Utility Bill</option>
                   <option value="insurance_bill">Insurance Bill</option>
@@ -2084,6 +2127,36 @@ export function FinanceView() {
             </Card>
           )}
 
+          {/* Manual Income Entry */}
+          <Card className="p-5 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Add Income Manually</p>
+              <p className="text-xs text-muted-foreground mt-1">Enter income sources that aren&apos;t detected from linked accounts — side jobs, freelance, rental income, etc.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input value={incomeSource} onChange={(e) => setIncomeSource(e.target.value)} placeholder="Source name *" />
+              <Input value={incomeAmount} onChange={(e) => setIncomeAmount(e.target.value)} placeholder="Amount per occurrence *" type="number" min="0" step="100" />
+              <label className="text-sm text-muted-foreground">
+                Frequency
+                <select
+                  value={incomeFrequency}
+                  onChange={(e) => setIncomeFrequency(e.target.value)}
+                  className="mt-1 w-full bg-background border border-border rounded-md h-10 px-3"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="semi_monthly">Semi-monthly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
+                </select>
+              </label>
+            </div>
+            <Button onClick={() => void handleAddManualIncome()} disabled={addingIncome || !incomeSource.trim() || Number(incomeAmount) <= 0}>
+              {addingIncome ? 'Saving…' : 'Add Income Source'}
+            </Button>
+          </Card>
+
           <Card className="p-5 space-y-3">
             <p className="text-sm font-semibold">Detected Income Sources</p>
             {analysisDashboard.incomeSignals.length === 0 ? (
@@ -2315,6 +2388,7 @@ export function FinanceView() {
                 onChange={(e) => setSelectedDocumentType(e.target.value as FinancialDocumentSourceType)}
                 className="mt-1 w-full bg-background border border-border rounded-md h-10 px-3"
               >
+                <option value="auto_detect">✨ Auto-detect (AI)</option>
                 <option value="bank_statement">Bank Statement</option>
                 <option value="credit_card_statement">Credit Card Statement</option>
                 <option value="loan_statement">Loan Statement</option>
@@ -2414,11 +2488,17 @@ export function FinanceView() {
           <Card className="p-5 space-y-3">
             <p className="text-sm font-semibold">Savings Goal Strategy</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="Goal name" />
-              <Input value={goalTarget} onChange={(e) => setGoalTarget(e.target.value)} placeholder="Target amount" />
-              <Input value={goalCurrent} onChange={(e) => setGoalCurrent(e.target.value)} placeholder="Current amount" />
+              <div className="space-y-1">
+                <Input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="Goal name *" className={!goalName.trim() && goalTarget ? 'border-rose-500/60' : ''} />
+                {!goalName.trim() && goalTarget && <p className="text-[10px] text-rose-400">Required</p>}
+              </div>
+              <div className="space-y-1">
+                <Input value={goalTarget} onChange={(e) => setGoalTarget(e.target.value)} placeholder="Target amount *" type="number" min="0" step="100" className={goalName.trim() && (!goalTarget || Number(goalTarget) <= 0) ? 'border-rose-500/60' : ''} />
+                {goalName.trim() && (!goalTarget || Number(goalTarget) <= 0) && <p className="text-[10px] text-rose-400">Required — enter a target &gt; $0</p>}
+              </div>
+              <Input value={goalCurrent} onChange={(e) => setGoalCurrent(e.target.value)} placeholder="Current amount (optional)" type="number" min="0" step="100" />
               <Input value={goalDate} onChange={(e) => setGoalDate(e.target.value)} type="date" />
-              <Input value={goalMonthly} onChange={(e) => setGoalMonthly(e.target.value)} placeholder="Monthly contribution target" />
+              <Input value={goalMonthly} onChange={(e) => setGoalMonthly(e.target.value)} placeholder="Monthly contribution target" type="number" min="0" step="50" />
               <label className="text-sm text-muted-foreground">
                 Priority
                 <select
@@ -2433,7 +2513,9 @@ export function FinanceView() {
                 </select>
               </label>
             </div>
-            <Button onClick={() => void handleSaveGoal()} disabled={intelligenceSaving}>Save Savings Goal</Button>
+            <Button onClick={() => void handleSaveGoal()} disabled={intelligenceSaving || !goalName.trim() || Number(goalTarget) <= 0}>
+              {intelligenceSaving ? 'Saving…' : 'Save Savings Goal'}
+            </Button>
           </Card>
 
           <Card className="p-5 space-y-2">

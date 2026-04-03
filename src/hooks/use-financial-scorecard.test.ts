@@ -149,6 +149,10 @@ describe('useFinancialScorecard', () => {
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ success: true, data: {} }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => makeDashboard({ vehicles: [mockVehicle] }),
       } as Response);
 
@@ -187,6 +191,10 @@ describe('useFinancialScorecard', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => makeDashboard({ vehicles: [mockVehicle] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: {} }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
