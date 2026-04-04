@@ -151,8 +151,8 @@ function PaletteItem({
       onSelect={() => onSelect(cmd)}
       className="gap-3 px-3 py-2.5 rounded-lg mx-1 cursor-pointer"
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/40 border border-border/40">
-        {Icon ? <Icon size={16} className="text-muted-foreground" /> : <span className="text-xs">•</span>}
+      <span className="console-icon">
+        {Icon ? <Icon size={14} className="text-[var(--vuk-accent-dim)]" /> : <span className="text-xs">•</span>}
       </span>
       <span className="flex-1 min-w-0 text-sm font-medium truncate">{cmd.label}</span>
       {cmd.shortcut && <CommandShortcut className="text-[10px]">{cmd.shortcut}</CommandShortcut>}
@@ -221,79 +221,90 @@ export function CommandPalette({ open, onOpenChange, activeSection, onNavigate }
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
-          'overflow-hidden p-0 gap-0 rounded-xl',
-          'max-w-[640px] top-[20%] translate-y-0',
-          'border-border/50 bg-popover/95 backdrop-blur-2xl',
-          'shadow-[0_24px_80px_-12px_rgba(0,0,0,0.5)]',
+          'overflow-hidden p-0 gap-0',
+          'max-w-[640px] top-[18%] translate-y-0',
+          'rounded-[14px] border-0',
+          'bg-transparent shadow-none',
         )}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Command Palette</DialogTitle>
           <DialogDescription>Search commands and navigate Vuk OS</DialogDescription>
         </DialogHeader>
-        <Command
-          shouldFilter
-          loop
-          className={cn(
-            '**:[[cmdk-input-wrapper]]:h-14 **:[[cmdk-input-wrapper]]:px-4',
-            '**:[[cmdk-input]]:h-14 **:[[cmdk-input]]:text-base',
-            '**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2',
-            '**:[[cmdk-group-heading]]:text-[10px] **:[[cmdk-group-heading]]:uppercase',
-            '**:[[cmdk-group-heading]]:tracking-[0.15em] **:[[cmdk-group-heading]]:font-semibold',
-            '**:[[cmdk-group-heading]]:text-muted-foreground/60',
-          )}
-        >
-          <CommandInput
-            placeholder="Type a command or search…"
-            value={query}
-            onValueChange={setQuery}
-          />
-          <CommandList className="max-h-[min(400px,50vh)] scroll-py-1 py-1">
-            <CommandEmpty>
-              <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">No commands found</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
-              </div>
-            </CommandEmpty>
-
-            {/* Recent commands (shown when no search query) */}
-            {recentCommands.length > 0 && (
-              <CommandGroup heading="Recent">
-                {recentCommands.map((cmd) => (
-                  <PaletteItem key={cmd.id} cmd={cmd} onSelect={handleSelect} />
-                ))}
-              </CommandGroup>
-            )}
-
-            {/* Grouped command list */}
-            {orderedGroups.map((group) => (
-              <CommandGroup key={group} heading={GROUP_META[group].label}>
-                {groupedCommands[group]!.map((cmd) => (
-                  <PaletteItem key={cmd.id} cmd={cmd} onSelect={handleSelect} />
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-
-          {/* Footer keyboard hints */}
-          <div className="flex items-center gap-4 border-t border-border/40 px-4 py-2.5">
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-              <kbd className="rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10px] font-mono">↑↓</kbd>
-              Navigate
+        {/* Console frame with edge-lit top line */}
+        <div className="vuk-surface-console relative overflow-hidden">
+          {/* Status band header */}
+          <div className="console-status-band">
+            <span className="console-status-band__dot bg-emerald-400" />
+            <span className="console-status-band__label">
+              Vuk OS Console
             </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-              <kbd className="rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10px] font-mono">↵</kbd>
-              Select
-            </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-              <kbd className="rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10px] font-mono">Esc</kbd>
-              Close
-            </span>
-            <span className="ml-auto text-[11px] text-muted-foreground/40">
-              ⌘K to toggle
+            <span className="console-status-band__hint">
+              ⌘K
             </span>
           </div>
-        </Command>
+
+          <Command
+            shouldFilter
+            loop
+            className={cn(
+              '**:[[cmdk-input-wrapper]]:h-14 **:[[cmdk-input-wrapper]]:px-4',
+              '**:[[cmdk-input]]:h-14 **:[[cmdk-input]]:text-base',
+              '**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2',
+              '**:[[cmdk-group-heading]]:text-[9px] **:[[cmdk-group-heading]]:uppercase',
+              '**:[[cmdk-group-heading]]:tracking-[0.16em] **:[[cmdk-group-heading]]:font-bold',
+              '**:[[cmdk-group-heading]]:text-muted-foreground/50',
+            )}
+          >
+            <CommandInput
+              placeholder="Type a command or search…"
+              value={query}
+              onValueChange={setQuery}
+            />
+            <CommandList className="max-h-[min(400px,50vh)] scroll-py-1 py-1">
+              <CommandEmpty>
+                <div className="py-8 text-center">
+                  <p className="text-sm text-muted-foreground">No commands found</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Try a different search term</p>
+                </div>
+              </CommandEmpty>
+
+              {/* Recent commands (shown when no search query) */}
+              {recentCommands.length > 0 && (
+                <CommandGroup heading="Recent">
+                  {recentCommands.map((cmd) => (
+                    <PaletteItem key={cmd.id} cmd={cmd} onSelect={handleSelect} />
+                  ))}
+                </CommandGroup>
+              )}
+
+              {/* Grouped command list */}
+              {orderedGroups.map((group) => (
+                <CommandGroup key={group} heading={GROUP_META[group].label}>
+                  {groupedCommands[group]!.map((cmd) => (
+                    <PaletteItem key={cmd.id} cmd={cmd} onSelect={handleSelect} />
+                  ))}
+                </CommandGroup>
+              ))}
+            </CommandList>
+
+            {/* Footer keyboard hints — instrument-panel feel */}
+            <div className="console-footer">
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
+                <kbd className="console-kbd">↑↓</kbd>
+                Navigate
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
+                <kbd className="console-kbd">↵</kbd>
+                Select
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
+                <kbd className="console-kbd">Esc</kbd>
+                Close
+              </span>
+            </div>
+          </Command>
+        </div>
       </DialogContent>
     </Dialog>
   );

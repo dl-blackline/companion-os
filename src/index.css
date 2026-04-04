@@ -1240,8 +1240,323 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   VUK OS — Reusable Surface System
-   Use these utility classes across all views for consistent layering
+   VUK OS — Command-Center Surface Taxonomy
+   Five distinct surface tiers for a layered instrument-panel hierarchy.
+   core > instrument > telemetry > dock > console
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── CORE surface — the dominant Intelligence Core hero panel ─────────── */
+.vuk-surface-core {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 20%, rgba(0, 212, 255, 0.06), transparent 70%),
+    linear-gradient(170deg, var(--vuk-panel-3), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-strong);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 0 rgba(0, 212, 255, 0.08) inset,
+    0 -1px 0 0 rgba(0, 212, 255, 0.04) inset,
+    0 0 40px rgba(0, 212, 255, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.vuk-surface-core::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(170deg, rgba(0, 212, 255, 0.18), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── INSTRUMENT surface — KPI cells, metrics, data readouts ──────────── */
+.vuk-surface-instrument {
+  background: linear-gradient(160deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  border: 1px solid var(--vuk-border-medium);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 0 0 rgba(0, 212, 255, 0.05) inset,
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(0, 212, 255, 0.08);
+}
+
+/* ── TELEMETRY surface — the persistent top status rail ──────────────── */
+.vuk-surface-telemetry {
+  background: linear-gradient(90deg, var(--vuk-shell-1), var(--vuk-shell-2), var(--vuk-shell-1));
+  border-bottom: 1px solid var(--vuk-border-default);
+  box-shadow:
+    0 1px 0 rgba(0, 212, 255, 0.04) inset,
+    0 2px 12px rgba(0, 0, 0, 0.28);
+}
+
+/* ── DOCK surface — quick-action launcher tiles ──────────────────────── */
+.vuk-surface-dock {
+  background: linear-gradient(155deg, var(--vuk-panel-1), var(--vuk-shell-2));
+  border: 1px solid var(--vuk-border-default);
+  border-radius: 12px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.vuk-surface-dock:hover {
+  transform: translateY(-1px);
+  border-color: var(--vuk-active-border);
+  box-shadow: var(--vuk-shadow-glow), 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* ── CONSOLE surface — command palette, admin panels ─────────────────── */
+.vuk-surface-console {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0, 212, 255, 0.04), transparent 60%),
+    linear-gradient(175deg, var(--vuk-panel-2), var(--vuk-shell-1));
+  border: 1px solid var(--vuk-border-strong);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 0 rgba(0, 212, 255, 0.08) inset,
+    0 24px 80px -12px rgba(0, 0, 0, 0.55);
+}
+
+.vuk-surface-console::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.25), transparent);
+  pointer-events: none;
+}
+
+/* Console status band (header inside command palette) */
+.console-status-band {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vuk-border-default);
+}
+
+.console-status-band__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--vuk-text-muted);
+}
+
+.console-status-band__hint {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  color: var(--vuk-text-muted);
+  opacity: 0.5;
+}
+
+.console-status-band__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+  flex-shrink: 0;
+}
+
+/* Console footer bar */
+.console-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--vuk-border-default);
+  background: var(--vuk-shell-1);
+}
+
+.console-kbd {
+  display: inline-block;
+  border-radius: 4px;
+  border: 1px solid var(--vuk-border-default);
+  background: var(--vuk-shell-2);
+  padding: 2px 6px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+/* Console palette icon containers */
+.console-icon {
+  display: flex;
+  height: 28px;
+  width: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--vuk-active-bg);
+  border: 1px solid var(--vuk-border-default);
+}
+
+/* ── ALERT surface — urgent signals, warnings ────────────────────────── */
+.vuk-surface-alert {
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+
+.vuk-surface-alert--warning {
+  border: 1px solid rgba(255, 182, 39, 0.30);
+  background: rgba(255, 182, 39, 0.06);
+  color: #FFB627;
+}
+
+.vuk-surface-alert--critical {
+  border: 1px solid rgba(255, 61, 90, 0.30);
+  background: rgba(255, 61, 90, 0.06);
+  color: #FF3D5A;
+}
+
+.vuk-surface-alert--info {
+  border: 1px solid rgba(0, 212, 255, 0.20);
+  background: rgba(0, 212, 255, 0.04);
+  color: var(--vuk-accent-primary);
+}
+
+/* ── Telemetry Rail (desktop top bar) ────────────────────────────────── */
+.telemetry-rail {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--vuk-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.telemetry-rail__section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telemetry-rail__divider {
+  width: 1px;
+  height: 14px;
+  background: var(--vuk-border-default);
+  flex-shrink: 0;
+}
+
+.telemetry-rail__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vuk-text-muted);
+  opacity: 0.6;
+}
+
+.telemetry-rail__value {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--vuk-text-secondary);
+}
+
+.telemetry-rail__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Command center layout utilities ─────────────────────────────────── */
+
+.command-center-grid {
+  display: grid;
+  gap: 16px;
+}
+
+/* Hero + sidebar layout: core takes ~60%, side panels take ~40% */
+.command-center-grid--hero {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .command-center-grid--hero {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+/* Even instrument strip */
+.instrument-strip {
+  display: grid;
+  gap: 1px;
+  background: var(--vuk-border-default);
+  border: 1px solid var(--vuk-border-default);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.instrument-strip > * {
+  background: linear-gradient(170deg, var(--vuk-panel-2), var(--vuk-panel-1));
+  padding: 12px 14px;
+}
+
+.instrument-strip--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .instrument-strip--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Dock grid for quick actions */
+.dock-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.dock-grid--cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 640px) {
+  .dock-grid--cols-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Section eyebrow (reusable) */
+.vuk-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--vuk-accent-primary);
+  margin-bottom: 8px;
+}
+
+/* Edge-lit accent line — top of a panel */
+.vuk-edge-lit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.22), transparent);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VUK OS — Reusable Surface System (legacy — kept for backward compat)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Page-level scroll container with padding */

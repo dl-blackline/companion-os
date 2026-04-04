@@ -5,10 +5,7 @@ import { useLifeOS } from '@/hooks/use-life-os';
 import { useFinancialHealth } from '@/hooks/use-financial-health';
 import { useFinancialIntelligence } from '@/hooks/use-financial-intelligence';
 import { useAutomotiveFinance } from '@/hooks/use-automotive-finance';
-import { ArrowRight } from '@phosphor-icons/react/ArrowRight';
-import { Brain } from '@phosphor-icons/react/Brain';
 import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
-import { Briefcase } from '@phosphor-icons/react/Briefcase';
 import { Car } from '@phosphor-icons/react/Car';
 import { Images } from '@phosphor-icons/react/Images';
 import { Lightning } from '@phosphor-icons/react/Lightning';
@@ -99,7 +96,7 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
       {/* Header */}
       <div className="executive-header">
         <div>
-          <p className="executive-eyebrow">Vuk OS Command Center</p>
+          <p className="vuk-eyebrow">Vuk OS Command Center</p>
           <h1 className="leading-tight">{aiName}</h1>
           <p className="executive-subtitle">
             Private operating environment — planning, decision support, and execution.
@@ -107,91 +104,91 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
         </div>
       </div>
 
-      {/* ── KPI Strip ── */}
-      <div className="executive-grid md:grid-cols-4 mb-4">
-        <motion.div {...fade(0)} className="executive-kpi">
+      {/* ── KPI Instrument Strip ── */}
+      <motion.div {...fade(0)} className="instrument-strip instrument-strip--4 mb-4">
+        <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Health Score</p>
-            <ShieldCheck size={16} style={{ color: 'var(--vuk-accent-dim)' }} />
+            <p className="text-[9px] uppercase tracking-[0.14em] font-semibold text-muted-foreground">Health Score</p>
+            <ShieldCheck size={14} style={{ color: 'var(--vuk-accent-dim)' }} />
           </div>
-          <p className="text-2xl font-semibold tracking-tight leading-none">
+          <p className="text-xl font-semibold tracking-tight leading-none">
             {healthScore != null ? `${healthScore}%` : '—'}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             {pulse?.trend === 'improving' ? 'Trending up' : pulse?.trend === 'tightening' ? 'Tightening' : 'Stable'}
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div {...fade(0.05)} className="executive-kpi">
+        <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Cash Flow (30d)</p>
+            <p className="text-[9px] uppercase tracking-[0.14em] font-semibold text-muted-foreground">Cash Flow (30d)</p>
             {(cashFlow ?? 0) >= 0
-              ? <TrendUp size={16} className="text-emerald-400" />
-              : <TrendDown size={16} className="text-red-400" />}
+              ? <TrendUp size={14} className="text-emerald-400" />
+              : <TrendDown size={14} className="text-red-400" />}
           </div>
-          <p className={`text-2xl font-semibold tracking-tight leading-none ${
+          <p className={`text-xl font-semibold tracking-tight leading-none ${
             (cashFlow ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
           }`}>
             {cashFlow != null ? formatCurrency(cashFlow) : '—'}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {savingsRate != null ? `${(savingsRate * 100).toFixed(0)}% savings rate` : 'Connect accounts to track'}
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {savingsRate != null ? `${(savingsRate * 100).toFixed(0)}% savings rate` : 'Connect accounts'}
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div {...fade(0.1)} className="executive-kpi">
+        <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Active Goals</p>
-            <Target size={16} style={{ color: 'var(--vuk-accent-dim)' }} />
+            <p className="text-[9px] uppercase tracking-[0.14em] font-semibold text-muted-foreground">Active Goals</p>
+            <Target size={14} style={{ color: 'var(--vuk-accent-dim)' }} />
           </div>
-          <p className="text-2xl font-semibold tracking-tight leading-none">{activeGoals.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xl font-semibold tracking-tight leading-none">{activeGoals.length}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
             {atRiskGoals.length > 0 ? (
               <span className="text-amber-400">{atRiskGoals.length} at risk</span>
             ) : 'All on track'}
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div {...fade(0.15)} className="executive-kpi">
+        <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Attention Items</p>
-            <Warning size={16} className={totalUrgent > 0 ? 'text-amber-400' : 'text-muted-foreground'} />
+            <p className="text-[9px] uppercase tracking-[0.14em] font-semibold text-muted-foreground">Attention</p>
+            <Warning size={14} className={totalUrgent > 0 ? 'text-amber-400' : 'text-muted-foreground'} />
           </div>
-          <p className={`text-2xl font-semibold tracking-tight leading-none ${totalUrgent > 0 ? 'text-amber-400' : ''}`}>
+          <p className={`text-xl font-semibold tracking-tight leading-none ${totalUrgent > 0 ? 'text-amber-400' : ''}`}>
             {totalUrgent}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             {totalUrgent === 0 ? 'All clear' : 'Signals, overdue, flags'}
           </p>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
 
       {/* ── Urgent Signals Strip ── */}
       {totalUrgent > 0 && (
-        <motion.div {...fade(0.15)} className="mb-4 space-y-1.5">
+        <motion.div {...fade(0.12)} className="mb-4 space-y-1.5">
           {urgentSignals.slice(0, 2).map((sig) => (
             <button
               key={sig.id}
               type="button"
               onClick={() => onNavigate('goals')}
-              className={`w-full text-left rounded-lg border px-3 py-2 text-xs transition-colors hover:bg-white/5 ${
+              className={`vuk-surface-alert w-full text-left transition-colors hover:brightness-110 ${
                 sig.severity === 'critical'
-                  ? 'border-red-500/40 bg-red-500/8 text-red-300'
-                  : 'border-amber-500/40 bg-amber-500/8 text-amber-300'
+                  ? 'vuk-surface-alert--critical'
+                  : 'vuk-surface-alert--warning'
               }`}
             >
               <span className="font-medium">{sig.title}</span>
-              {sig.action_hint && <span className="text-muted-foreground ml-2">— {sig.action_hint}</span>}
+              {sig.action_hint && <span className="opacity-60 ml-2">— {sig.action_hint}</span>}
             </button>
           ))}
           {overdueCount > 0 && (
             <button
               type="button"
               onClick={() => onNavigate('finance')}
-              className="w-full text-left rounded-lg border border-red-500/40 bg-red-500/8 text-red-300 px-3 py-2 text-xs transition-colors hover:bg-white/5"
+              className="vuk-surface-alert vuk-surface-alert--critical w-full text-left transition-colors hover:brightness-110"
             >
               <span className="font-medium">{overdueCount} overdue obligation{overdueCount > 1 ? 's' : ''}</span>
-              <span className="text-muted-foreground ml-2">— Review in Finance Pulse</span>
+              <span className="opacity-60 ml-2">— Review in Finance Pulse</span>
             </button>
           )}
           {fiInsights.slice(0, 2).map((ins) => (
@@ -199,20 +196,75 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
               key={ins.id}
               type="button"
               onClick={() => onNavigate('finance')}
-              className="w-full text-left rounded-lg border border-amber-500/40 bg-amber-500/8 text-amber-300 px-3 py-2 text-xs transition-colors hover:bg-white/5"
+              className="vuk-surface-alert vuk-surface-alert--warning w-full text-left transition-colors hover:brightness-110"
             >
               <span className="font-medium">{ins.title}</span>
-              {ins.action_hint && <span className="text-muted-foreground ml-2">— {ins.action_hint}</span>}
+              {ins.action_hint && <span className="opacity-60 ml-2">— {ins.action_hint}</span>}
             </button>
           ))}
         </motion.div>
       )}
 
+      {/* ══ HERO ZONE: Intelligence Core (dominant) + Quick Actions ════════ */}
+      <div className="command-center-grid command-center-grid--hero mb-4">
+        {/* ── Intelligence Core — hero surface ── */}
+        <motion.section {...fade(0.15)} className="vuk-surface-core p-6 md:p-8 flex flex-col items-center text-center relative overflow-hidden">
+          <p className="vuk-eyebrow mb-4">Intelligence Core</p>
+          <CompanionStatusIcon state={companionState} size="lg" onClick={() => onNavigate('live-talk')} />
+          <p className="mt-5 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md">
+            {pulse?.narrative || 'All systems available. Ready for strategic execution.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate('live-talk')}
+            className="mt-6 rounded-full px-5 py-2 text-[11px] tracking-[0.16em] uppercase font-semibold transition-all hover:brightness-125"
+            style={{ border: '1px solid var(--vuk-border-accent)', background: 'var(--vuk-active-bg)', color: 'var(--vuk-accent-primary)' }}
+          >
+            Open Live Session
+          </button>
+        </motion.section>
+
+        {/* ── Quick Actions — dock grid ── */}
+        <motion.section {...fade(0.2)} className="flex flex-col">
+          <p className="vuk-eyebrow mb-3">Launch Dock</p>
+          <div className="dock-grid dock-grid--cols-2 flex-1">
+            {quickActions.map((action, i) => {
+              const Icon = action.icon;
+              return (
+                <motion.button
+                  key={action.id}
+                  initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: reduceMotion ? 0.1 : 0.2, delay: reduceMotion ? 0 : 0.22 + i * 0.03 }}
+                  onClick={() => onNavigate(action.id)}
+                  className="vuk-surface-dock p-3 text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="h-8 w-8 rounded-lg inline-flex items-center justify-center shrink-0"
+                      style={{ background: 'var(--vuk-active-bg)', border: '1px solid var(--vuk-border-accent)' }}
+                    >
+                      <Icon size={16} style={{ color: 'var(--vuk-accent-light)' }} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold tracking-tight truncate">{action.label}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
+                    </div>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.section>
+      </div>
+
+      {/* ── Domain Intelligence Panels ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* ── Financial Intelligence Card ── */}
-        <motion.section {...fade(0.18)} className="glass-card rounded-2xl p-5 md:p-6">
+        <motion.section {...fade(0.25)} className="vuk-surface-instrument rounded-2xl p-5 md:p-6 relative overflow-hidden vuk-edge-lit">
           <div className="flex items-center justify-between mb-4">
-            <p className="executive-eyebrow">Financial Intelligence</p>
+            <p className="vuk-eyebrow">Financial Intelligence</p>
             <button
               type="button"
               onClick={() => onNavigate('finance')}
@@ -263,9 +315,9 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
         </motion.section>
 
         {/* ── Automotive F&I Card ── */}
-        <motion.section {...fade(0.22)} className="glass-card rounded-2xl p-5 md:p-6">
+        <motion.section {...fade(0.28)} className="vuk-surface-instrument rounded-2xl p-5 md:p-6 relative overflow-hidden vuk-edge-lit">
           <div className="flex items-center justify-between mb-4">
-            <p className="executive-eyebrow">F&I Command</p>
+            <p className="vuk-eyebrow">F&I Command</p>
             <button
               type="button"
               onClick={() => onNavigate('automotive-finance')}
@@ -336,9 +388,9 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
 
       {/* ── Life OS + Goals ── */}
       {activeGoals.length > 0 && (
-        <motion.section {...fade(0.24)} className="glass-card rounded-2xl p-5 md:p-6 mb-4">
+        <motion.section {...fade(0.3)} className="vuk-surface-instrument rounded-2xl p-5 md:p-6 mb-4">
           <div className="flex items-center justify-between mb-4">
-            <p className="executive-eyebrow">Life OS — Active Goals</p>
+            <p className="vuk-eyebrow">Life OS — Active Goals</p>
             <button
               type="button"
               onClick={() => onNavigate('goals')}
@@ -375,63 +427,6 @@ export function HomeDashboard({ companionState, aiName, onNavigate }: HomeDashbo
           </div>
         </motion.section>
       )}
-
-      {/* ── Intelligence Core + Quick Actions ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-4">
-        <motion.section {...fade(0.28)} className="glass-card rounded-2xl p-5 md:p-6">
-          <p className="executive-eyebrow">Intelligence Core</p>
-          <div className="flex flex-col items-center text-center">
-            <CompanionStatusIcon state={companionState} size="lg" onClick={() => onNavigate('live-talk')} />
-            <p className="mt-4 text-2xl font-semibold tracking-tight">{STATE_LABELS[companionState]}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {pulse?.narrative || 'All systems available'}
-            </p>
-            <button
-              type="button"
-              onClick={() => onNavigate('live-talk')}
-              className="mt-5 rounded-full px-4 py-1.5 text-[11px] tracking-[0.16em] uppercase text-muted-foreground hover:text-foreground transition-all"
-              style={{ border: '1px solid var(--vuk-border-accent)', background: 'var(--vuk-active-bg)' }}
-            >
-              Open Live Session
-            </button>
-          </div>
-        </motion.section>
-
-        <motion.section {...fade(0.32)} className="glass-card rounded-2xl p-5 md:p-6">
-          <p className="executive-eyebrow">Quick Actions</p>
-          <div className="space-y-2">
-            {quickActions.map((action, i) => {
-              const Icon = action.icon;
-              return (
-                <motion.button
-                  key={action.id}
-                  initial={{ opacity: 0, x: reduceMotion ? 0 : -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: reduceMotion ? 0.1 : 0.22, delay: reduceMotion ? 0 : 0.35 + i * 0.04 }}
-                  onClick={() => onNavigate(action.id)}
-                  className="executive-action p-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="h-8 w-8 rounded-lg inline-flex items-center justify-center"
-                        style={{ background: 'var(--vuk-active-bg)', border: '1px solid var(--vuk-border-accent)' }}
-                      >
-                        <Icon size={16} style={{ color: 'var(--vuk-accent-light)' }} />
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold tracking-tight">{action.label}</p>
-                        <p className="text-[11px] text-muted-foreground">{action.description}</p>
-                      </div>
-                    </div>
-                    <ArrowRight size={13} className="text-muted-foreground" />
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.section>
-      </div>
     </div>
   );
 }
