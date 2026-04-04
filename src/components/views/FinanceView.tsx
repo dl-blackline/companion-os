@@ -691,7 +691,7 @@ export function FinanceView() {
           <div className={`fi-kpi-value ${pulse.metrics.savingsRate >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
             {pulse.metrics.savingsRate.toFixed(1)}%
           </div>
-          <div className="fi-kpi-sub">{pulse.lastEvaluatedAt && new Date(pulse.lastEvaluatedAt).getTime() > 0 ? `Last updated ${new Date(pulse.lastEvaluatedAt).toLocaleDateString()}` : 'Not yet evaluated'}</div>
+          <div className="fi-kpi-sub">{(() => { const d = pulse.lastEvaluatedAt ? new Date(pulse.lastEvaluatedAt) : null; return d && d.getTime() > 0 ? `Last updated ${d.toLocaleDateString()}` : 'Not yet evaluated'; })()}</div>
         </div>
       </div>
 
