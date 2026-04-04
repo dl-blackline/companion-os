@@ -43,9 +43,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 function toNumber(value) {
@@ -458,19 +462,19 @@ export async function handler(event) {
 
     const action = body.action;
     if (action === 'create_link_token') {
-      return handleCreateLinkToken(user);
+      return await handleCreateLinkToken(user);
     }
 
     if (action === 'exchange_public_token') {
-      return handleExchangePublicToken(user, body);
+      return await handleExchangePublicToken(user, body);
     }
 
     if (action === 'sync') {
-      return handleSync(user);
+      return await handleSync(user);
     }
 
     if (action === 'disconnect') {
-      return handleDisconnect(user, body);
+      return await handleDisconnect(user, body);
     }
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);

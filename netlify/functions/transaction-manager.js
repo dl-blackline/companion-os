@@ -16,9 +16,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 /* ── System categories ── */
@@ -242,7 +246,7 @@ export async function handler(event) {
   try {
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {};
-      return handleGetTransactions(user.id, params);
+      return await handleGetTransactions(user.id, params);
     }
 
     if (event.httpMethod !== 'POST') {
@@ -258,10 +262,10 @@ export async function handler(event) {
 
     const action = body.action;
 
-    if (action === 'update_category') return handleUpdateCategory(user.id, body);
-    if (action === 'update_notes') return handleUpdateNotes(user.id, body);
-    if (action === 'list_categories') return handleListCategories(user.id);
-    if (action === 'create_category') return handleCreateCategory(user.id, body);
+    if (action === 'update_category') return await handleUpdateCategory(user.id, body);
+    if (action === 'update_notes') return await handleUpdateNotes(user.id, body);
+    if (action === 'list_categories') return await handleListCategories(user.id);
+    if (action === 'create_category') return await handleCreateCategory(user.id, body);
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);
   } catch (error) {

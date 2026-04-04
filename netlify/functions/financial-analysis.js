@@ -8,9 +8,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 function toNumber(value) {
@@ -800,15 +804,15 @@ export async function handler(event) {
     }
 
     if (action === 'confirm_income_signal') {
-      return confirmIncomeSignal(user.id, body);
+      return await confirmIncomeSignal(user.id, body);
     }
 
     if (action === 'confirm_expense_signal') {
-      return confirmExpenseSignal(user.id, body);
+      return await confirmExpenseSignal(user.id, body);
     }
 
     if (action === 'dismiss_signal') {
-      return dismissSignal(user.id, body);
+      return await dismissSignal(user.id, body);
     }
 
     if (action === 'add_manual_income') {

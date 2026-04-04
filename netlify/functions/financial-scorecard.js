@@ -20,9 +20,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 function toNumber(value) {
@@ -691,6 +695,7 @@ async function loadDashboard(userId) {
 
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return preflight();
+  if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
 
   const token = getAuthToken(event);
   const user = await resolveActor(token);

@@ -25,9 +25,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 function toNumber(value) {
@@ -447,40 +451,47 @@ async function loadDecodedBills(userId) {
 
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return preflight();
+  if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
 
   const token = getAuthToken(event);
   const user = await resolveActor(token);
   if (!user) return fail('Unauthorized', 'ERR_AUTH', 401);
 
-  if (event.httpMethod === 'GET') {
-    const result = await loadDecodedBills(user.id);
-    return ok(result);
-  }
-
-  if (event.httpMethod === 'POST') {
-    let body;
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch {
-      return fail('Invalid JSON.', 'ERR_PARSE', 400);
+  try {
+    if (event.httpMethod === 'GET') {
+      const result = await loadDecodedBills(user.id);
+      return ok(result);
     }
 
-    const action = body.action;
-    switch (action) {
-      case 'decode_document':
-        return handleDecodeDocument({ user, body });
-      case 'confirm_bill':
-        return handleConfirmBill({ user, body });
-      case 'reject_bill':
-        return handleRejectBill({ user, body });
-      case 'update_bill_field':
-        return handleUpdateBillField({ user, body });
-      case 'merge_to_obligation':
-        return handleMergeToObligation({ user, body });
-      default:
-        return fail(`Unknown action: ${action}`, 'ERR_UNKNOWN_ACTION', 400);
-    }
-  }
+    if (event.httpMethod === 'POST') {
+      let body;
+      try {
+        body = JSON.parse(event.body || '{}');
+      } catch {
+        return fail('Invalid JSON.', 'ERR_PARSE', 400);
+      }
 
-  return fail('Method not allowed.', 'ERR_METHOD', 405);
+      const action = body.action;
+      switch (action) {
+        case 'decode_document':
+          return await handleDecodeDocument({ user, body });
+        case 'confirm_bill':
+          return await handleConfirmBill({ user, body });
+        case 'reject_bill':
+          return await handleRejectBill({ user, body });
+        case 'update_bill_field':
+          return await handleUpdateBillField({ user, body });
+        case 'merge_to_obligation':
+          return await handleMergeToObligation({ user, body });
+        default:
+          return fail(`Unknown action: ${action}`, 'ERR_UNKNOWN_ACTION', 400);
+      }
+    }
+
+    return fail('Method not allowed.', 'ERR_METHOD', 405);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Bill decoder request failed.';
+    console.error('[bill-decoder] handler error:', message);
+    return fail(message, 'ERR_INTERNAL', 500);
+  }
 }
