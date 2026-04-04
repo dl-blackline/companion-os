@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinancialHealth } from '@/hooks/use-financial-health';
 import { useFinancialIntelligence } from '@/hooks/use-financial-intelligence';
 import { useFinancialAnalysis } from '@/hooks/use-financial-analysis';
@@ -502,6 +503,16 @@ export function FinanceView() {
     recognition.start();
   }, []);
 
+  // Auto-refresh transaction feed when Stripe sync completes
+  const wasSyncingRef = useRef(false);
+  useEffect(() => {
+    if (wasSyncingRef.current && !stripeSyncing) {
+      // Sync just finished — refresh the transaction feed
+      txRefresh();
+    }
+    wasSyncingRef.current = stripeSyncing;
+  }, [stripeSyncing, txRefresh]);
+
   const sortedObligations = useMemo(
     () => [...(dashboard.obligations ?? [])].sort((a, b) => (a.due_date || '').localeCompare(b.due_date || '')),
     [dashboard.obligations]
@@ -594,6 +605,68 @@ export function FinanceView() {
         </div>
       </div>
 
+      {error && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {error}
+        </Card>
+      )}
+
+      {stripeError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {stripeError}
+        </Card>
+      )}
+
+      {txError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {txError}
+        </Card>
+      )}
+
+      {intelligenceError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {intelligenceError}
+        </Card>
+      )}
+
+      {analysisError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {analysisError}
+        </Card>
+      )}
+
+      {decoderError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {decoderError}
+        </Card>
+      )}
+
+      {scorecardError && (
+        <Card className="p-4 border-destructive/50 text-sm text-destructive">
+          {scorecardError}
+        </Card>
+      )}
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="dashboard" className="gap-1.5"><ChartLineUp size={14} /> Command Center</TabsTrigger>
+          <TabsTrigger value="accounts" className="gap-1.5"><CreditCard size={14} /> Accounts</TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-1.5"><ListBullets size={14} /> Transactions</TabsTrigger>
+          <TabsTrigger value="ledger" className="gap-1.5"><Note size={14} /> Ledger</TabsTrigger>
+          <TabsTrigger value="decoder" className="gap-1.5"><FileArrowUp size={14} /> Bill Decoder</TabsTrigger>
+          <TabsTrigger value="scorecard" className="gap-1.5"><Heartbeat size={14} /> Scorecard</TabsTrigger>
+          <TabsTrigger value="vehicles" className="gap-1.5"><Bank size={14} /> Vehicles</TabsTrigger>
+          <TabsTrigger value="income" className="gap-1.5"><TrendUp size={14} /> Income</TabsTrigger>
+          <TabsTrigger value="cashflow" className="gap-1.5"><Wallet size={14} /> Cash Flow</TabsTrigger>
+          <TabsTrigger value="recurring" className="gap-1.5"><ArrowsClockwise size={14} /> Recurring</TabsTrigger>
+          <TabsTrigger value="planner" className="gap-1.5"><Wallet size={14} /> Obligations</TabsTrigger>
+          <TabsTrigger value="goals" className="gap-1.5"><PiggyBank size={14} /> Savings</TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-1.5"><CalendarBlank size={14} /> Calendar</TabsTrigger>
+          <TabsTrigger value="documents" className="gap-1.5"><FileArrowUp size={14} /> Documents</TabsTrigger>
+          <TabsTrigger value="insights" className="gap-1.5"><Lightbulb size={14} /> Insights</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* ─── Aggregate Metrics Bar ─── */}
       {linkedAccountsDashboard.aggregates.accountCount > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -625,7 +698,8 @@ export function FinanceView() {
         </div>
       )}
 
-      <div className="fi-kpi-bar flex flex-wrap gap-3 mt-2">
+      {/* ─── KPI Strip ─── */}
+      <div className="fi-kpi-strip">
         {/* Balance */}
         {hasAccounts && (
           <div className="fi-kpi-cell">

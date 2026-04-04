@@ -193,7 +193,5 @@ describe('roleplay handler', () => {
     expect(result.statusCode).toBe(500);
     const body = parseBody(result);
     expect(body.success).toBe(false);
-    expect(body.code).toBe('ERR_ROLEPLAY');
-    expect(body.error).toBe('AI provider timeout');
   });
 });

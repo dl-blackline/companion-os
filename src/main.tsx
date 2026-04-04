@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
+import { BrowserRouter } from 'react-router-dom';
 
 import { assertNoSecrets } from './lib/env-guard'
 import App from './App.tsx'
@@ -25,20 +26,22 @@ try {
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
-    <AuthProvider>
-      <ProtectedRoute>
-        <AIControlProvider>
-          <SettingsProvider>
-            <AccentLightingProvider>
-              <OrbAppearanceProvider>
-                <VoiceProvider>
-                  <App />
-                </VoiceProvider>
-              </OrbAppearanceProvider>
-            </AccentLightingProvider>
-          </SettingsProvider>
-        </AIControlProvider>
-      </ProtectedRoute>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ProtectedRoute>
+          <AIControlProvider>
+            <SettingsProvider>
+              <AccentLightingProvider>
+                <OrbAppearanceProvider>
+                  <VoiceProvider>
+                    <App />
+                  </VoiceProvider>
+                </OrbAppearanceProvider>
+              </AccentLightingProvider>
+            </SettingsProvider>
+          </AIControlProvider>
+        </ProtectedRoute>
+      </AuthProvider>
+    </BrowserRouter>
   </ErrorBoundary>
 )
