@@ -30,12 +30,17 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error) {
-    console.warn('[stripe-fc] Auth token validation failed:', error.message);
+  if (!token || !supabase) return null;
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error) {
+      console.warn('[stripe-fc] Auth token validation failed:', error.message);
+    }
+    return data?.user || null;
+  } catch (err) {
+    console.warn('[stripe-fc] resolveActor threw:', err?.message);
+    return null;
   }
-  return data?.user || null;
 }
 
 /* ── Helpers ── */
@@ -840,7 +845,7 @@ export async function handler(event) {
 
   try {
     if (event.httpMethod === 'GET') {
-      return handleGetLinkedAccounts(user.id);
+      return await handleGetLinkedAccounts(user.id);
     }
 
     if (event.httpMethod !== 'POST') {
@@ -856,16 +861,16 @@ export async function handler(event) {
 
     const action = body.action;
 
-    if (action === 'create_session') return handleCreateSession(user);
-    if (action === 'complete_session') return handleCompleteSession(user, body);
-    if (action === 'refresh_account') return handleRefreshAccount(user, body);
-    if (action === 'sync_transactions') return handleSyncTransactions(user);
-    if (action === 'update_account') return handleUpdateAccount(user, body);
-    if (action === 'disconnect_account') return handleDisconnectAccount(user, body);
-    if (action === 'remove_account') return handleRemoveAccount(user, body);
-    if (action === 'create_ledger_entry') return handleCreateLedgerEntry(user, body);
-    if (action === 'update_ledger_entry') return handleUpdateLedgerEntry(user, body);
-    if (action === 'delete_ledger_entry') return handleDeleteLedgerEntry(user, body);
+    if (action === 'create_session') return await handleCreateSession(user);
+    if (action === 'complete_session') return await handleCompleteSession(user, body);
+    if (action === 'refresh_account') return await handleRefreshAccount(user, body);
+    if (action === 'sync_transactions') return await handleSyncTransactions(user);
+    if (action === 'update_account') return await handleUpdateAccount(user, body);
+    if (action === 'disconnect_account') return await handleDisconnectAccount(user, body);
+    if (action === 'remove_account') return await handleRemoveAccount(user, body);
+    if (action === 'create_ledger_entry') return await handleCreateLedgerEntry(user, body);
+    if (action === 'update_ledger_entry') return await handleUpdateLedgerEntry(user, body);
+    if (action === 'delete_ledger_entry') return await handleDeleteLedgerEntry(user, body);
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);
   } catch (error) {
@@ -875,7 +880,7 @@ export async function handler(event) {
     return fail(
       isStripeError ? 'A payment provider error occurred. Please try again.' : message,
       'ERR_STRIPE_FC',
-      isStripeError ? 502 : 500,
+      isStripeError ? 503 : 500,
     );
   }
 }

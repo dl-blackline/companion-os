@@ -34,9 +34,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 /* ── Helpers ───────────────────────────────────────────────────── */
@@ -91,9 +95,7 @@ async function createGoal(userId, body) {
     .select('*')
     .single();
 
-  if (error) return fail(400, error.message);
-
-  // If financial, sync to finance system
+  if (error) return fail(error.message, 'ERR_DB', 400);
   if (isFinancial && goal.target_amount > 0) {
     const syncResult = await syncGoalToFinance(userId, goal);
     goal.financial_goal_id = syncResult.financialGoalId;
@@ -110,7 +112,7 @@ async function createGoal(userId, body) {
 }
 
 async function updateGoal(userId, body) {
-  if (!body.id) return fail(400, 'Goal id required');
+  if (!body.id) return fail('Goal id required', 'ERR_VALIDATION', 400);
 
   const updates = {};
   if (body.title !== undefined) updates.title = body.title;
@@ -136,7 +138,7 @@ async function updateGoal(userId, body) {
     .select('*')
     .single();
 
-  if (error) return fail(400, error.message);
+  if (error) return fail(error.message, 'ERR_DB', 400);
 
   // Re-sync if financial
   if (goal.is_financial) {
@@ -149,7 +151,7 @@ async function updateGoal(userId, body) {
 }
 
 async function deleteGoal(userId, body) {
-  if (!body.id) return fail(400, 'Goal id required');
+  if (!body.id) return fail('Goal id required', 'ERR_VALIDATION', 400);
 
   // Load goal to check for financial link
   const { data: goal } = await supabase
@@ -185,7 +187,7 @@ async function deleteGoal(userId, body) {
 }
 
 async function updateProgress(userId, body) {
-  if (!body.id) return fail(400, 'Goal id required');
+  if (!body.id) return fail('Goal id required', 'ERR_VALIDATION', 400);
 
   const updates = {};
   if (body.progress !== undefined) updates.progress = body.progress;
@@ -199,7 +201,7 @@ async function updateProgress(userId, body) {
     .select('*')
     .single();
 
-  if (error) return fail(400, error.message);
+  if (error) return fail(error.message, 'ERR_DB', 400);
 
   // Update savings goal current amount
   if (goal.is_financial && goal.financial_goal_id && body.currentAmount !== undefined) {
@@ -228,7 +230,7 @@ async function updateProgress(userId, body) {
 }
 
 async function completeMilestone(userId, body) {
-  if (!body.goalId || !body.milestoneId) return fail(400, 'goalId and milestoneId required');
+  if (!body.goalId || !body.milestoneId) return fail('goalId and milestoneId required', 'ERR_VALIDATION', 400);
 
   const { data: goal } = await supabase
     .from('user_goals')
@@ -237,7 +239,7 @@ async function completeMilestone(userId, body) {
     .eq('user_id', userId)
     .single();
 
-  if (!goal) return fail(404, 'Goal not found');
+  if (!goal) return fail('Goal not found', 'ERR_NOT_FOUND', 404);
 
   const milestones = (goal.milestones || []).map(m => {
     if (m.id === body.milestoneId) {
@@ -262,7 +264,7 @@ async function completeMilestone(userId, body) {
 /* ── Signal Management ────────────────────────────────────────── */
 
 async function dismissSignal(userId, body) {
-  if (!body.id) return fail(400, 'Signal id required');
+  if (!body.id) return fail('Signal id required', 'ERR_VALIDATION', 400);
 
   await supabase
     .from('life_coordination_signals')
@@ -274,7 +276,7 @@ async function dismissSignal(userId, body) {
 }
 
 async function acknowledgeSignal(userId, body) {
-  if (!body.id) return fail(400, 'Signal id required');
+  if (!body.id) return fail('Signal id required', 'ERR_VALIDATION', 400);
 
   await supabase
     .from('life_coordination_signals')
@@ -289,10 +291,11 @@ async function acknowledgeSignal(userId, body) {
 
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return preflight();
+  if (!supabase) return fail('Server configuration error', 'ERR_CONFIG', 500);
 
   const token = getAuthToken(event);
   const user = await resolveActor(token);
-  if (!user) return fail(401, 'Unauthorized');
+  if (!user) return fail('Unauthorized', 'ERR_AUTH', 401);
   const userId = user.id;
 
   /* ── GET — load dashboard ── */
@@ -302,18 +305,18 @@ export async function handler(event) {
       return ok(dashboard);
     } catch (err) {
       console.error('[life-os] dashboard error:', err);
-      return fail(500, 'Failed to load life dashboard');
+      return fail('Failed to load life dashboard', 'ERR_INTERNAL', 500);
     }
   }
 
   /* ── POST — actions ── */
-  if (event.httpMethod !== 'POST') return fail(405, 'Method not allowed');
+  if (event.httpMethod !== 'POST') return fail('Method not allowed', 'ERR_METHOD', 405);
 
   let body;
   try {
     body = JSON.parse(event.body || '{}');
   } catch {
-    return fail(400, 'Invalid JSON');
+    return fail('Invalid JSON', 'ERR_PARSE', 400);
   }
 
   const { action } = body;
@@ -342,14 +345,14 @@ export async function handler(event) {
           .eq('id', body.goalId)
           .eq('user_id', userId)
           .single();
-        if (!goal) return fail(404, 'Goal not found');
+        if (!goal) return fail('Goal not found', 'ERR_NOT_FOUND', 404);
         const result = await syncGoalToFinance(userId, goal);
         await syncGoalToCalendar(userId, goal);
         return ok(result);
       }
 
       case 'assess_feasibility': {
-        if (!body.goalId) return fail(400, 'goalId required');
+        if (!body.goalId) return fail('goalId required', 'ERR_VALIDATION', 400);
         const result = await assessGoalFeasibility(userId, body.goalId);
         return ok(result);
       }
@@ -371,10 +374,10 @@ export async function handler(event) {
         return await acknowledgeSignal(userId, body);
 
       default:
-        return fail(400, `Unknown action: ${action}`);
+        return fail(`Unknown action: ${action}`, 'ERR_UNKNOWN_ACTION', 400);
     }
   } catch (err) {
     console.error(`[life-os] action=${action} error:`, err);
-    return fail(500, err.message || 'Internal error');
+    return fail(err.message || 'Internal error', 'ERR_INTERNAL', 500);
   }
 }
