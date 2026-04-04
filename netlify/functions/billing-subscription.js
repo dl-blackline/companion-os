@@ -7,6 +7,7 @@
  */
 import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
+import { validatePayloadSize } from '../../lib/_security.js';
 import { getUsageSummary } from '../../lib/_entitlements.js';
 import { isSuperAdminUser } from '../../lib/_super-admin.js';
 
@@ -148,6 +149,9 @@ export async function handler(event) {
     if (event.httpMethod !== 'POST') {
       return fail('Method not allowed', 'ERR_METHOD', 405);
     }
+
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
     const body = JSON.parse(event.body || '{}');
     const action = body.action;

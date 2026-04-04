@@ -15,7 +15,7 @@ interface StripeReturnViewProps {
 
 export function StripeReturnView({ onNavigateToFinance }: StripeReturnViewProps) {
   const { loading: authLoading } = useAuth();
-  const { completeSession, refresh, error: hookError, loading: refreshing } = useStripeFinancialConnections();
+  const { completeSession, refresh, error: _hookError, loading: refreshing } = useStripeFinancialConnections();
   const [status, setStatus] = useState<'processing' | 'success' | 'partial' | 'canceled' | 'error'>('processing');
   const [message, setMessage] = useState('Completing your bank link...');
   const [processed, setProcessed] = useState(false);

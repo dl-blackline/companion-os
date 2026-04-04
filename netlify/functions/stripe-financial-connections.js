@@ -11,6 +11,7 @@
 import Stripe from 'stripe';
 import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
+import { validatePayloadSize } from '../../lib/_security.js';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const RETURN_URL =
@@ -93,8 +94,8 @@ async function persistBalanceSnapshot(userId, connectionId, balance) {
   await supabase.from('account_balance_snapshots').insert({
     user_id: userId,
     connection_id: connectionId,
-    current_balance: currentCents != null ? currentCents / 100 : null,
-    available_balance: availableCents != null ? availableCents / 100 : null,
+    current_balance: currentCents !== null ? currentCents / 100 : null,
+    available_balance: availableCents !== null ? availableCents / 100 : null,
     currency,
     as_of: balance.as_of ? new Date(balance.as_of * 1000).toISOString() : new Date().toISOString(),
   });
@@ -758,7 +759,7 @@ async function handleUpdateAccount(user, body) {
 
 async function handleCreateLedgerEntry(user, body) {
   const { title, amount, direction, due_date, recurrence, category, notes, connection_id } = body || {};
-  if (!title || amount == null || !direction || !due_date) {
+  if (!title || amount === null || !direction || !due_date) {
     return fail('Missing required fields: title, amount, direction, due_date', 'ERR_VALIDATION', 400);
   }
   if (!['inflow', 'outflow'].includes(direction)) return fail('direction must be inflow or outflow', 'ERR_VALIDATION', 400);
@@ -794,7 +795,7 @@ async function handleUpdateLedgerEntry(user, body) {
       updates[key] = body[key];
     }
   }
-  if (updates.amount != null) updates.amount = Math.abs(Number(updates.amount));
+  if (updates.amount !== null) updates.amount = Math.abs(Number(updates.amount));
   if (updates.status === 'completed') updates.completed_at = new Date().toISOString();
 
   if (Object.keys(updates).length === 0) return fail('Nothing to update', 'ERR_VALIDATION', 400);
@@ -851,6 +852,9 @@ export async function handler(event) {
     if (event.httpMethod !== 'POST') {
       return fail('Method not allowed', 'ERR_METHOD', 405);
     }
+
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
     let body;
     try {

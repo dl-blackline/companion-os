@@ -1,5 +1,6 @@
 import { createJob } from "../../lib/job-queue.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 import { supabase } from "../../lib/_supabase.js";
 import { ensureFeatureWithinQuota, recordFeatureUsage } from "../../lib/_entitlements.js";
@@ -25,6 +26,9 @@ export async function handler(event) {
     if (!user) {
       return fail("Unauthorized", "ERR_AUTH", 401);
     }
+
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
     const { type, prompt, model, options } = JSON.parse(event.body);
     log.info("[generate-media]", "incoming request:", { type, model, options, promptLength: prompt?.length });

@@ -1,6 +1,7 @@
 import { supabase } from "../../lib/_supabase.js";
 import { generateMedia } from "../../lib/media-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 
 const PGRST_NOT_FOUND = "PGRST116";
@@ -251,6 +252,9 @@ export async function handler(event) {
   const token = authHeader?.replace("Bearer ", "");
   const user = await getUserFromToken(token);
   if (!user) return fail("Unauthorized", "ERR_AUTH", 401);
+
+  const sizeCheck = validatePayloadSize(event.body);
+  if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
   let body;
   try {

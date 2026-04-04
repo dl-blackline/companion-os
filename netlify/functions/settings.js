@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 
 async function getUserFromToken(token) {
@@ -44,6 +45,9 @@ export async function handler(event) {
     }
 
     if (event.httpMethod === "POST") {
+      const sizeCheck = validatePayloadSize(event.body);
+      if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
+
       let body;
       try {
         body = JSON.parse(event.body || "{}");

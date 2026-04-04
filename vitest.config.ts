@@ -19,9 +19,38 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
     pool: 'forks',
+    projects: [
+      {
+        // Frontend tests (React, jsdom)
+        test: {
+          name: 'frontend',
+          environment: 'jsdom',
+          setupFiles: ['./src/test/setup.ts'],
+          include: ['src/**/*.test.{ts,tsx}'],
+          globals: true,
+        },
+        resolve: {
+          alias: {
+            '@': resolve(projectRoot, 'src'),
+            '@lib': resolve(projectRoot, 'lib'),
+          },
+        },
+      },
+      {
+        // Backend tests (Netlify functions, Node environment)
+        test: {
+          name: 'backend',
+          environment: 'node',
+          include: ['netlify/**/*.test.{js,mjs}', 'lib/**/*.test.{js,mjs}'],
+          globals: true,
+        },
+        resolve: {
+          alias: {
+            '@lib': resolve(projectRoot, 'lib'),
+          },
+        },
+      },
+    ],
   },
 });

@@ -24,12 +24,8 @@ import { Heartbeat } from '@phosphor-icons/react/Heartbeat';
 import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
 import { ListBullets } from '@phosphor-icons/react/ListBullets';
 import { MagnifyingGlass } from '@phosphor-icons/react/MagnifyingGlass';
-import { Microphone } from '@phosphor-icons/react/Microphone';
-import { PaperPlaneRight } from '@phosphor-icons/react/PaperPlaneRight';
-import { ChatCircleDots } from '@phosphor-icons/react/ChatCircleDots';
 import { Note } from '@phosphor-icons/react/Note';
 import { PiggyBank } from '@phosphor-icons/react/PiggyBank';
-import { TrendDown } from '@phosphor-icons/react/TrendDown';
 import { TrendUp } from '@phosphor-icons/react/TrendUp';
 import { Wallet } from '@phosphor-icons/react/Wallet';
 import { Plus } from '@phosphor-icons/react/Plus';
@@ -40,7 +36,7 @@ import { GlobeSimple } from '@phosphor-icons/react/GlobeSimple';
 import type { FinancialDocumentSourceType } from '@/types/financial-intelligence';
 import type { RecurringIncomeSignal, RecurringExpenseSignal } from '@/types/financial-analysis';
 import type { DecodedBill, ScorecardLabel } from '@/types/premium-finance';
-import type { NormalizedTransaction, TransactionFilters, LedgerEntry } from '@/types/stripe-financial';
+import type { NormalizedTransaction, LedgerEntry } from '@/types/stripe-financial';
 
 function currency(value: number) {
   return new Intl.NumberFormat('en-US', {
@@ -95,8 +91,8 @@ export function FinanceView() {
   // AI Financial Intake state
   const [aiInput, setAiInput] = useState('');
   const [aiProcessing, setAiProcessing] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [aiListening, setAiListening] = useState(false);
+  const [_aiResponse, setAiResponse] = useState<string | null>(null);
+  const [_aiListening, setAiListening] = useState(false);
 
   // Vehicle form state
   const [vYear, setVYear] = useState('');
@@ -156,9 +152,9 @@ export function FinanceView() {
     saveObligation,
     deleteObligation,
     saveGoal,
-    deleteGoal,
+    deleteGoal: _deleteGoal,
     saveCalendarEvent,
-    deleteCalendarEvent,
+    deleteCalendarEvent: _deleteCalendarEvent,
     refreshInsights,
   } = useFinancialIntelligence();
 
@@ -176,13 +172,13 @@ export function FinanceView() {
 
   const {
     dashboard: decoderDashboard,
-    loading: decoderLoading,
+    loading: _decoderLoading,
     decoding,
     error: decoderError,
     decodeDocument,
     confirmBill,
     rejectBill,
-    updateBillField,
+    updateBillField: _updateBillField,
   } = useBillDecoder();
 
   const {
@@ -427,7 +423,7 @@ export function FinanceView() {
     }
   }, [vYear, vMake, vModel, vTrim, vMileage, vCondition, vPayoff, vPayment, vLender, vTermRemaining, vValue, vValueSource, upsertVehicle]);
 
-  const handleAIIntake = useCallback(async () => {
+  const _handleAIIntake = useCallback(async () => {
     if (!aiInput.trim() || aiProcessing) return;
     setAiProcessing(true);
     setAiResponse(null);
@@ -469,7 +465,7 @@ export function FinanceView() {
     }
   }, [incomeSource, incomeAmount, incomeFrequency, addManualIncome]);
 
-  const handleVoiceInput = useCallback(() => {
+  const _handleVoiceInput = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Voice input is not supported in this browser.');
       return;
@@ -525,7 +521,7 @@ export function FinanceView() {
 
   const pulse = summary.pulse;
   const snap = dashboard.snapshot;
-  const analysis = analysisDashboard.summary;
+  const _analysis = analysisDashboard.summary;
   const scorecard = scorecardDashboard.scorecard;
 
   const confidenceLabel = (score: number) => {

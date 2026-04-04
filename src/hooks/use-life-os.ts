@@ -3,7 +3,6 @@ import { useAuth } from '@/context/auth-context';
 import type {
   LifeOSDashboard,
   LifeGoal,
-  CoordinationSignal,
   LifePlan,
   CreateGoalInput,
   UpdateGoalInput,
