@@ -137,9 +137,10 @@ export async function streamCompanionMessage(
   });
 
   try {
+    const authHeaders = await getAuthHeaders();
     const res = await fetch(COMPANION_STREAM_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({
         message,
         user_id: userId,
@@ -261,9 +262,10 @@ export async function startRealtimeSession(
   userId: string,
   sessionType: RealtimeSession['sessionType'] = 'live_assistant',
 ): Promise<RealtimeSession> {
+  const authHeaders = await getAuthHeaders();
   const res = await fetch(START_SESSION_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({ user_id: userId, session_type: sessionType }),
   });
 
@@ -291,9 +293,10 @@ export async function startRealtimeSession(
  * @param sessionId - Session to end
  */
 export async function endRealtimeSession(sessionId: string): Promise<void> {
+  const authHeaders = await getAuthHeaders();
   await fetch(END_SESSION_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({ session_id: sessionId }),
   });
 }

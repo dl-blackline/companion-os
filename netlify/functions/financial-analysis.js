@@ -8,9 +8,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 function toNumber(value) {
@@ -800,15 +804,50 @@ export async function handler(event) {
     }
 
     if (action === 'confirm_income_signal') {
-      return confirmIncomeSignal(user.id, body);
+      return await confirmIncomeSignal(user.id, body);
     }
 
     if (action === 'confirm_expense_signal') {
-      return confirmExpenseSignal(user.id, body);
+      return await confirmExpenseSignal(user.id, body);
     }
 
     if (action === 'dismiss_signal') {
-      return dismissSignal(user.id, body);
+      return await dismissSignal(user.id, body);
+    }
+
+    if (action === 'add_manual_income') {
+      const sourceName = (body.sourceName || '').trim();
+      const amount = toNumber(body.amount);
+      const frequency = body.frequency || 'monthly';
+
+      if (!sourceName || amount <= 0) {
+        return fail('Source name and amount are required.', 'ERR_VALIDATION', 400);
+      }
+
+      const validFreq = ['weekly', 'biweekly', 'semi_monthly', 'monthly', 'quarterly', 'annual'];
+      if (!validFreq.includes(frequency)) {
+        return fail('Invalid frequency.', 'ERR_VALIDATION', 400);
+      }
+
+      const { error: insertErr } = await supabase
+        .from('recurring_income_signals')
+        .insert({
+          user_id: user.id,
+          signal_name: `Manual: ${sourceName}`,
+          detected_source: sourceName,
+          user_label: sourceName,
+          frequency,
+          estimated_amount: amount,
+          amount_variance: 0,
+          confidence_score: 1.0,
+          occurrence_count: 1,
+          is_user_confirmed: true,
+          status: 'active',
+          last_occurrence: new Date().toISOString().slice(0, 10),
+        });
+      if (insertErr) return fail('Failed to save manual income.', 'ERR_DB', 500);
+      const dashboard = await loadAnalysisDashboard(user.id);
+      return ok(dashboard);
     }
 
     if (action === 'add_manual_income') {

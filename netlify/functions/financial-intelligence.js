@@ -12,9 +12,13 @@ function getAuthToken(event) {
 }
 
 async function resolveActor(token) {
-  if (!token) return null;
-  const { data } = await supabase.auth.getUser(token);
-  return data?.user || null;
+  if (!token || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user || null;
+  } catch {
+    return null;
+  }
 }
 
 function toNumber(value) {
@@ -813,11 +817,11 @@ export async function handler(event) {
 
     const action = body.action;
     if (action === 'ingest_document') {
-      return ingestDocument({ user, body });
+      return await ingestDocument({ user, body });
     }
 
     if (action === 'upsert_obligation') {
-      return upsertObligation(user.id, body);
+      return await upsertObligation(user.id, body);
     }
 
     if (action === 'delete_obligation') {
@@ -833,7 +837,7 @@ export async function handler(event) {
     }
 
     if (action === 'upsert_goal') {
-      return upsertGoal(user.id, body);
+      return await upsertGoal(user.id, body);
     }
 
     if (action === 'delete_goal') {
@@ -861,11 +865,11 @@ export async function handler(event) {
     }
 
     if (action === 'upsert_calendar_event') {
-      return upsertCalendarEvent(user.id, body);
+      return await upsertCalendarEvent(user.id, body);
     }
 
     if (action === 'set_preference') {
-      return setPreference(user.id, body);
+      return await setPreference(user.id, body);
     }
 
     if (action === 'refresh_insights') {
@@ -874,7 +878,7 @@ export async function handler(event) {
     }
 
     if (action === 'ai_financial_intake') {
-      return handleAIFinancialIntake(user.id, body);
+      return await handleAIFinancialIntake(user.id, body);
     }
 
     return fail('Unknown action', 'ERR_VALIDATION', 400);

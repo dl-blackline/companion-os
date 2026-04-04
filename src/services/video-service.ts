@@ -278,7 +278,10 @@ export interface VideoJobStatus {
 }
 
 export async function pollVideoJobStatus(jobId: string): Promise<VideoJobStatus> {
-  const res = await fetch(`${API_BASE}/job-status?id=${encodeURIComponent(jobId)}`);
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/job-status?id=${encodeURIComponent(jobId)}`, {
+    headers: authHeaders,
+  });
   if (!res.ok) {
     throw new Error(`Job status check failed: ${res.status}`);
   }

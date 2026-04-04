@@ -39,7 +39,9 @@ export async function handler(event) {
     if (action) {
       // Sanitize PostgREST metacharacters from filter value
       const safeAction = action.replace(/[,.()|]/g, "");
-      query = query.ilike("action", `%${safeAction}%`);
+      if (safeAction) {
+        query = query.ilike("action", `%${safeAction}%`);
+      }
     }
     if (actor_id) query = query.eq("actor_id", actor_id);
 

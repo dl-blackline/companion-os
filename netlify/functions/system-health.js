@@ -8,6 +8,17 @@ import { log } from "../../lib/_log.js";
 // "not_configured" — required env var(s) missing; expected when key isn't set
 // "error"          — configured but unreachable or returning errors
 
+/** AbortController-based timeout wrapper for external health checks. */
+async function fetchWithTimeout(url, options, timeoutMs = 5000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
 async function checkSupabase() {
   try {
     if (!supabaseConfigured) {
@@ -32,9 +43,10 @@ async function checkOpenAI() {
       log.warn("[system-health]", "OPENAI_API_KEY is not configured");
       return "not_configured";
     }
-    const res = await fetch("https://api.openai.com/v1/models", {
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-    });
+    const res = await fetchWithTimeout(
+      "https://api.openai.com/v1/models",
+      { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` } },
+    );
     if (!res.ok) {
       log.warn("[system-health]", `OpenAI API check failed with status ${res.status}`);
       return "error";
@@ -73,14 +85,17 @@ async function checkMedia() {
       return "not_configured";
     }
     // Lightweight connectivity check against PiAPI
-    const res = await fetch("https://api.piapi.ai/api/v1/task", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": process.env.PIAPI_API_KEY,
+    const res = await fetchWithTimeout(
+      "https://api.piapi.ai/api/v1/task",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": process.env.PIAPI_API_KEY,
+        },
+        body: JSON.stringify({}),
       },
-      body: JSON.stringify({}),
-    });
+    );
     // Any response (even 400 for missing params) confirms connectivity
     return res.status < 500 ? "ok" : "error";
   } catch (err) {
@@ -96,11 +111,10 @@ async function checkLeonardo() {
       return "not_configured";
     }
     // Lightweight connectivity check — fetch the user info endpoint
-    const res = await fetch("https://cloud.leonardo.ai/api/rest/v1/me", {
-      headers: {
-        Authorization: `Bearer ${leonardoApiKey}`,
-      },
-    });
+    const res = await fetchWithTimeout(
+      "https://cloud.leonardo.ai/api/rest/v1/me",
+      { headers: { Authorization: `Bearer ${leonardoApiKey}` } },
+    );
     return res.ok ? "ok" : "error";
   } catch (err) {
     log.error("[system-health]", "leonardo check error:", err.message);
