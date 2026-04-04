@@ -24,7 +24,6 @@ export { MobileHeader, MobileDrawerOverlay, MobileSidebarWrapper } from './mobil
 
 // Runtime display
 export { StatusChips } from './runtime-banner';
-export { TelemetryRail } from './telemetry-rail';
 export { getRuntimeDisplay, getStateDotClass } from './runtime-helpers';
 export type { RuntimeDisplayInfo } from './runtime-helpers';
 

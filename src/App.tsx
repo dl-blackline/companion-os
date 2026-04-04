@@ -16,7 +16,6 @@ import { renderSection, FloatingLiveOrb, CommandPalette } from '@/app-shell/sect
 import { AnimatedSection } from '@/app-shell/animated-section';
 import { MobileHeader, MobileDrawerOverlay, MobileSidebarWrapper } from '@/app-shell/mobile-shell';
 import { StatusChips } from '@/app-shell/runtime-banner';
-import { TelemetryRail } from '@/app-shell/telemetry-rail';
 import { getRuntimeDisplay } from '@/app-shell/runtime-helpers';
 import { evaluateGate, preNavigationEffects } from '@/app-shell/feature-gates';
 
@@ -156,21 +155,10 @@ function App() {
         />
       )}
 
-      <main className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'pt-[52px]' : ''}`}>
-        {/* Desktop telemetry rail — persistent status bar */}
-        {!isMobile && (
-          <TelemetryRail
-            runtimeDisplay={runtimeDisplay}
-            companionState={displayCompanionState}
-            activeSection={activeSection}
-            modelLabel={orchestratorConfig.model || undefined}
-          />
-        )}
-        <div className="flex-1 overflow-hidden">
-          <AnimatedSection sectionKey={activeSection}>
-            {renderSection(activeSection, sectionCtx)}
-          </AnimatedSection>
-        </div>
+      <main className={`flex-1 overflow-hidden ${isMobile ? 'pt-[52px]' : ''}`}>
+        <AnimatedSection sectionKey={activeSection}>
+          {renderSection(activeSection, sectionCtx)}
+        </AnimatedSection>
       </main>
 
       {/* Global floating Live Talk orb — hidden on Live Talk page */}
