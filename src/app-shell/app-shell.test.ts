@@ -9,14 +9,8 @@ import { SECTION_COMPONENTS, renderSection } from '@/app-shell/section-registry'
 
 describe('app-shell/router', () => {
   describe('sectionFromPathname', () => {
-    it('returns home for /', () => {
-      expect(sectionFromPathname('/')).toBe('home');
-    });
-    it('returns control-center for /control-center', () => {
-      expect(sectionFromPathname('/control-center')).toBe('control-center');
-    });
-    it('returns careers for /careers', () => {
-      expect(sectionFromPathname('/careers')).toBe('careers');
+    it('returns today for /', () => {
+      expect(sectionFromPathname('/')).toBe('today');
     });
     it('returns stripe-return for /finance/stripe/return', () => {
       expect(sectionFromPathname('/finance/stripe/return')).toBe('stripe-return');
@@ -24,57 +18,60 @@ describe('app-shell/router', () => {
     it('returns finance for /finance', () => {
       expect(sectionFromPathname('/finance')).toBe('finance');
     });
-    it('returns automotive-finance for /automotive-finance', () => {
-      expect(sectionFromPathname('/automotive-finance')).toBe('automotive-finance');
+    it('returns tasks for /tasks', () => {
+      expect(sectionFromPathname('/tasks')).toBe('tasks');
     });
-    it('returns home for unknown paths', () => {
-      expect(sectionFromPathname('/unknown')).toBe('home');
+    it('returns investments for /investments', () => {
+      expect(sectionFromPathname('/investments')).toBe('investments');
     });
-  });
-
-  describe('pathnameFromSection', () => {
-    it('returns / for home', () => {
-      expect(pathnameFromSection('home')).toBe('/');
-    });
-    it('returns unique paths for all routed sections', () => {
-      expect(pathnameFromSection('chat')).toBe('/chat');
-      expect(pathnameFromSection('media')).toBe('/media');
-      expect(pathnameFromSection('memory')).toBe('/memory');
-      expect(pathnameFromSection('live-talk')).toBe('/live-talk');
-      expect(pathnameFromSection('knowledge')).toBe('/knowledge');
-      expect(pathnameFromSection('goals')).toBe('/goals');
-      expect(pathnameFromSection('settings')).toBe('/settings');
-      expect(pathnameFromSection('agents')).toBe('/agents');
-    });
-    it('returns /control-center for control-center', () => {
-      expect(pathnameFromSection('control-center')).toBe('/control-center');
-    });
-    it('returns /finance/stripe/return for stripe-return', () => {
-      expect(pathnameFromSection('stripe-return')).toBe('/finance/stripe/return');
-    });
-  });
-
-  describe('sectionFromPathname — new routes', () => {
-    it('returns chat for /chat', () => {
-      expect(sectionFromPathname('/chat')).toBe('chat');
-    });
-    it('returns media for /media', () => {
-      expect(sectionFromPathname('/media')).toBe('media');
+    it('returns assistant for /assistant', () => {
+      expect(sectionFromPathname('/assistant')).toBe('assistant');
     });
     it('returns settings for /settings', () => {
       expect(sectionFromPathname('/settings')).toBe('settings');
     });
-    it('returns agents for /agents', () => {
-      expect(sectionFromPathname('/agents')).toBe('agents');
-    });
-    it('returns live-talk for /live-talk', () => {
-      expect(sectionFromPathname('/live-talk')).toBe('live-talk');
-    });
-    it('returns tarot for /tarot', () => {
-      expect(sectionFromPathname('/tarot')).toBe('tarot');
-    });
     it('returns admin-console for /admin-console', () => {
       expect(sectionFromPathname('/admin-console')).toBe('admin-console');
+    });
+    it('returns today for unknown paths', () => {
+      expect(sectionFromPathname('/unknown')).toBe('today');
+    });
+    it('returns today for legacy paths that no longer exist', () => {
+      expect(sectionFromPathname('/chat')).toBe('today');
+      expect(sectionFromPathname('/media')).toBe('today');
+      expect(sectionFromPathname('/memory')).toBe('today');
+      expect(sectionFromPathname('/live-talk')).toBe('today');
+      expect(sectionFromPathname('/goals')).toBe('today');
+      expect(sectionFromPathname('/careers')).toBe('today');
+      expect(sectionFromPathname('/tarot')).toBe('today');
+      expect(sectionFromPathname('/control-center')).toBe('today');
+    });
+  });
+
+  describe('pathnameFromSection', () => {
+    it('returns / for today', () => {
+      expect(pathnameFromSection('today')).toBe('/');
+    });
+    it('returns /finance for finance', () => {
+      expect(pathnameFromSection('finance')).toBe('/finance');
+    });
+    it('returns /tasks for tasks', () => {
+      expect(pathnameFromSection('tasks')).toBe('/tasks');
+    });
+    it('returns /investments for investments', () => {
+      expect(pathnameFromSection('investments')).toBe('/investments');
+    });
+    it('returns /assistant for assistant', () => {
+      expect(pathnameFromSection('assistant')).toBe('/assistant');
+    });
+    it('returns /settings for settings', () => {
+      expect(pathnameFromSection('settings')).toBe('/settings');
+    });
+    it('returns /finance/stripe/return for stripe-return', () => {
+      expect(pathnameFromSection('stripe-return')).toBe('/finance/stripe/return');
+    });
+    it('returns /admin-console for admin-console', () => {
+      expect(pathnameFromSection('admin-console')).toBe('/admin-console');
     });
   });
 });
@@ -85,50 +82,32 @@ describe('app-shell/feature-gates', () => {
   const baseCtx = {
     plan: 'pro' as const,
     isAdmin: false,
-    voiceCapabilityEnabled: true,
-    isGlobalVoiceActive: false,
-    stopLiveTalk: () => {},
   };
 
-  it('allows navigation to regular sections', () => {
-    const result = evaluateGate('chat', baseCtx);
-    expect(result.allowed).toBe(true);
+  it('allows navigation to core sections', () => {
+    expect(evaluateGate('today', baseCtx).allowed).toBe(true);
+    expect(evaluateGate('finance', baseCtx).allowed).toBe(true);
+    expect(evaluateGate('tasks', baseCtx).allowed).toBe(true);
+    expect(evaluateGate('investments', baseCtx).allowed).toBe(true);
+    expect(evaluateGate('assistant', baseCtx).allowed).toBe(true);
+    expect(evaluateGate('settings', baseCtx).allowed).toBe(true);
   });
 
-  it('blocks agents for free plan and redirects to settings', () => {
-    const result = evaluateGate('agents', { ...baseCtx, plan: 'free' });
+  it('blocks admin-console for non-admins and redirects to today', () => {
+    const result = evaluateGate('admin-console', { ...baseCtx, isAdmin: false });
     expect(result.allowed).toBe(false);
-    expect(result.redirect).toBe('settings');
+    expect(result.redirect).toBe('today');
   });
 
-  it('allows agents for paid plan', () => {
-    const result = evaluateGate('agents', { ...baseCtx, plan: 'pro' });
+  it('allows admin-console for admins', () => {
+    const result = evaluateGate('admin-console', { ...baseCtx, isAdmin: true });
     expect(result.allowed).toBe(true);
   });
 
-  it('blocks live-talk when voice capability is disabled', () => {
-    const result = evaluateGate('live-talk', { ...baseCtx, voiceCapabilityEnabled: false });
-    expect(result.allowed).toBe(false);
-    expect(result.redirect).toBeUndefined();
-  });
-
-  it('allows live-talk when voice capability is enabled', () => {
-    const result = evaluateGate('live-talk', baseCtx);
-    expect(result.allowed).toBe(true);
-  });
-
-  it('preNavigationEffects stops live talk when entering live-talk with active voice', () => {
-    let stopped = false;
-    const ctx = { ...baseCtx, isGlobalVoiceActive: true, stopLiveTalk: () => { stopped = true; } };
-    preNavigationEffects('live-talk', ctx);
-    expect(stopped).toBe(true);
-  });
-
-  it('preNavigationEffects does nothing for non-live-talk sections', () => {
-    let stopped = false;
-    const ctx = { ...baseCtx, isGlobalVoiceActive: true, stopLiveTalk: () => { stopped = true; } };
-    preNavigationEffects('chat', ctx);
-    expect(stopped).toBe(false);
+  it('preNavigationEffects does not throw for any section', () => {
+    expect(() => preNavigationEffects('today', baseCtx)).not.toThrow();
+    expect(() => preNavigationEffects('finance', baseCtx)).not.toThrow();
+    expect(() => preNavigationEffects('settings', baseCtx)).not.toThrow();
   });
 });
 
@@ -169,33 +148,33 @@ describe('app-shell/runtime-helpers', () => {
 /* ── Navigation helpers ───────────────────────────────────────────────────── */
 
 describe('app-shell/navigation', () => {
-  it('stripe-return, admin-console, tarot are hidden nav sections', () => {
+  it('stripe-return, admin-console are hidden nav sections', () => {
     expect(isVisibleNavSection('stripe-return')).toBe(false);
     expect(isVisibleNavSection('admin-console')).toBe(false);
-    expect(isVisibleNavSection('tarot')).toBe(false);
   });
 
-  it('home, chat, media are visible nav sections', () => {
-    expect(isVisibleNavSection('home')).toBe(true);
-    expect(isVisibleNavSection('chat')).toBe(true);
-    expect(isVisibleNavSection('media')).toBe(true);
+  it('today, finance, tasks, investments, assistant, settings are visible nav sections', () => {
+    expect(isVisibleNavSection('today')).toBe(true);
+    expect(isVisibleNavSection('finance')).toBe(true);
+    expect(isVisibleNavSection('tasks')).toBe(true);
+    expect(isVisibleNavSection('investments')).toBe(true);
+    expect(isVisibleNavSection('assistant')).toBe(true);
+    expect(isVisibleNavSection('settings')).toBe(true);
   });
 
   it('admin-console is an admin section', () => {
     expect(isAdminSection('admin-console')).toBe(true);
-    expect(isAdminSection('home')).toBe(false);
+    expect(isAdminSection('today')).toBe(false);
   });
 });
 
 /* ── Section registry ─────────────────────────────────────────────────────── */
 
 describe('app-shell/section-registry', () => {
-  it('has an entry for every expected section', () => {
+  it('has an entry for every v2 section', () => {
     const expectedSections = [
-      'home', 'live-talk', 'chat', 'media', 'memory', 'knowledge',
-      'goals', 'calendar', 'workflows', 'insights', 'careers', 'finance',
-      'stripe-return', 'automotive-finance', 'agents', 'control-center',
-      'settings', 'tarot', 'admin-console',
+      'today', 'finance', 'tasks', 'investments', 'assistant',
+      'settings', 'stripe-return', 'admin-console',
     ];
     for (const section of expectedSections) {
       expect(SECTION_COMPONENTS).toHaveProperty(section);
@@ -207,22 +186,21 @@ describe('app-shell/section-registry', () => {
     const ctx = {
       companionState: 'idle' as const,
       setCompanionState: () => {},
-      aiName: 'Vuk',
+      aiName: 'Companion',
       isAdmin: false,
       onNavigate: () => {},
       onBack: () => {},
       setActiveSection: () => {},
     };
-    // Should not throw for any known section
-    const result = renderSection('chat', ctx);
+    const result = renderSection('today', ctx);
     expect(result).toBeDefined();
   });
 
-  it('renderSection falls back to home for unknown sections', () => {
+  it('renderSection falls back to today for unknown sections', () => {
     const ctx = {
       companionState: 'idle' as const,
       setCompanionState: () => {},
-      aiName: 'Vuk',
+      aiName: 'Companion',
       isAdmin: false,
       onNavigate: () => {},
       onBack: () => {},

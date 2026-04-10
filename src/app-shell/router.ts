@@ -5,32 +5,21 @@
  * pathnames. All navigation code should go through these helpers instead
  * of hardcoding paths.
  *
- * Now backed by react-router-dom for proper browser history integration.
+ * v2: Routes only the six core sections plus utility routes (stripe-return, admin-console).
  */
 
 import type { NavSection } from '@/components/AppSidebar';
 
-/* ── Section → Path (every section gets a unique URL) ─────────────────────── */
+/* ── Section → Path (v2 core sections) ────────────────────────────────────── */
 
 const SECTION_PATHS: Record<NavSection, string> = {
-  'home': '/',
-  'chat': '/chat',
-  'live-talk': '/live-talk',
-  'media': '/media',
-  'memory': '/memory',
-  'knowledge': '/knowledge',
-  'goals': '/goals',
-  'calendar': '/calendar',
-  'workflows': '/workflows',
-  'insights': '/insights',
-  'careers': '/careers',
+  'today': '/',
   'finance': '/finance',
-  'stripe-return': '/finance/stripe/return',
-  'automotive-finance': '/automotive-finance',
-  'agents': '/agents',
-  'control-center': '/control-center',
+  'tasks': '/tasks',
+  'investments': '/investments',
+  'assistant': '/assistant',
   'settings': '/settings',
-  'tarot': '/tarot',
+  'stripe-return': '/finance/stripe/return',
   'admin-console': '/admin-console',
 };
 
@@ -43,26 +32,15 @@ export function pathnameFromSection(section: NavSection): string {
 // Ordered so more-specific prefixes match first
 const PATH_MATCHERS: Array<{ test: (p: string) => boolean; section: NavSection }> = [
   { test: (p) => p.startsWith('/finance/stripe/return'), section: 'stripe-return' },
-  { test: (p) => p === '/control-center', section: 'control-center' },
-  { test: (p) => p === '/careers', section: 'careers' },
   { test: (p) => p === '/finance', section: 'finance' },
-  { test: (p) => p === '/automotive-finance', section: 'automotive-finance' },
-  { test: (p) => p === '/chat', section: 'chat' },
-  { test: (p) => p === '/live-talk', section: 'live-talk' },
-  { test: (p) => p === '/media', section: 'media' },
-  { test: (p) => p === '/memory', section: 'memory' },
-  { test: (p) => p === '/knowledge', section: 'knowledge' },
-  { test: (p) => p === '/goals', section: 'goals' },
-  { test: (p) => p === '/calendar', section: 'calendar' },
-  { test: (p) => p === '/workflows', section: 'workflows' },
-  { test: (p) => p === '/insights', section: 'insights' },
-  { test: (p) => p === '/agents', section: 'agents' },
+  { test: (p) => p === '/tasks', section: 'tasks' },
+  { test: (p) => p === '/investments', section: 'investments' },
+  { test: (p) => p === '/assistant', section: 'assistant' },
   { test: (p) => p === '/settings', section: 'settings' },
-  { test: (p) => p === '/tarot', section: 'tarot' },
   { test: (p) => p === '/admin-console', section: 'admin-console' },
 ];
 
-const DEFAULT_SECTION: NavSection = 'home';
+const DEFAULT_SECTION: NavSection = 'today';
 
 export function sectionFromPathname(pathname: string): NavSection {
   for (const { test, section } of PATH_MATCHERS) {
