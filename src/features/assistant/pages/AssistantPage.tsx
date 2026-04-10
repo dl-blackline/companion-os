@@ -49,9 +49,9 @@ export function AssistantPage() {
 
         {/* Command area placeholder */}
         <div className="mb-8 rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-6">
-          <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/40 px-4 py-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/40 px-4 py-3 opacity-60">
             <ChatCircle size={18} className="text-muted-foreground shrink-0" />
-            <span className="text-sm text-muted-foreground">Ask anything, give a command, or paste content to process…</span>
+            <span className="text-sm text-muted-foreground">Command interface — coming in Phase 5</span>
           </div>
           <p className="mt-3 text-xs text-muted-foreground text-center">
             Natural language commands will drive structured actions across all modules.

@@ -95,7 +95,9 @@ export const SECTION_COMPONENTS: Record<NavSection, SectionFactory> = {
 };
 
 /**
- * Resolve the component for a given section. Falls back to Today for unknown sections.
+ * Resolve the component for a given section. Falls back to Today for unknown
+ * sections. Admin-only sections (e.g. admin-console) also fall back to Today
+ * for non-admin users via the section factory's own guard.
  */
 export function renderSection(section: NavSection, ctx: SectionRenderContext): ReactNode {
   const factory = SECTION_COMPONENTS[section] ?? todayFactory;
