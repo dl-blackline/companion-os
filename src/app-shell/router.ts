@@ -17,6 +17,7 @@ const SECTION_PATHS: Record<NavSection, string> = {
   'finance': '/finance',
   'tasks': '/tasks',
   'investments': '/investments',
+  'catalog': '/catalog',
   'assistant': '/assistant',
   'settings': '/settings',
   'stripe-return': '/finance/stripe/return',
@@ -38,6 +39,7 @@ const PATH_MATCHERS: Array<{ test: (p: string) => boolean; section: NavSection }
   { test: (p) => p === '/assistant', section: 'assistant' },
   { test: (p) => p === '/settings', section: 'settings' },
   { test: (p) => p === '/admin-console', section: 'admin-console' },
+  { test: (p) => p.startsWith('/catalog'), section: 'catalog' },
 ];
 
 const DEFAULT_SECTION: NavSection = 'today';

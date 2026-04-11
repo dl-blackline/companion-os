@@ -89,18 +89,18 @@ function computeReadiness(item) {
 /* ── Handler ─────────────────────────────────────────────────── */
 
 export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return preflight(event);
+  if (event.httpMethod === 'OPTIONS') return preflight();
 
   try {
     const token = getAuthToken(event);
     const actor = await resolveActor(token);
-    if (!actor) return fail(event, 401, 'Authentication required', 'UNAUTHORIZED');
+    if (!actor) return fail('Authentication required', 'UNAUTHORIZED', 401);
 
     const body = JSON.parse(event.body || '{}');
     const action = body.action;
 
     if (!action || !SUPPORTED_ACTIONS.has(action)) {
-      return fail(event, 400, `Unsupported action: ${action}`, 'INVALID_ACTION');
+      return fail(`Unsupported action: ${action}`, 'INVALID_ACTION', 400);
     }
 
     /* ── list_items ──────────────────────────────────────────── */
@@ -119,13 +119,13 @@ export async function handler(event) {
       if (body.limit) query = query.limit(body.limit);
 
       const { data, error } = await query;
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { items: data || [] });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ items: data || [] });
     }
 
     /* ── get_item ────────────────────────────────────────────── */
     if (action === 'get_item') {
-      if (!body.item_id) return fail(event, 400, 'item_id required', 'MISSING_FIELD');
+      if (!body.item_id) return fail('item_id required', 'MISSING_FIELD', 400);
 
       const { data, error } = await supabase
         .from('catalog_items')
@@ -134,9 +134,9 @@ export async function handler(event) {
         .eq('user_id', actor.id)
         .maybeSingle();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      if (!data) return fail(event, 404, 'Item not found', 'NOT_FOUND');
-      return ok(event, { item: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      if (!data) return fail('Item not found', 'NOT_FOUND', 404);
+      return ok({ item: data });
     }
 
     /* ── create_item ─────────────────────────────────────────── */
@@ -150,13 +150,13 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { item: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ item: data });
     }
 
     /* ── update_item ─────────────────────────────────────────── */
     if (action === 'update_item') {
-      if (!body.item_id) return fail(event, 400, 'item_id required', 'MISSING_FIELD');
+      if (!body.item_id) return fail('item_id required', 'MISSING_FIELD', 400);
 
       // Verify ownership
       const { data: existing } = await supabase
@@ -165,7 +165,7 @@ export async function handler(event) {
         .eq('id', body.item_id)
         .eq('user_id', actor.id)
         .maybeSingle();
-      if (!existing) return fail(event, 404, 'Item not found', 'NOT_FOUND');
+      if (!existing) return fail('Item not found', 'NOT_FOUND', 404);
 
       const updates = buildItemUpdates(body);
       // Recompute readiness on update
@@ -189,13 +189,13 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { item: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ item: data });
     }
 
     /* ── delete_item ─────────────────────────────────────────── */
     if (action === 'delete_item') {
-      if (!body.item_id) return fail(event, 400, 'item_id required', 'MISSING_FIELD');
+      if (!body.item_id) return fail('item_id required', 'MISSING_FIELD', 400);
 
       const { error } = await supabase
         .from('catalog_items')
@@ -203,13 +203,13 @@ export async function handler(event) {
         .eq('id', body.item_id)
         .eq('user_id', actor.id);
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { archived: true });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ archived: true });
     }
 
     /* ── evaluate_readiness ──────────────────────────────────── */
     if (action === 'evaluate_readiness') {
-      if (!body.item_id) return fail(event, 400, 'item_id required', 'MISSING_FIELD');
+      if (!body.item_id) return fail('item_id required', 'MISSING_FIELD', 400);
 
       const { data: item, error } = await supabase
         .from('catalog_items')
@@ -218,8 +218,8 @@ export async function handler(event) {
         .eq('user_id', actor.id)
         .maybeSingle();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      if (!item) return fail(event, 404, 'Item not found', 'NOT_FOUND');
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      if (!item) return fail('Item not found', 'NOT_FOUND', 404);
 
       const readiness = computeReadiness(item);
 
@@ -231,12 +231,12 @@ export async function handler(event) {
           .eq('id', item.id);
       }
 
-      return ok(event, { readiness, item: { ...item, listing_readiness_status: readiness } });
+      return ok({ readiness, item: { ...item, listing_readiness_status: readiness } });
     }
 
-    return fail(event, 400, `Unhandled action: ${action}`, 'INVALID_ACTION');
+    return fail(`Unhandled action: ${action}`, 'INVALID_ACTION', 400);
   } catch (err) {
-    return fail(event, 500, err.message || 'Internal error', 'INTERNAL_ERROR');
+    return fail(err.message || 'Internal error', 'INTERNAL_ERROR', 500);
   }
 }
 

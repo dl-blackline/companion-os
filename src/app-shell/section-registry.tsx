@@ -30,6 +30,7 @@ const TodayPage = lazy(() => import('@/features/today/pages/TodayPage').then((m)
 const FinancePage = lazy(() => import('@/features/finance/pages/FinancePage').then((m) => ({ default: m.FinancePage })));
 const TasksPage = lazy(() => import('@/features/tasks/pages/TasksPage').then((m) => ({ default: m.TasksPage })));
 const InvestmentsPage = lazy(() => import('@/features/investments/pages/InvestmentsPage').then((m) => ({ default: m.InvestmentsPage })));
+const CatalogPage = lazy(() => import('@/features/catalog/pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
 const AssistantPage = lazy(() => import('@/features/assistant/pages/AssistantPage').then((m) => ({ default: m.AssistantPage })));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 
@@ -83,6 +84,7 @@ export const SECTION_COMPONENTS: Record<NavSection, SectionFactory> = {
   'finance': () => <FinancePage />,
   'tasks': () => <TasksPage />,
   'investments': () => <InvestmentsPage />,
+  'catalog': () => <CatalogPage />,
   'assistant': () => <AssistantPage />,
   'settings': () => <SettingsPage />,
 

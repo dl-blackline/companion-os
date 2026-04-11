@@ -5,6 +5,7 @@ import { ChartLineUp } from '@phosphor-icons/react/ChartLineUp';
 import { Gear } from '@phosphor-icons/react/Gear';
 import { ListChecks } from '@phosphor-icons/react/ListChecks';
 import { Money } from '@phosphor-icons/react/Money';
+import { Package } from '@phosphor-icons/react/Package';
 import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
 import { SignOut } from '@phosphor-icons/react/SignOut';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ export type NavSection =
   | 'finance'
   | 'tasks'
   | 'investments'
+  | 'catalog'
   | 'assistant'
   | 'settings'
   | 'stripe-return'
@@ -48,6 +50,7 @@ const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: strin
   { id: 'finance', label: 'Finance', icon: Money, group: 'main' },
   { id: 'tasks', label: 'Tasks', icon: ListChecks, group: 'main' },
   { id: 'investments', label: 'Investments', icon: ChartLineUp, group: 'main' },
+  { id: 'catalog', label: 'Catalog', icon: Package, group: 'main' },
   { id: 'assistant', label: 'Assistant', icon: ChatCircle, group: 'main' },
   { id: 'settings', label: 'Settings', icon: Gear, group: 'system' },
   { id: 'admin-console', label: 'Admin', icon: ShieldCheck, group: 'admin' },

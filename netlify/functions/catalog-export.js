@@ -67,30 +67,30 @@ function resolveField(item, mapping) {
 /* ── Handler ─────────────────────────────────────────────────── */
 
 export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return preflight(event);
+  if (event.httpMethod === 'OPTIONS') return preflight();
 
   try {
     const token = getAuthToken(event);
     const actor = await resolveActor(token);
-    if (!actor) return fail(event, 401, 'Authentication required', 'UNAUTHORIZED');
+    if (!actor) return fail('Authentication required', 'UNAUTHORIZED', 401);
 
     const body = JSON.parse(event.body || '{}');
     const action = body.action;
 
     if (!action || !SUPPORTED_ACTIONS.has(action)) {
-      return fail(event, 400, `Unsupported action: ${action}`, 'INVALID_ACTION');
+      return fail(`Unsupported action: ${action}`, 'INVALID_ACTION', 400);
     }
 
     /* ── create_template ─────────────────────────────────────── */
     if (action === 'create_template') {
       if (!body.marketplace || !MARKETPLACES.has(body.marketplace)) {
-        return fail(event, 400, 'Valid marketplace required', 'INVALID_MARKETPLACE');
+        return fail('Valid marketplace required', 'INVALID_MARKETPLACE', 400);
       }
       if (!body.template_name?.trim()) {
-        return fail(event, 400, 'template_name required', 'MISSING_FIELD');
+        return fail('template_name required', 'MISSING_FIELD', 400);
       }
       if (!Array.isArray(body.column_headers) || body.column_headers.length === 0) {
-        return fail(event, 400, 'column_headers array required', 'MISSING_FIELD');
+        return fail('column_headers array required', 'MISSING_FIELD', 400);
       }
 
       const { data, error } = await supabase
@@ -108,13 +108,13 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { template: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ template: data });
     }
 
     /* ── update_template ─────────────────────────────────────── */
     if (action === 'update_template') {
-      if (!body.template_id) return fail(event, 400, 'template_id required', 'MISSING_FIELD');
+      if (!body.template_id) return fail('template_id required', 'MISSING_FIELD', 400);
 
       const updates = {};
       if (body.template_name !== undefined) updates.template_name = body.template_name.trim();
@@ -131,8 +131,8 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { template: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ template: data });
     }
 
     /* ── list_templates ──────────────────────────────────────── */
@@ -148,13 +148,13 @@ export async function handler(event) {
       }
 
       const { data, error } = await query;
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { templates: data || [] });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ templates: data || [] });
     }
 
     /* ── get_template ────────────────────────────────────────── */
     if (action === 'get_template') {
-      if (!body.template_id) return fail(event, 400, 'template_id required', 'MISSING_FIELD');
+      if (!body.template_id) return fail('template_id required', 'MISSING_FIELD', 400);
 
       const { data, error } = await supabase
         .from('marketplace_templates')
@@ -163,14 +163,14 @@ export async function handler(event) {
         .eq('user_id', actor.id)
         .maybeSingle();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      if (!data) return fail(event, 404, 'Template not found', 'NOT_FOUND');
-      return ok(event, { template: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      if (!data) return fail('Template not found', 'NOT_FOUND', 404);
+      return ok({ template: data });
     }
 
     /* ── delete_template ─────────────────────────────────────── */
     if (action === 'delete_template') {
-      if (!body.template_id) return fail(event, 400, 'template_id required', 'MISSING_FIELD');
+      if (!body.template_id) return fail('template_id required', 'MISSING_FIELD', 400);
 
       const { error } = await supabase
         .from('marketplace_templates')
@@ -178,15 +178,15 @@ export async function handler(event) {
         .eq('id', body.template_id)
         .eq('user_id', actor.id);
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { deleted: true });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ deleted: true });
     }
 
     /* ── export_csv ──────────────────────────────────────────── */
     if (action === 'export_csv') {
-      if (!body.template_id) return fail(event, 400, 'template_id required', 'MISSING_FIELD');
+      if (!body.template_id) return fail('template_id required', 'MISSING_FIELD', 400);
       if (!Array.isArray(body.item_ids) || body.item_ids.length === 0) {
-        return fail(event, 400, 'item_ids array required', 'MISSING_FIELD');
+        return fail('item_ids array required', 'MISSING_FIELD', 400);
       }
 
       // Fetch template
@@ -197,8 +197,8 @@ export async function handler(event) {
         .eq('user_id', actor.id)
         .maybeSingle();
 
-      if (tErr) return fail(event, 500, tErr.message, 'DB_ERROR');
-      if (!template) return fail(event, 404, 'Template not found', 'NOT_FOUND');
+      if (tErr) return fail(tErr.message, 'DB_ERROR', 500);
+      if (!template) return fail('Template not found', 'NOT_FOUND', 404);
 
       // Fetch items
       const { data: items, error: iErr } = await supabase
@@ -207,9 +207,9 @@ export async function handler(event) {
         .in('id', body.item_ids)
         .eq('user_id', actor.id);
 
-      if (iErr) return fail(event, 500, iErr.message, 'DB_ERROR');
+      if (iErr) return fail(iErr.message, 'DB_ERROR', 500);
       if (!items || items.length === 0) {
-        return fail(event, 404, 'No items found', 'NOT_FOUND');
+        return fail('No items found', 'NOT_FOUND', 404);
       }
 
       // Validate required columns
@@ -224,7 +224,7 @@ export async function handler(event) {
       }
 
       if (validationErrors.length > 0) {
-        return fail(event, 422, validationErrors.join('; '), 'VALIDATION_ERROR');
+        return fail(validationErrors.join('; '), 'VALIDATION_ERROR', 422);
       }
 
       // Generate CSV
@@ -240,7 +240,7 @@ export async function handler(event) {
 
       const csv = [headerRow, ...dataRows].join('\n');
 
-      return ok(event, {
+      return ok({
         csv,
         filename: `${template.marketplace}-export-${Date.now()}.csv`,
         row_count: items.length,
@@ -249,9 +249,9 @@ export async function handler(event) {
 
     /* ── record_publication ──────────────────────────────────── */
     if (action === 'record_publication') {
-      if (!body.item_id) return fail(event, 400, 'item_id required', 'MISSING_FIELD');
+      if (!body.item_id) return fail('item_id required', 'MISSING_FIELD', 400);
       if (!body.channel || !MARKETPLACES.has(body.channel)) {
-        return fail(event, 400, 'Valid channel required', 'INVALID_CHANNEL');
+        return fail('Valid channel required', 'INVALID_CHANNEL', 400);
       }
 
       const { data, error } = await supabase
@@ -269,8 +269,8 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { publication: data });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ publication: data });
     }
 
     /* ── list_publications ───────────────────────────────────── */
@@ -287,12 +287,12 @@ export async function handler(event) {
       }
 
       const { data, error } = await query;
-      if (error) return fail(event, 500, error.message, 'DB_ERROR');
-      return ok(event, { publications: data || [] });
+      if (error) return fail(error.message, 'DB_ERROR', 500);
+      return ok({ publications: data || [] });
     }
 
-    return fail(event, 400, `Unhandled action: ${action}`, 'INVALID_ACTION');
+    return fail(`Unhandled action: ${action}`, 'INVALID_ACTION', 400);
   } catch (err) {
-    return fail(event, 500, err.message || 'Internal error', 'INTERNAL_ERROR');
+    return fail(err.message || 'Internal error', 'INTERNAL_ERROR', 500);
   }
 }
