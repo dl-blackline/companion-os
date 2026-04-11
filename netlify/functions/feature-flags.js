@@ -5,6 +5,7 @@
  */
 import { supabase, supabaseConfigured } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
@@ -50,6 +51,9 @@ export async function handler(event) {
     if (!userIsAdmin) return fail("Admin access required", "ERR_FORBIDDEN", 403);
 
     if (event.httpMethod === "POST") {
+      const sizeCheck = validatePayloadSize(event.body);
+      if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
+
       const body = JSON.parse(event.body || "{}");
       const { key, name, description, enabled, rollout_percentage, admin_only, kill_switch, category } = body;
       if (!key || !name) return fail("key and name are required", "ERR_VALIDATION", 400);
@@ -71,6 +75,9 @@ export async function handler(event) {
     }
 
     if (event.httpMethod === "PATCH") {
+      const sizeCheck = validatePayloadSize(event.body);
+      if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
+
       const body = JSON.parse(event.body || "{}");
       const { id, ...updates } = body;
       if (!id) return fail("id is required", "ERR_VALIDATION", 400);

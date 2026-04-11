@@ -20,7 +20,7 @@ import {
   searchRelationshipMemory,
 } from "../../lib/memory-manager.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-import { authenticateRequest } from "../../lib/_security.js";
+import { authenticateRequest , validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 
 /* ─── Determine which memory table to use based on memory_type/category ───── */
@@ -66,6 +66,9 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
+
+  const sizeCheck = validatePayloadSize(event.body);
+  if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
   let body;
   try {

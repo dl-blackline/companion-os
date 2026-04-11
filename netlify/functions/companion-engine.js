@@ -42,7 +42,7 @@ import {
   formatCompanionContext,
 } from "../../lib/companion-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-import { authenticateRequest } from "../../lib/_security.js";
+import { authenticateRequest , validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 import { supabase } from "../../lib/_supabase.js";
 
@@ -54,6 +54,9 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
+
+  const sizeCheck = validatePayloadSize(event.body);
+  if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
   let body;
   try {

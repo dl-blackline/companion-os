@@ -2,6 +2,7 @@ import { createAgentTask, getAgentTask, getAgentTasksByStatus } from "../../lib/
 import { AGENTS } from "../../lib/agent-registry.js";
 import { ok, fail, preflight, raw } from "../../lib/_responses.js";
 import { supabase } from "../../lib/_supabase.js";
+import { validatePayloadSize } from "../../lib/_security.js";
 import { ensureFeatureWithinQuota, recordFeatureUsage } from "../../lib/_entitlements.js";
 
 async function resolveActor(event) {
@@ -68,6 +69,9 @@ export const handler = async (event) => {
   // POST — create a new agent task
   if (event.httpMethod === "POST") {
     let body;
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
+
     try {
       body = JSON.parse(event.body || "{}");
     } catch {

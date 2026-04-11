@@ -20,7 +20,7 @@ vi.mock('../../services/ai/orchestrator.js', () => ({
 
 // Mock companion state
 vi.mock('@lib/realtime/companion-state.js', () => {
-  let stateIdx = 0;
+  const stateIdx = 0;
   const states = ['idle', 'listening', 'thinking', 'responding', 'idle'];
   return {
     createCompanionState: vi.fn(() => ({ state: 'idle', enteredAt: new Date().toISOString(), transitions: [] })),

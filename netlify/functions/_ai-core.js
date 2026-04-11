@@ -24,7 +24,7 @@ import { runTask } from "../../lib/multimodal-engine.js";
 import { getRelevantMediaContext } from "../../lib/media-memory-service.js";
 import { isNofilterModel } from "../../lib/nofilter-client.js";
 import { ok, fail, preflight, raw, CORS_HEADERS } from "../../lib/_responses.js";
-import { validatePayloadSize, sanitizeDeep } from "../../lib/_security.js";
+import { validatePayloadSize, sanitizeDeep, authenticateRequest } from "../../lib/_security.js";
 import { log } from "../../lib/_log.js";
 
 
@@ -711,6 +711,10 @@ export async function handler(event) {
   }
 
   try {
+    // Authentication: derive user_id from Bearer token, never from request body
+    const { user, error: authError } = await authenticateRequest(event, supabase);
+    if (authError) return fail(authError, "ERR_AUTH", 401);
+
     // Input validation: payload size check
     const sizeCheck = validatePayloadSize(event.body);
     if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
@@ -722,6 +726,11 @@ export async function handler(event) {
     const { type, data, action } = body;
 
     const payload = data || body;
+
+    // Override user_id with authenticated identity — prevent impersonation
+    if (typeof payload === "object" && payload !== null) {
+      payload.user_id = user.id;
+    }
 
     if (action && typeof payload === "object") {
       payload.action = payload.action || action;

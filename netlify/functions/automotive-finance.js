@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/_supabase.js';
 import { fail, ok, preflight } from '../../lib/_responses.js';
+import { validatePayloadSize } from '../../lib/_security.js';
 import { canTransition } from '../../lib/automotive/state-machine.js';
 
 const DEAL_TYPES = new Set(['retail', 'lease', 'balloon', 'business', 'commercial']);
@@ -657,6 +658,9 @@ export async function handler(event) {
     if (event.httpMethod !== 'POST') {
       return fail('Method not allowed', 'ERR_METHOD', 405);
     }
+
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
     let body;
     try {

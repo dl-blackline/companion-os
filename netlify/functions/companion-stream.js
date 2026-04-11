@@ -14,7 +14,7 @@ import {
 } from "../../lib/realtime/avatar-controller.js";
 import { formatSSE } from "../../lib/realtime/stream-handler.js";
 import { preflight, fail, CORS_HEADERS } from "../../lib/_responses.js";
-import { authenticateRequest } from "../../lib/_security.js";
+import { authenticateRequest , validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 
 /** Default estimated speech duration (ms) used for lip-sync frame generation. */
@@ -51,6 +51,9 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return fail("Method not allowed", "ERR_METHOD", 405);
   }
+
+  const sizeCheck = validatePayloadSize(event.body);
+  if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
   let body;
   try {

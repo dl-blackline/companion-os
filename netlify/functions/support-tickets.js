@@ -5,6 +5,7 @@
  */
 import { supabase } from "../../lib/_supabase.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
+import { validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 import { isSuperAdminUser } from "../../lib/_super-admin.js";
 
@@ -58,6 +59,9 @@ export async function handler(event) {
 
     // POST /support-tickets — create a ticket
     if (event.httpMethod === "POST" && (path === "" || path === "/")) {
+      const sizeCheck = validatePayloadSize(event.body);
+      if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
+
       const { title, description, category = "other", priority = "medium" } = JSON.parse(event.body || "{}");
       if (!title) return fail("title is required", "ERR_VALIDATION", 400);
 

@@ -17,6 +17,7 @@
 
 import { supabase } from '../../lib/_supabase.js';
 import { ok, fail, preflight } from '../../lib/_responses.js';
+import { validatePayloadSize } from '../../lib/_security.js';
 import {
   syncGoalToFinance,
   syncGoalToCalendar,
@@ -64,7 +65,7 @@ function toNumber(v) {
 /* ── Goal CRUD ─────────────────────────────────────────────────── */
 
 async function createGoal(userId, body) {
-  const isFinancial = body.isFinancial === true || body.life_category === 'financial' || (body.targetAmount != null && body.targetAmount > 0);
+  const isFinancial = body.isFinancial === true || body.life_category === 'financial' || (body.targetAmount !== null && body.targetAmount > 0);
 
   const goalPayload = {
     user_id: userId,
@@ -311,6 +312,9 @@ export async function handler(event) {
 
   /* ── POST — actions ── */
   if (event.httpMethod !== 'POST') return fail('Method not allowed', 'ERR_METHOD', 405);
+
+  const sizeCheck = validatePayloadSize(event.body);
+  if (!sizeCheck.valid) return fail(sizeCheck.error, 'ERR_PAYLOAD_SIZE', 413);
 
   let body;
   try {

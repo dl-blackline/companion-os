@@ -1,6 +1,6 @@
 import { createProject, addWorkflowStep } from "../../lib/workflow-engine.js";
 import { ok, fail, preflight } from "../../lib/_responses.js";
-import { authenticateRequest } from "../../lib/_security.js";
+import { authenticateRequest , validatePayloadSize } from '../../lib/_security.js';
 import { log } from "../../lib/_log.js";
 import { supabase } from "../../lib/_supabase.js";
 
@@ -17,6 +17,9 @@ export async function handler(event) {
   if (authError) return fail(authError, "ERR_AUTH", 401);
 
   try {
+    const sizeCheck = validatePayloadSize(event.body);
+    if (!sizeCheck.valid) return fail(sizeCheck.error, "ERR_PAYLOAD_SIZE", 413);
+
     const { title, description, project_type, steps } = JSON.parse(
       event.body
     );

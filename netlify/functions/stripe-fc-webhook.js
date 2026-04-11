@@ -228,8 +228,8 @@ async function handleRefreshedBalance(stripeAccount) {
   await supabase.from('account_balance_snapshots').insert({
     user_id: conn.user_id,
     connection_id: conn.id,
-    current_balance: cashCurrent?.amount != null ? cashCurrent.amount / 100 : null,
-    available_balance: cashAvailable?.amount != null ? cashAvailable.amount / 100 : null,
+    current_balance: cashCurrent?.amount !== null ? cashCurrent.amount / 100 : null,
+    available_balance: cashAvailable?.amount !== null ? cashAvailable.amount / 100 : null,
     currency: cashCurrent?.currency || cashAvailable?.currency || 'usd',
     as_of: balance.as_of ? new Date(balance.as_of * 1000).toISOString() : new Date().toISOString(),
   });
