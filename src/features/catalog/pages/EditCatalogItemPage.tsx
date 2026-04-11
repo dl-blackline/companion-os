@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CatalogItemForm } from '../components/CatalogItemForm';
-import { supabase } from '@/lib/supabase-client';
+import { getCatalogItem, updateCatalogItem } from '../catalog-api';
 import type { CatalogItem } from '@/types/catalog';
 
 /* ── Props ───────────────────────────────────────────────────── */
@@ -32,28 +32,8 @@ export function EditCatalogItemPage({ itemId, onBack, onSaved }: EditCatalogItem
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error('Not authenticated');
-
-      const res = await fetch('/.netlify/functions/catalog-items', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'get_item', item_id: itemId }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? `Failed to fetch item (${res.status})`);
-      }
-
-      const json = await res.json();
-      const data = json.data ?? json;
-      const resolved = data?.item ?? data;
-      setItem(resolved as CatalogItem);
+      const data = await getCatalogItem(itemId);
+      setItem(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load item');
     } finally {
@@ -69,25 +49,7 @@ export function EditCatalogItemPage({ itemId, onBack, onSaved }: EditCatalogItem
     async (updated: Partial<CatalogItem>) => {
       setSaving(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        if (!token) throw new Error('Not authenticated');
-
-        const res = await fetch('/.netlify/functions/catalog-items', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          // Backend reads fields flat from body, not nested under "item"
-          body: JSON.stringify({ action: 'update_item', item_id: itemId, ...updated }),
-        });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.error ?? `Failed to save (${res.status})`);
-        }
-
+        await updateCatalogItem(itemId, updated);
         onSaved();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to save');

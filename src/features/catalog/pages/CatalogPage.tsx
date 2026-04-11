@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase-client';
+import { listCatalogItems, createCatalogItem } from '../catalog-api';
 import { CatalogLibrary } from '../components/CatalogLibrary';
 import { CatalogItemForm } from '../components/CatalogItemForm';
 import { ItemDecoderUploader } from '../components/ItemDecoderUploader';
@@ -40,35 +40,6 @@ function parseInitialView(pathname: string): { view: CatalogView; itemId?: strin
     return { view: 'detail', itemId: segments[0] };
   }
   return { view: 'library' };
-}
-
-/* ── API helpers ─────────────────────────────────────────────── */
-
-async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
-}
-
-async function catalogApi(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not authenticated');
-
-  const res = await fetch('/.netlify/functions/catalog-items', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ action, ...params }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error ?? `API error (${res.status})`);
-  }
-
-  const json = await res.json();
-  return json.data ?? json;
 }
 
 /* ── Component ───────────────────────────────────────────────── */
@@ -114,8 +85,7 @@ export function CatalogPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await catalogApi('list_items') as { items?: CatalogItem[] };
-      const list = Array.isArray(data) ? data : (data?.items ?? []);
+      const list = await listCatalogItems();
       setItems(list);
     } catch {
       setItems([]);
@@ -134,13 +104,9 @@ export function CatalogPage() {
     async (item: Partial<CatalogItem>) => {
       setSaving(true);
       try {
-        // Backend reads fields flat from body, not nested under "item"
-        const data = await catalogApi('create_item', item) as { item?: CatalogItem };
-        const created = (data as unknown as CatalogItem)?.id ? (data as unknown as CatalogItem) : data?.item;
-        if (created) {
-          setItems((prev) => [created, ...prev]);
-          navigate('detail', created.id);
-        }
+        const created = await createCatalogItem(item);
+        setItems((prev) => [created, ...prev]);
+        navigate('detail', created.id);
       } catch {
         // error is silently handled; toast could be added here
       } finally {

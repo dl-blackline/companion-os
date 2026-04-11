@@ -5,7 +5,7 @@
  * decode button, loading state, and error display.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,14 @@ export function ItemDecoderUploader({ onDecodeComplete, onCancel }: ItemDecoderU
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewsRef = useRef<string[]>([]);
+
+  // Revoke preview object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      previewsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
 
   const addFiles = useCallback(
     (incoming: File[]) => {
@@ -51,6 +59,7 @@ export function ItemDecoderUploader({ onDecodeComplete, onCancel }: ItemDecoderU
       // Revoke old previews
       previews.forEach((u) => URL.revokeObjectURL(u));
       setPreviews(urls);
+      previewsRef.current = urls;
     },
     [files, previews],
   );
