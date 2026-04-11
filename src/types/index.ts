@@ -10,6 +10,7 @@ export * from './careers';
 export * from './financial-intelligence';
 export * from './automotive-finance';
 export * from './automotive-domain';
+export * from './catalog';
 
 import type { OrbPreferencePayload } from './emoji-orb';
 
