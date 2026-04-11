@@ -52,7 +52,8 @@ export function EditCatalogItemPage({ itemId, onBack, onSaved }: EditCatalogItem
 
       const json = await res.json();
       const data = json.data ?? json;
-      setItem(data as CatalogItem);
+      const resolved = data?.item ?? data;
+      setItem(resolved as CatalogItem);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load item');
     } finally {
@@ -78,7 +79,8 @@ export function EditCatalogItemPage({ itemId, onBack, onSaved }: EditCatalogItem
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ action: 'update_item', item_id: itemId, item: updated }),
+          // Backend reads fields flat from body, not nested under "item"
+          body: JSON.stringify({ action: 'update_item', item_id: itemId, ...updated }),
         });
 
         if (!res.ok) {

@@ -114,8 +114,9 @@ export function CatalogPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await catalogApi('list_items') as CatalogItem[];
-      setItems(Array.isArray(data) ? data : []);
+      const data = await catalogApi('list_items') as { items?: CatalogItem[] };
+      const list = Array.isArray(data) ? data : (data?.items ?? []);
+      setItems(list);
     } catch {
       setItems([]);
     } finally {
@@ -133,9 +134,13 @@ export function CatalogPage() {
     async (item: Partial<CatalogItem>) => {
       setSaving(true);
       try {
-        const created = await catalogApi('create_item', { item }) as CatalogItem;
-        setItems((prev) => [created, ...prev]);
-        navigate('detail', created.id);
+        // Backend reads fields flat from body, not nested under "item"
+        const data = await catalogApi('create_item', item) as { item?: CatalogItem };
+        const created = (data as unknown as CatalogItem)?.id ? (data as unknown as CatalogItem) : data?.item;
+        if (created) {
+          setItems((prev) => [created, ...prev]);
+          navigate('detail', created.id);
+        }
       } catch {
         // error is silently handled; toast could be added here
       } finally {

@@ -33,6 +33,18 @@ describe('app-shell/router', () => {
     it('returns admin-console for /admin-console', () => {
       expect(sectionFromPathname('/admin-console')).toBe('admin-console');
     });
+    it('returns catalog for /catalog', () => {
+      expect(sectionFromPathname('/catalog')).toBe('catalog');
+    });
+    it('returns catalog for /catalog/new', () => {
+      expect(sectionFromPathname('/catalog/new')).toBe('catalog');
+    });
+    it('returns catalog for /catalog/{uuid}', () => {
+      expect(sectionFromPathname('/catalog/12345678-1234-1234-1234-123456789abc')).toBe('catalog');
+    });
+    it('returns catalog for /catalog/{uuid}/edit', () => {
+      expect(sectionFromPathname('/catalog/12345678-1234-1234-1234-123456789abc/edit')).toBe('catalog');
+    });
     it('returns today for unknown paths', () => {
       expect(sectionFromPathname('/unknown')).toBe('today');
     });
@@ -73,6 +85,9 @@ describe('app-shell/router', () => {
     it('returns /admin-console for admin-console', () => {
       expect(pathnameFromSection('admin-console')).toBe('/admin-console');
     });
+    it('returns /catalog for catalog', () => {
+      expect(pathnameFromSection('catalog')).toBe('/catalog');
+    });
   });
 });
 
@@ -89,6 +104,7 @@ describe('app-shell/feature-gates', () => {
     expect(evaluateGate('finance', baseCtx).allowed).toBe(true);
     expect(evaluateGate('tasks', baseCtx).allowed).toBe(true);
     expect(evaluateGate('investments', baseCtx).allowed).toBe(true);
+    expect(evaluateGate('catalog', baseCtx).allowed).toBe(true);
     expect(evaluateGate('assistant', baseCtx).allowed).toBe(true);
     expect(evaluateGate('settings', baseCtx).allowed).toBe(true);
   });

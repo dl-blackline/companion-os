@@ -76,7 +76,8 @@ export function CatalogItemPage({ itemId, onBack, onEdit, onDecode }: CatalogIte
 
       const json = await res.json();
       const data = json.data ?? json;
-      setItem(data as CatalogItem);
+      const resolved = data?.item ?? data;
+      setItem(resolved as CatalogItem);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load item');
     } finally {

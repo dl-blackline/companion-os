@@ -103,13 +103,26 @@ export function ItemDecoderUploader({ onDecodeComplete, onCancel }: ItemDecoderU
         return;
       }
 
-      const formData = new FormData();
-      files.forEach((f) => formData.append('images', f));
+      // Convert images to base64 data URLs for JSON transport
+      const imageDataUrls = await Promise.all(
+        files.map(
+          (f) =>
+            new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = () => reject(new Error('Failed to read image'));
+              reader.readAsDataURL(f);
+            }),
+        ),
+      );
 
       const res = await fetch('/.netlify/functions/item-decoder', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ images: imageDataUrls }),
       });
 
       if (!res.ok) {
