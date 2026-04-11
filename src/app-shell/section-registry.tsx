@@ -2,6 +2,10 @@
  * app-shell/section-registry.tsx — Lazy imports, section → component map,
  * fallback component, and globally-shared lazy overlays.
  *
+ * v2: Only registers the six core sections plus utility routes.
+ * Legacy views are preserved in src/components/views/ but removed from
+ * the active section registry.
+ *
  * To add a new section:
  *   1. Add a lazy import below
  *   2. Add an entry to SECTION_COMPONENTS
@@ -18,29 +22,21 @@
 
 import { lazy, type ReactNode } from 'react';
 import type { NavSection } from '@/components/AppSidebar';
-import { HomeDashboard } from '@/components/views/HomeDashboard';
 import type { CompanionState } from '@/types';
 
-/* ── Lazy imports ─────────────────────────────────────────────────────────── */
+/* ── Lazy imports — v2 core pages ─────────────────────────────────────────── */
 
-const ChatView = lazy(() => import('@/components/views/ChatView').then((m) => ({ default: m.ChatView })));
-const LiveTalkView = lazy(() => import('@/components/views/LiveTalkView').then((m) => ({ default: m.LiveTalkView })));
-const MediaView = lazy(() => import('@/components/views/MediaView').then((m) => ({ default: m.MediaView })));
-const MemoryView = lazy(() => import('@/components/views/MemoryView').then((m) => ({ default: m.MemoryView })));
-const KnowledgeView = lazy(() => import('@/components/views/KnowledgeView').then((m) => ({ default: m.KnowledgeView })));
-const GoalsView = lazy(() => import('@/components/views/GoalsView').then((m) => ({ default: m.GoalsView })));
-const CalendarView = lazy(() => import('@/components/views/CalendarView').then((m) => ({ default: m.CalendarView })));
-const InsightsView = lazy(() => import('@/components/views/InsightsView').then((m) => ({ default: m.InsightsView })));
-const CareersView = lazy(() => import('@/components/views/CareersView').then((m) => ({ default: m.CareersView })));
-const FinanceView = lazy(() => import('@/components/views/FinanceView').then((m) => ({ default: m.FinanceView })));
-const AutomotiveFinanceView = lazy(() => import('@/components/views/AutomotiveFinanceView').then((m) => ({ default: m.AutomotiveFinanceView })));
-const WorkflowsView = lazy(() => import('@/components/views/WorkflowsView').then((m) => ({ default: m.WorkflowsView })));
-const SettingsView = lazy(() => import('@/components/views/SettingsView').then((m) => ({ default: m.SettingsView })));
-const ControlCenterView = lazy(() => import('@/components/views/ControlCenterView').then((m) => ({ default: m.ControlCenterView })));
-const AgentsView = lazy(() => import('@/components/views/AgentsView').then((m) => ({ default: m.AgentsView })));
-const AdminConsoleView = lazy(() => import('@/components/views/AdminConsoleView').then((m) => ({ default: m.AdminConsoleView })));
-const TarotView = lazy(() => import('@/components/views/TarotView').then((m) => ({ default: m.TarotView })));
+const TodayPage = lazy(() => import('@/features/today/pages/TodayPage').then((m) => ({ default: m.TodayPage })));
+const FinancePage = lazy(() => import('@/features/finance/pages/FinancePage').then((m) => ({ default: m.FinancePage })));
+const TasksPage = lazy(() => import('@/features/tasks/pages/TasksPage').then((m) => ({ default: m.TasksPage })));
+const InvestmentsPage = lazy(() => import('@/features/investments/pages/InvestmentsPage').then((m) => ({ default: m.InvestmentsPage })));
+const AssistantPage = lazy(() => import('@/features/assistant/pages/AssistantPage').then((m) => ({ default: m.AssistantPage })));
+const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+
+/* ── Utility views (still needed for functional routes) ───────────────────── */
+
 const StripeReturnView = lazy(() => import('@/components/views/StripeReturnView').then((m) => ({ default: m.StripeReturnView })));
+const AdminConsoleView = lazy(() => import('@/components/views/AdminConsoleView').then((m) => ({ default: m.AdminConsoleView })));
 
 /* ── Global overlays (not section-routed) ─────────────────────────────────── */
 
@@ -74,63 +70,36 @@ export interface SectionRenderContext {
 
 type SectionFactory = (ctx: SectionRenderContext) => ReactNode;
 
-/* ── Section registry map ─────────────────────────────────────────────────── */
+/* ── Default factory (Today) ──────────────────────────────────────────────── */
 
-function homeFactory(ctx: SectionRenderContext): ReactNode {
-  return (
-    <HomeDashboard
-      companionState={ctx.companionState}
-      aiName={ctx.aiName}
-      onNavigate={ctx.onNavigate}
-    />
-  );
+function todayFactory(): ReactNode {
+  return <TodayPage />;
 }
 
+/* ── Section registry map — v2 core sections ──────────────────────────────── */
+
 export const SECTION_COMPONENTS: Record<NavSection, SectionFactory> = {
-  'home': homeFactory,
+  'today': todayFactory,
+  'finance': () => <FinancePage />,
+  'tasks': () => <TasksPage />,
+  'investments': () => <InvestmentsPage />,
+  'assistant': () => <AssistantPage />,
+  'settings': () => <SettingsPage />,
 
-  'live-talk': (ctx) => (
-    <LiveTalkView
-      companionState={ctx.companionState}
-      setCompanionState={ctx.setCompanionState}
-      aiName={ctx.aiName}
-      onBack={ctx.onBack}
-    />
-  ),
-
-  'chat': () => <ChatView />,
-  'media': (ctx) => (
-    <MediaView
-      companionState={ctx.companionState}
-      setCompanionState={ctx.setCompanionState}
-      aiName={ctx.aiName}
-    />
-  ),
-  'memory': () => <MemoryView />,
-  'knowledge': () => <KnowledgeView />,
-  'goals': () => <GoalsView />,
-  'calendar': () => <CalendarView />,
-  'workflows': () => <WorkflowsView />,
-  'insights': () => <InsightsView />,
-  'careers': () => <CareersView />,
-  'finance': () => <FinanceView />,
   'stripe-return': (ctx) => (
     <StripeReturnView onNavigateToFinance={() => ctx.setActiveSection('finance')} />
   ),
-  'automotive-finance': () => <AutomotiveFinanceView />,
-  'agents': () => <AgentsView />,
-  'control-center': () => <ControlCenterView />,
-  'settings': () => <SettingsView />,
-  'tarot': () => <TarotView />,
 
   'admin-console': (ctx) =>
-    ctx.isAdmin ? <AdminConsoleView /> : homeFactory(ctx),
+    ctx.isAdmin ? <AdminConsoleView /> : todayFactory(),
 };
 
 /**
- * Resolve the component for a given section. Falls back to Home for unknown sections.
+ * Resolve the component for a given section. Falls back to Today for unknown
+ * sections. Admin-only sections (e.g. admin-console) also fall back to Today
+ * for non-admin users via the section factory's own guard.
  */
 export function renderSection(section: NavSection, ctx: SectionRenderContext): ReactNode {
-  const factory = SECTION_COMPONENTS[section] ?? homeFactory;
+  const factory = SECTION_COMPONENTS[section] ?? todayFactory;
   return factory(ctx);
 }

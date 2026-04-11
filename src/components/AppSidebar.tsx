@@ -1,23 +1,12 @@
 import type { Icon } from '@phosphor-icons/react';
-import { Books } from '@phosphor-icons/react/Books';
-import { Brain } from '@phosphor-icons/react/Brain';
-import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
-import { Gear } from '@phosphor-icons/react/Gear';
-import { House } from '@phosphor-icons/react/House';
-import { Images } from '@phosphor-icons/react/Images';
-import { Lightbulb } from '@phosphor-icons/react/Lightbulb';
-import { Lightning } from '@phosphor-icons/react/Lightning';
-import { Briefcase } from '@phosphor-icons/react/Briefcase';
-import { Car } from '@phosphor-icons/react/Car';
 import { CalendarBlank } from '@phosphor-icons/react/CalendarBlank';
+import { ChatCircle } from '@phosphor-icons/react/ChatCircle';
+import { ChartLineUp } from '@phosphor-icons/react/ChartLineUp';
+import { Gear } from '@phosphor-icons/react/Gear';
+import { ListChecks } from '@phosphor-icons/react/ListChecks';
 import { Money } from '@phosphor-icons/react/Money';
-import { Microphone } from '@phosphor-icons/react/Microphone';
-import { MoonStars } from '@phosphor-icons/react/MoonStars';
-import { Robot } from '@phosphor-icons/react/Robot';
 import { ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
 import { SignOut } from '@phosphor-icons/react/SignOut';
-import { Sliders } from '@phosphor-icons/react/Sliders';
-import { Target } from '@phosphor-icons/react/Target';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { CompanionStatusIcon } from '@/components/CompanionStatusIcon';
@@ -31,25 +20,16 @@ import { toast } from 'sonner';
 import type { CompanionState } from '@/types';
 import type { RuntimeHealthState } from '@/hooks/use-runtime-health';
 
+/* ── v2 NavSection type — core product surfaces only ─────────────────────── */
+
 export type NavSection =
-  | 'home'
-  | 'live-talk'
-  | 'chat'
-  | 'media'
-  | 'memory'
-  | 'knowledge'
-  | 'goals'
-  | 'calendar'
-  | 'workflows'
-  | 'insights'
-  | 'careers'
+  | 'today'
   | 'finance'
-  | 'automotive-finance'
-  | 'stripe-return'
-  | 'agents'
-  | 'control-center'
+  | 'tasks'
+  | 'investments'
+  | 'assistant'
   | 'settings'
-  | 'tarot'
+  | 'stripe-return'
   | 'admin-console';
 
 interface AppSidebarProps {
@@ -61,24 +41,15 @@ interface AppSidebarProps {
   unavailableServices: string[];
 }
 
+/* ── v2 navigation items — six core sections ─────────────────────────────── */
+
 const navItems: Array<{ id: NavSection; label: string; icon: Icon; group?: string }> = [
-  { id: 'home', label: 'Home', icon: House, group: 'main' },
-  { id: 'live-talk', label: 'Live Talk', icon: Microphone, group: 'main' },
-  { id: 'chat', label: 'Chat', icon: ChatCircle, group: 'main' },
-  { id: 'media', label: 'Create', icon: Images, group: 'main' },
-  { id: 'memory', label: 'Memory', icon: Brain, group: 'tools' },
-  { id: 'knowledge', label: 'Knowledge', icon: Books, group: 'tools' },
-  { id: 'goals', label: 'Goals', icon: Target, group: 'tools' },
-  { id: 'calendar', label: 'Calendar', icon: CalendarBlank, group: 'tools' },
-  { id: 'workflows', label: 'Workflows', icon: Lightning, group: 'tools' },
-  { id: 'insights', label: 'Insights', icon: Lightbulb, group: 'tools' },
-  { id: 'careers', label: 'Careers', icon: Briefcase, group: 'tools' },
-  { id: 'finance', label: 'Finance', icon: Money, group: 'tools' },
-  { id: 'automotive-finance', label: 'Auto Finance', icon: Car, group: 'tools' },
-  { id: 'agents', label: 'Agents', icon: Robot, group: 'tools' },
-  { id: 'control-center', label: 'Control', icon: Sliders, group: 'system' },
+  { id: 'today', label: 'Today', icon: CalendarBlank, group: 'main' },
+  { id: 'finance', label: 'Finance', icon: Money, group: 'main' },
+  { id: 'tasks', label: 'Tasks', icon: ListChecks, group: 'main' },
+  { id: 'investments', label: 'Investments', icon: ChartLineUp, group: 'main' },
+  { id: 'assistant', label: 'Assistant', icon: ChatCircle, group: 'main' },
   { id: 'settings', label: 'Settings', icon: Gear, group: 'system' },
-  { id: 'tarot', label: 'Tarot AI', icon: MoonStars, group: 'system' },
   { id: 'admin-console', label: 'Admin', icon: ShieldCheck, group: 'admin' },
 ];
 
@@ -87,7 +58,6 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
   const { prefs } = useSettings();
   const userInitials = getUserInitials(prefs.display_name, user?.email);
   const mainItems = navItems.filter((i) => i.group === 'main');
-  const toolItems = navItems.filter((i) => i.group === 'tools');
   const sysItems = navItems.filter((i) => i.group === 'system');
   const adminItems = navItems.filter((i) => i.group === 'admin');
 
@@ -160,9 +130,9 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
         <div className="flex items-center gap-3">
           <CompanionStatusIcon state={companionState} size="sm" />
           <div className="flex flex-col min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1" style={{ color: 'var(--vuk-accent-dim)' }}>Vuk OS</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1" style={{ color: 'var(--vuk-accent-dim)' }}>Companion OS</p>
             <h1 className="text-base font-bold text-foreground tracking-tight leading-none truncate">{aiName}</h1>
-            <p className="text-[11px] text-muted-foreground mt-1 leading-none">Precision AI Operating Layer</p>
+            <p className="text-[11px] text-muted-foreground mt-1 leading-none">Private AI Operating System</p>
           </div>
         </div>
         <div className="mt-4 rounded-xl border border-border/75 bg-muted/50 px-3 py-2.5 space-y-2">
@@ -190,18 +160,12 @@ export function AppSidebar({ activeSection, onSectionChange, aiName, companionSt
 
       <nav className="flex-1 p-3 flex flex-col gap-4 overflow-y-auto">
         <div className="space-y-1.5">
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">Core</p>
           {mainItems.map(renderItem)}
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">Intelligence</p>
-          {toolItems.map(renderItem)}
         </div>
 
         {isAdmin && (
           <div className="space-y-1.5">
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">Governance</p>
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">Admin</p>
             {adminItems.map(renderItem)}
           </div>
         )}
