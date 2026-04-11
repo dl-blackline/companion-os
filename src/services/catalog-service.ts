@@ -115,11 +115,11 @@ function checkField(
   field: string,
   label: string,
   required: boolean,
-  _imageCount?: number,
+  imageCount?: number,
 ): ReadinessCheck {
   // Special: images check uses supplied count
   if (field === 'images') {
-    const count = _imageCount ?? 0;
+    const count = imageCount ?? 0;
     if (required && count === 0) {
       return { field, label, gate: 'blocked', message: `${label} required — none uploaded` };
     }
