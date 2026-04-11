@@ -36,7 +36,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const isMobile = useIsMobile();
-  const { isActive: isGlobalVoiceActive, stopLiveTalk, status: voiceStatus } = useVoice();
+  const { status: voiceStatus } = useVoice();
   const { isAdmin, plan } = useAuth();
   const { settings } = useSettings();
   const { orchestratorConfig } = useAIControl();
@@ -56,9 +56,6 @@ function App() {
   const gateCtx = {
     plan: plan ?? 'free',
     isAdmin: !!isAdmin,
-    voiceCapabilityEnabled: !!orchestratorConfig.capabilities.voice,
-    isGlobalVoiceActive,
-    stopLiveTalk,
   };
 
   const navigateTo = (section: string) => {
@@ -161,12 +158,10 @@ function App() {
         </AnimatedSection>
       </main>
 
-      {/* Global floating Live Talk orb — hidden on Live Talk page */}
-      {activeSection !== 'live-talk' && (
-        <Suspense fallback={null}>
-          <FloatingLiveOrb />
-        </Suspense>
-      )}
+      {/* Floating Live Talk orb — preserved for voice capability */}
+      <Suspense fallback={null}>
+        <FloatingLiveOrb />
+      </Suspense>
 
       {/* Command Palette */}
       <Suspense fallback={null}>
